@@ -3,11 +3,14 @@
 import { Search, UserRoundMinus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
 import { Modal } from "@/components/ui/modal";
 import { friendList, friendSuggestions } from "@/lib/demo-data";
+import { t } from "@/lib/translations";
 
 export function FriendsScreen() {
+  const { language } = useToLink();
   const [query, setQuery] = useState("");
   const [candidate, setCandidate] = useState<(typeof friendList)[number] | null>(null);
 
@@ -24,7 +27,7 @@ export function FriendsScreen() {
   return (
     <div className="relative flex h-full w-full">
       <FeatureShell
-        description="Search suggested neighbors, manage friendships, and jump directly into private conversations."
+        description={t(language, "friends.pageDesc")}
         title="Friends"
         toolbar={
           <label className="app-input flex items-center gap-3 rounded-full px-4 py-3 text-sm">
@@ -32,7 +35,7 @@ export function FriendsScreen() {
             <input
               className="w-full bg-transparent outline-none"
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search usernames"
+              placeholder={t(language, "friends.search")}
               value={query}
             />
           </label>
@@ -77,10 +80,10 @@ export function FriendsScreen() {
                   <div className="mt-4 flex gap-2">
                     <button
                       className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white"
-                      onClick={() => toast.success(`Opening chat with ${friend.name}.`)}
+                      onClick={() => toast.success(t(language, "toast.openingChat").replace("{name}", friend.name))}
                       type="button"
                     >
-                      Message
+                      {t(language, "common.message")}
                     </button>
                     <button
                       className="inline-flex items-center gap-2 rounded-full border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600"
@@ -88,7 +91,7 @@ export function FriendsScreen() {
                       type="button"
                     >
                       <UserRoundMinus className="h-4 w-4" />
-                      Unfriend
+                      {t(language, "friends.unfriend")}
                     </button>
                   </div>
                 </article>
@@ -98,16 +101,16 @@ export function FriendsScreen() {
         </div>
       </FeatureShell>
 
-      <Modal onClose={() => setCandidate(null)} open={Boolean(candidate)} title="Unfriend resident">
+      <Modal onClose={() => setCandidate(null)} open={Boolean(candidate)} title={t(language, "friends.unfriendTitle")}>
         <div className="space-y-4">
-          <p className="text-sm leading-7 text-muted">Are you sure you want to unfriend this person?</p>
+          <p className="text-sm leading-7 text-muted">{t(language, "friends.unfriendConfirm")}</p>
           <div className="flex justify-end gap-3">
             <button
               className="rounded-full border border-border bg-panel px-4 py-3 text-sm font-semibold text-foreground"
               onClick={() => setCandidate(null)}
               type="button"
             >
-              No
+              {t(language, "common.no")}
             </button>
             <button
               className="rounded-full bg-rose-600 px-5 py-3 text-sm font-semibold text-white"
@@ -117,7 +120,7 @@ export function FriendsScreen() {
               }}
               type="button"
             >
-              Yes
+              {t(language, "common.yes")}
             </button>
           </div>
         </div>

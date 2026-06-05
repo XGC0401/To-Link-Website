@@ -2,10 +2,13 @@
 
 import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
 import { documents } from "@/lib/demo-data";
+import { t } from "@/lib/translations";
 
 export function DocumentsScreen() {
+  const { language } = useToLink();
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("latest");
 
@@ -23,7 +26,7 @@ export function DocumentsScreen() {
 
   return (
     <FeatureShell
-      description="Building regulations, policies, and operational notices are organized here for quick search and lightweight review."
+      description={t(language, "documents.pageDesc")}
       title="Documents"
       toolbar={
         <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px]">
@@ -32,7 +35,7 @@ export function DocumentsScreen() {
             <input
               className="w-full bg-transparent outline-none"
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search documents"
+              placeholder={t(language, "documents.search")}
               value={query}
             />
           </label>
@@ -41,8 +44,8 @@ export function DocumentsScreen() {
             onChange={(event) => setSortBy(event.target.value)}
             value={sortBy}
           >
-            <option value="latest">Latest</option>
-            <option value="oldest">Oldest</option>
+            <option value="latest">{t(language, "common.latest")}</option>
+            <option value="oldest">{t(language, "common.oldest")}</option>
           </select>
         </div>
       }
@@ -53,7 +56,7 @@ export function DocumentsScreen() {
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-strong">{document.category}</p>
             <h3 className="mt-2 text-xl font-semibold text-foreground">{document.title}</h3>
             <p className="mt-3 text-sm leading-7 text-muted">{document.summary}</p>
-            <p className="mt-4 text-xs text-muted">Updated: {document.updatedAt}</p>
+            <p className="mt-4 text-xs text-muted">{t(language, "documents.updated")} {document.updatedAt}</p>
           </article>
         ))}
       </div>

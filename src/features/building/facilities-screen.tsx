@@ -2,11 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
 import { Modal } from "@/components/ui/modal";
 import { facilities } from "@/lib/demo-data";
+import { t } from "@/lib/translations";
 
 export function FacilitiesScreen() {
+  const { language } = useToLink();
   const [selectedId, setSelectedId] = useState(facilities[0]?.id);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [participants, setParticipants] = useState(3);
@@ -31,7 +34,7 @@ export function FacilitiesScreen() {
   return (
     <div className="relative flex h-full w-full">
       <FeatureShell
-        description="Clubhouse rooms and facilities use a split workspace with availability, booking logic, and front-desk payment guidance."
+        description={t(language, "facilities.pageDesc")}
         title="Clubhouse & Facilities"
       >
         <div className="grid h-full gap-4 xl:grid-cols-[minmax(0,0.76fr)_minmax(0,1.24fr)]">
@@ -56,25 +59,25 @@ export function FacilitiesScreen() {
             <div className="min-h-0 overflow-y-auto pr-1">
               <div className="space-y-4 rounded-[28px] border border-border bg-panel-strong p-5">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-strong">Facility details</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-strong">{t(language, "facilities.details")}</p>
                   <h3 className="mt-2 text-2xl font-semibold text-foreground">{selected.roomName}</h3>
                   <p className="mt-3 text-sm leading-7 text-muted">{selected.description}</p>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="rounded-[24px] border border-border bg-panel px-4 py-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-strong">Pricing rule</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-strong">{t(language, "facilities.pricingRule")}</p>
                     <p className="mt-2 text-sm text-foreground">{selected.pricingRule}</p>
                   </div>
                   <div className="rounded-[24px] border border-border bg-panel px-4 py-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-strong">Price preview</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-strong">{t(language, "facilities.pricePreview")}</p>
                     <p className="mt-2 text-sm text-foreground">{pricePreview}</p>
-                    <p className="mt-2 text-xs text-muted">*Please pay at the front desk*</p>
+                    <p className="mt-2 text-xs text-muted">{t(language, "facilities.frontDesk")}</p>
                   </div>
                 </div>
 
                 <div className="rounded-[24px] border border-border bg-panel px-4 py-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-strong">Available time slots</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-strong">{t(language, "facilities.availableSlots")}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {selected.availability.map((slot) => (
                       <span key={slot} className={slot.includes("Unavailable") ? "rounded-full bg-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400" : "rounded-full bg-accent-soft px-3 py-2 text-xs font-semibold text-accent-strong"}>
@@ -89,7 +92,7 @@ export function FacilitiesScreen() {
                   onClick={() => setBookingOpen(true)}
                   type="button"
                 >
-                  Book Now!
+                  {t(language, "common.bookNow")}
                 </button>
               </div>
             </div>
@@ -97,25 +100,25 @@ export function FacilitiesScreen() {
         </div>
       </FeatureShell>
 
-      <Modal onClose={() => setBookingOpen(false)} open={bookingOpen} title="Facility booking">
+      <Modal onClose={() => setBookingOpen(false)} open={bookingOpen} title={t(language, "facilities.bookingTitle")}>
         <form
           className="grid gap-4 md:grid-cols-2"
           onSubmit={(event) => {
             event.preventDefault();
-            toast.success("Facility booking request prepared and ready for calendar sync.");
+            toast.success(t(language, "toast.facilityBooked"));
             setBookingOpen(false);
           }}
         >
           <label className="space-y-2 md:col-span-2">
-            <span className="text-sm font-medium text-foreground">Room Name</span>
+            <span className="text-sm font-medium text-foreground">{t(language, "facilities.roomName")}</span>
             <input className="app-input w-full rounded-[20px] px-4 py-3" readOnly value={selected?.roomName ?? ""} />
           </label>
           <label className="space-y-2">
-            <span className="text-sm font-medium text-foreground">Contact Number(s)</span>
+            <span className="text-sm font-medium text-foreground">{t(language, "common.contactNumbers")}</span>
             <input className="app-input w-full rounded-[20px] px-4 py-3" placeholder="1234 8765" />
           </label>
           <label className="space-y-2">
-            <span className="text-sm font-medium text-foreground">Participants Numbers</span>
+            <span className="text-sm font-medium text-foreground">{t(language, "facilities.participantsNumbers")}</span>
             <input
               className="app-input w-full rounded-[20px] px-4 py-3"
               onChange={(event) => setParticipants(Number(event.target.value) || 1)}
@@ -123,15 +126,15 @@ export function FacilitiesScreen() {
             />
           </label>
           <label className="space-y-2">
-            <span className="text-sm font-medium text-foreground">Organizer Name</span>
-            <input className="app-input w-full rounded-[20px] px-4 py-3" placeholder="Dai Long Wong" />
+            <span className="text-sm font-medium text-foreground">{t(language, "common.organizerName")}</span>
+            <input className="app-input w-full rounded-[20px] px-4 py-3" placeholder={t(language, "common.namePlaceholder")} />
           </label>
           <label className="space-y-2">
-            <span className="text-sm font-medium text-foreground">Date & Time</span>
-            <input className="app-input w-full rounded-[20px] px-4 py-3" placeholder="25 Jun 2026 13:00 to 15:00" />
+            <span className="text-sm font-medium text-foreground">{t(language, "common.dateTime")}</span>
+            <input className="app-input w-full rounded-[20px] px-4 py-3" placeholder={t(language, "common.dateTimePlaceholder")} />
           </label>
           <label className="space-y-2 md:col-span-2">
-            <span className="text-sm font-medium text-foreground">Price</span>
+            <span className="text-sm font-medium text-foreground">{t(language, "common.price")}</span>
             <input className="app-input w-full rounded-[20px] px-4 py-3" readOnly value={pricePreview} />
           </label>
           <div className="md:col-span-2 flex justify-end gap-3">
@@ -140,10 +143,10 @@ export function FacilitiesScreen() {
               onClick={() => setBookingOpen(false)}
               type="button"
             >
-              Cancel
+              {t(language, "common.cancel")}
             </button>
             <button className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white" type="submit">
-              Submit
+              {t(language, "common.submit")}
             </button>
           </div>
         </form>

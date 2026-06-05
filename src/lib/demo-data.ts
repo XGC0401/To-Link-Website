@@ -1,3 +1,4 @@
+import type { Language } from "@/lib/types";
 import type {
   Advertisement,
   AIConversation,
@@ -221,6 +222,129 @@ export const faqItems: FAQItem[] = [
 
 export const aboutUsCopy =
   "To-Link is designed as a refined neighborhood operating system: one place for residents to share resources, request help, coordinate activities, book facilities, discover nearby services, and maintain stronger local trust through clear, respectful interaction design.";
+
+const notificationsZhHK: NotificationItem[] = [
+  {
+    id: "notif-1",
+    title: "任務提醒",
+    description: "您已接受的雜貨配送任務將在 22 小時後截止。",
+    level: "critical",
+    timeLabel: "2分鐘前",
+    critical: true,
+  },
+  {
+    id: "notif-2",
+    title: "預約已批准",
+    description: "天空花園生日派對預約已獲批准，週五 19:00 至 21:00。",
+    level: "success",
+    timeLabel: "14分鐘前",
+    critical: true,
+  },
+  {
+    id: "notif-3",
+    title: "新訊息",
+    description: "陳小美就失鑰匙報告作出了回覆。",
+    level: "info",
+    timeLabel: "31分鐘前",
+    critical: false,
+  },
+];
+
+const advertisementsZhHK: Advertisement[] = [
+  {
+    id: "ad-1",
+    title: "夏日庭院聚會",
+    description: "盡早報名參加天台原聲音樂夜及食物分享晚會。",
+    badge: "社區活動",
+  },
+  {
+    id: "ad-2",
+    title: "住戶專屬健身室續費優惠",
+    description: "週五前續費會所健身套餐可享 85 折優惠。",
+    badge: "限時優惠",
+  },
+  {
+    id: "ad-3",
+    title: "新鮮市集合作計劃",
+    description: "合作商店現提供鄰里套餐，支援即日自取服務。",
+    badge: "附近商店",
+  },
+];
+
+const faqItemsZhHK: FAQItem[] = [
+  {
+    id: "faq-1",
+    question: "如何舉報可疑或不當帖文？",
+    answer:
+      "點擊帖文右上角的三點選單，選擇「舉報用戶」，選取原因後提交。管理員審核後將記錄案件，以作警告或封禁處理。",
+  },
+  {
+    id: "faq-2",
+    question: "任務截止日期臨近時會發生什麼？",
+    answer:
+      "任務受讓人及發布者將在截止前 24 小時收到提醒，若任務逾期未完成亦會收到通知。",
+  },
+  {
+    id: "faq-3",
+    question: "瀏覽時可以隱藏自己的帖文嗎？",
+    answer:
+      "可以。每個帖文子頁面設有切換按鈕，可在查看自己的帖文與其他住戶帖文之間切換。",
+  },
+  {
+    id: "faq-4",
+    question: "已刪除的帖文去哪裡了？",
+    answer:
+      "已刪除的帖文會移至個人資料設定的歷史記錄區域，帳戶仍保留完整的操作記錄。",
+  },
+  {
+    id: "faq-5",
+    question: "每個帖文可以上載多少檔案？",
+    answer:
+      "每個帖文最多可上載 5 張圖片及 3 段影片，上載前系統會自動檢查檔案大小限制。",
+  },
+  {
+    id: "faq-6",
+    question: "可以停用重要通知嗎？",
+    answer:
+      "不可以。任務完成、預約狀態變更及系統提示等重要通知將始終保持啟用。",
+  },
+  {
+    id: "faq-7",
+    question: "群組對話如何運作？",
+    answer:
+      "您可以從好友列表或用戶名搜尋中新增至少 3 人（包括自己）以建立群組對話。",
+  },
+  {
+    id: "faq-8",
+    question: "預約獲批後會出現在日曆嗎？",
+    answer:
+      "是的。已接受的預約會自動新增至日曆頁面，並與已參加及個人活動歸類在一起。",
+  },
+  {
+    id: "faq-9",
+    question: "封鎖另一位用戶後會發生什麼？",
+    answer:
+      "未來的訊息、帖文、任務及請求互動均會被封鎖，但舊有歷史記錄仍會保留。",
+  },
+  {
+    id: "faq-10",
+    question: "每天可以問多少條 AI 問題？",
+    answer:
+      "每個帳戶每天限制 20 條 AI 查詢，AI 對話頁面會清楚顯示剩餘次數。",
+  },
+];
+
+export function getNotifications(language: Language): NotificationItem[] {
+  return language === "zh-HK" ? notificationsZhHK : notifications;
+}
+
+export function getAdvertisements(language: Language): Advertisement[] {
+  return language === "zh-HK" ? advertisementsZhHK : advertisements;
+}
+
+export function getFaqItems(language: Language): FAQItem[] {
+  return language === "zh-HK" ? faqItemsZhHK : faqItems;
+}
 
 export const postFeed: FeedItem[] = [
   ...homeFeed,

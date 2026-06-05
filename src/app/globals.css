@@ -146,6 +146,14 @@ textarea {
 
 .app-input::placeholder {
   color: color-mix(in srgb, var(--muted) 80%, transparent);
+  font-size: clamp(0.76rem, 1.7vw, 0.92rem);
+  line-height: 1.35;
+}
+
+input::placeholder,
+textarea::placeholder {
+  font-size: clamp(0.76rem, 1.7vw, 0.92rem);
+  line-height: 1.35;
 }
 
 .app-badge {

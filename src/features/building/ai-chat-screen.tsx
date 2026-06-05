@@ -3,16 +3,18 @@
 import { Edit3, Plus, Send, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
 import { aiConversations } from "@/lib/demo-data";
-import type { ChatMessage } from "@/lib/types";
+import { t } from "@/lib/translations";
+import type { ChatMessage, Language } from "@/lib/types";
 
 const DAILY_QUESTION_LIMIT = 20;
 
-function createChatMessage(content: string, inbound: boolean): ChatMessage {
+function createChatMessage(content: string, inbound: boolean, language: Language): ChatMessage {
   return {
     id: crypto.randomUUID(),
-    senderName: inbound ? "To-Link AI" : "Bobby Lee",
+    senderName: inbound ? t(language, "ai.senderName") : "Bobby Lee",
     senderAvatar: inbound ? "AI" : "BL",
     kind: "text",
     content,
@@ -25,6 +27,7 @@ function createChatMessage(content: string, inbound: boolean): ChatMessage {
 }
 
 export function AIChatScreen() {
+  const { language } = useToLink();
   const [conversations, setConversations] = useState(aiConversations);
   const [activeId, setActiveId] = useState(aiConversations[0]?.id);
   const [draft, setDraft] = useState("");
@@ -44,12 +47,12 @@ export function AIChatScreen() {
     }
 
     if (remainingQuestions <= 0) {
-      toast.error("Daily AI question limit reached for this demo session.");
+      toast.error(t(language, "toast.dailyLimitReached"));
       return;
     }
 
     const conversationId = activeConversation.id;
-    const userMessage = createChatMessage(message, false);
+    const userMessage = createChatMessage(message, false, language);
 
     setDraft("");
     setIsSending(true);
@@ -94,7 +97,7 @@ export function AIChatScreen() {
         throw new Error(payload.error ?? "The AI assistant did not return a response.");
       }
 
-      const assistantMessage = createChatMessage(payload.reply, true);
+      const assistantMessage = createChatMessage(payload.reply, true, language);
 
       setConversations((current) =>
         current.map((conversation) =>
@@ -117,7 +120,7 @@ export function AIChatScreen() {
 
   return (
     <FeatureShell
-      description="The AI assistant now sends building questions through the configured n8n webhook, while keeping local chat history management and the existing daily-limit UI."
+      description={t(language, "ai.pageDesc")}
       title="AI Chat"
     >
       <div className="grid h-full gap-4 xl:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
@@ -127,7 +130,7 @@ export function AIChatScreen() {
             disabled={conversations.length >= 10}
             onClick={() => {
               if (conversations.length >= 10) {
-                toast.error("Chat history limit reached. Delete an older chat first.");
+                toast.error(t(language, "toast.chatHistoryLimit"));
                 return;
               }
 
@@ -146,7 +149,7 @@ export function AIChatScreen() {
             type="button"
           >
             <Plus className="h-4 w-4" />
-            Create New Chat ({conversations.length}/10)
+            {t(language, "ai.createNewChat")} ({conversations.length}/10)
           </button>
 
           <div className="mt-4 min-h-0 space-y-3 overflow-y-auto pr-1">
@@ -162,7 +165,7 @@ export function AIChatScreen() {
                 <div className="mt-3 flex gap-2">
                   <button
                     className="rounded-full border border-border bg-white/60 px-3 py-2 text-xs font-semibold text-foreground"
-                    onClick={() => toast.success("Rename flow prepared for future AI thread management.")}
+                    onClick={() => toast.success(t(language, "toast.aiRenameFlow"))}
                     type="button"
                   >
                     <Edit3 className="h-3.5 w-3.5" />
@@ -188,10 +191,10 @@ export function AIChatScreen() {
           <div className="flex items-center justify-between gap-4 border-b border-border/80 pb-4">
             <div>
               <h3 className="text-xl font-semibold text-foreground">{activeConversation?.title}</h3>
-              <p className="text-sm text-muted">Remaining AI questions today: {remainingQuestions}</p>
+              <p className="text-sm text-muted">{t(language, "ai.remainingQuestions")} {remainingQuestions}</p>
             </div>
             <span className="rounded-full bg-accent-soft px-3 py-2 text-xs font-semibold text-accent-strong">
-              Live via n8n webhook
+              {t(language, "ai.liveWebhook")}
             </span>
           </div>
 
@@ -206,7 +209,7 @@ export function AIChatScreen() {
               ))
             ) : (
               <div className="rounded-[24px] border border-dashed border-border bg-panel px-6 py-8 text-sm leading-7 text-muted">
-                Start a new building-related conversation. Messages sent here will be forwarded through the configured n8n assistant workflow.
+                {t(language, "ai.startConversation")}
               </div>
             )}
           </div>
@@ -215,7 +218,7 @@ export function AIChatScreen() {
             <textarea
               className="app-input min-h-16 flex-1 rounded-[24px] px-4 py-3 text-sm"
               onChange={(event) => setDraft(event.target.value)}
-              placeholder="Ask about regulations, meetings, facilities, or building contacts"
+              placeholder={t(language, "ai.inputPlaceholder")}
               value={draft}
             />
             <button

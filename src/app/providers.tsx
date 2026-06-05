@@ -17,11 +17,19 @@ export function Providers({
       <Toaster
         closeButton
         duration={3000}
+        expand
+        offset={20}
         position="top-right"
         richColors
         toastOptions={{
           classNames: {
-            toast: "!border-border !bg-panel-strong !text-foreground",
+            toast:
+              "!min-w-[320px] !max-w-[560px] !border-2 !border-accent/35 !bg-panel-strong !p-5 !text-foreground !shadow-[0_22px_50px_rgba(117,58,14,0.28)]",
+            title: "!text-[15px] !font-medium !leading-6",
+            description: "!mt-1 !text-[13px] !leading-6 !text-foreground/90",
+            icon: "!h-6 !w-6",
+            closeButton:
+              "!h-8 !w-8 !border !border-border !bg-panel !text-foreground hover:!border-accent/40 hover:!text-accent",
           },
         }}
       />

@@ -12,6 +12,8 @@ import {
   uploadFilesToCloudinary,
   validateMediaSelection,
 } from "@/lib/media-upload";
+import { autoTranslateText, formatDualLanguageText } from "@/lib/translation";
+import { t } from "@/lib/translations";
 import { useToLink } from "@/lib/app-state";
 import type { FeedItem, PostCategory } from "@/lib/types";
 import { cn, formatCurrency, truncate } from "@/lib/utils";
@@ -20,34 +22,34 @@ type PostsMode = "all" | PostCategory;
 
 const sortOptions: Record<PostsMode, Array<{ label: string; value: string }>> = {
   all: [
-    { label: "Latest", value: "latest" },
-    { label: "Oldest", value: "oldest" },
+    { label: "latest", value: "latest" },
+    { label: "oldest", value: "oldest" },
   ],
   sharing: [
-    { label: "Time Limited", value: "deadline" },
-    { label: "Latest", value: "latest" },
-    { label: "Oldest", value: "oldest" },
+    { label: "deadline", value: "deadline" },
+    { label: "latest", value: "latest" },
+    { label: "oldest", value: "oldest" },
   ],
   secondHand: [
-    { label: "Cheapest", value: "lowestPrice" },
-    { label: "Time Limited", value: "deadline" },
-    { label: "Latest", value: "latest" },
-    { label: "Most Expensive", value: "highestPrice" },
-    { label: "Oldest", value: "oldest" },
+    { label: "lowestPrice", value: "lowestPrice" },
+    { label: "deadline", value: "deadline" },
+    { label: "latest", value: "latest" },
+    { label: "highestPrice", value: "highestPrice" },
+    { label: "oldest", value: "oldest" },
   ],
   lostFound: [
-    { label: "Highest Reward", value: "highestReward" },
-    { label: "Time Limited", value: "deadline" },
-    { label: "Latest", value: "latest" },
-    { label: "Least Reward", value: "lowestReward" },
-    { label: "Oldest", value: "oldest" },
+    { label: "highestReward", value: "highestReward" },
+    { label: "deadline", value: "deadline" },
+    { label: "latest", value: "latest" },
+    { label: "lowestReward", value: "lowestReward" },
+    { label: "oldest", value: "oldest" },
   ],
   quest: [
-    { label: "Highest Reward", value: "highestReward" },
-    { label: "Time Limited", value: "deadline" },
-    { label: "Latest", value: "latest" },
-    { label: "Least Reward", value: "lowestReward" },
-    { label: "Oldest", value: "oldest" },
+    { label: "highestReward", value: "highestReward" },
+    { label: "deadline", value: "deadline" },
+    { label: "latest", value: "latest" },
+    { label: "lowestReward", value: "lowestReward" },
+    { label: "oldest", value: "oldest" },
   ],
 };
 
@@ -60,6 +62,11 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
   const [selected, setSelected] = useState<FeedItem | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerFiles, setComposerFiles] = useState<File[]>([]);
+  const [composerTitle, setComposerTitle] = useState("");
+  const [composerDescription, setComposerDescription] = useState("");
+  const [composerTags, setComposerTags] = useState("");
+  const [composerTimeRange, setComposerTimeRange] = useState("");
+  const [composerPriceReward, setComposerPriceReward] = useState("");
   const [composerSubmitting, setComposerSubmitting] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<FeedItem | null>(null);
   const [countdown, setCountdown] = useState(3);
@@ -97,11 +104,11 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
   }, [items, mode, query, showOthersOnly, sort]);
 
   const pageTitle = {
-    all: "Posts",
-    sharing: "Sharing",
-    secondHand: "2nd Hand",
-    lostFound: "Lost & Find",
-    quest: "Quest Board",
+    all: t(language, "posts.pageTitle.all"),
+    sharing: t(language, "posts.pageTitle.sharing"),
+    secondHand: t(language, "posts.pageTitle.secondHand"),
+    lostFound: t(language, "posts.pageTitle.lostFound"),
+    quest: t(language, "posts.pageTitle.quest"),
   }[mode];
 
   function openDeleteDialog(item: FeedItem) {
@@ -111,6 +118,11 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
 
   function closeComposer() {
     setComposerFiles([]);
+    setComposerTitle("");
+    setComposerDescription("");
+    setComposerTags("");
+    setComposerTimeRange("");
+    setComposerPriceReward("");
     setComposerOpen(false);
   }
 
@@ -137,17 +149,69 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
 
   async function handleComposerSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (!composerTitle.trim() || !composerDescription.trim()) {
+      toast.error("Please complete both title and description.");
+      return;
+    }
+
     setComposerSubmitting(true);
 
     try {
+      const [translatedTitle, translatedDescription] = await Promise.all([
+        autoTranslateText(composerTitle),
+        autoTranslateText(composerDescription),
+      ]);
+
       const uploads = composerFiles.length
         ? await uploadFilesToCloudinary(composerFiles)
         : [];
 
+      const translatedTitleText = formatDualLanguageText(
+        translatedTitle.originalText,
+        translatedTitle.translatedText,
+        translatedTitle.sourceLanguage,
+      );
+      const translatedDescriptionText = formatDualLanguageText(
+        translatedDescription.originalText,
+        translatedDescription.translatedText,
+        translatedDescription.sourceLanguage,
+      );
+      const category: PostCategory = mode === "all" ? "sharing" : mode;
+      const parsedPriceReward = Number.parseFloat(composerPriceReward);
+      const parsedTags = composerTags
+        .split(/[\s,]+/)
+        .map((tag) => tag.trim().toLowerCase())
+        .filter(Boolean);
+
+      setItems((current) => [
+        {
+          id: `${category}-${Date.now()}`,
+          category,
+          title: translatedTitleText,
+          description: translatedDescriptionText,
+          tags: parsedTags.length ? parsedTags : ["translated"],
+          authorName: "Bobby Lee",
+          authorAvatar: "BL",
+          createdAt: new Date().toISOString(),
+          edited: false,
+          likes: 0,
+          comments: 0,
+          owner: true,
+          expiresAt: composerTimeRange.trim() || undefined,
+          price:
+            (category === "secondHand" || category === "lostFound") && Number.isFinite(parsedPriceReward)
+              ? parsedPriceReward
+              : undefined,
+          reward: category === "quest" && Number.isFinite(parsedPriceReward) ? parsedPriceReward : undefined,
+        },
+        ...current,
+      ]);
+
       toast.success(
         uploads.length
-          ? `Post draft prepared with ${uploads.length} Cloudinary upload(s).`
-          : "Post draft prepared without media uploads.",
+          ? `Post created with automatic translation and ${uploads.length} Cloudinary upload(s).`
+          : "Post created with automatic translation.",
       );
       closeComposer();
     } catch (error) {
@@ -160,7 +224,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
   return (
     <div className="relative flex h-full w-full">
       <FeatureShell
-        description="Search, sort, and manage community content with route-specific actions and moderation controls."
+        description={t(language, "posts.pageDesc")}
         title={pageTitle}
         toolbar={
           <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px_auto_auto]">
@@ -169,7 +233,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
               <input
                 className="w-full bg-transparent outline-none"
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search title, description, tags, or time"
+                placeholder={t(language, "posts.search")}
                 value={query}
               />
             </label>
@@ -194,7 +258,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
               onClick={() => setShowOthersOnly((current) => !current)}
               type="button"
             >
-              {showOthersOnly ? "Hide Your Posts" : "Show Your Posts"}
+              {showOthersOnly ? t(language, "posts.hideYourPosts") : t(language, "posts.showYourPosts")}
             </button>
             <button
               className="inline-flex items-center justify-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-accent/30 transition hover:bg-accent-strong"
@@ -203,14 +267,14 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
             >
               <Plus className="h-4 w-4" />
               {mode === "all"
-                ? "Create Post"
+                ? t(language, "posts.createPost")
                 : mode === "quest"
-                  ? "Create Quest"
+                  ? t(language, "posts.createQuest")
                   : mode === "sharing"
-                    ? "Create Sharing Post"
+                    ? t(language, "posts.createSharing")
                     : mode === "secondHand"
-                      ? "Create 2nd Hand Post"
-                      : "Create Lost & Find Post"}
+                      ? t(language, "posts.create2ndHand")
+                      : t(language, "posts.createLostFound")}
             </button>
           </div>
         }
@@ -230,14 +294,14 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
                       </span>
                     ) : null}
                     {item.edited ? (
-                      <span className="rounded-full bg-panel px-3 py-1 text-[11px] text-muted">edited</span>
+                      <span className="rounded-full bg-panel px-3 py-1 text-[11px] text-muted">{t(language, "common.edited")}</span>
                     ) : null}
                   </div>
                   <h3 className="mt-3 text-lg font-semibold text-foreground">{item.title}</h3>
                 </div>
                 <button
                   className="rounded-full p-2 text-muted transition hover:bg-panel hover:text-foreground"
-                  onClick={() => toast("Report and block actions are ready for admin wiring.")}
+                  onClick={() => toast(t(language, "toast.reportBlock"))}
                   type="button"
                 >
                   <ShieldAlert className="h-4 w-4" />
@@ -258,8 +322,8 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
 
               <div className="mt-auto pt-5 text-xs text-muted">
                 <p>{formatAppDateTime(item.createdAt, language)}</p>
-                {item.reward ? <p className="mt-1">Reward: {formatCurrency(item.reward)}</p> : null}
-                {typeof item.price === "number" ? <p className="mt-1">Price: {formatCurrency(item.price)}</p> : null}
+                {item.reward ? <p className="mt-1">{t(language, "posts.reward")} {formatCurrency(item.reward)}</p> : null}
+                {typeof item.price === "number" ? <p className="mt-1">{t(language, "posts.price")} {formatCurrency(item.price)}</p> : null}
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -295,27 +359,27 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
                     onClick={() => openDeleteDialog(item)}
                     type="button"
                   >
-                    <Trash2 className="h-3.5 w-3.5" /> Delete
+                    <Trash2 className="h-3.5 w-3.5" /> {t(language, "common.delete")}
                   </button>
                 ) : null}
 
                 {!item.owner && item.category === "quest" ? (
                   <button
                     className="ml-auto rounded-full bg-accent px-3 py-2 text-xs font-semibold text-white"
-                    onClick={() => toast.success("Quest application special message sent to requester chat.")}
+                    onClick={() => toast.success(t(language, "toast.questApplied"))}
                     type="button"
                   >
-                    Accept Quest
+                    {t(language, "posts.acceptQuest")}
                   </button>
                 ) : null}
 
                 {!item.owner && item.category === "secondHand" ? (
                   <button
                     className="ml-auto rounded-full bg-accent px-3 py-2 text-xs font-semibold text-white"
-                    onClick={() => toast.success("Trade intent message sent to the seller.")}
+                    onClick={() => toast.success(t(language, "toast.tradeIntent"))}
                     type="button"
                   >
-                    {item.price === 0 ? "Get" : "Trade"}
+                    {item.price === 0 ? t(language, "posts.get") : t(language, "posts.trade")}
                   </button>
                 ) : null}
 
@@ -323,17 +387,17 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
                   <div className="ml-auto flex flex-wrap gap-2">
                     <button
                       className="rounded-full border border-border bg-panel px-3 py-2 text-xs font-semibold text-foreground"
-                      onClick={() => toast.success("Owner chat opened in the Connections area.")}
+                      onClick={() => toast.success(t(language, "toast.ownerChat"))}
                       type="button"
                     >
-                      Contact Owner
+                      {t(language, "posts.contactOwner")}
                     </button>
                     <button
                       className="rounded-full bg-accent-soft px-3 py-2 text-xs font-semibold text-accent-strong"
-                      onClick={() => toast.success("Clue form prepared in the detail view.")}
+                      onClick={() => toast.success(t(language, "toast.clueForm"))}
                       type="button"
                     >
-                      Clues
+                      {t(language, "posts.clues")}
                     </button>
                   </div>
                 ) : null}
@@ -343,32 +407,57 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
         </div>
       </FeatureShell>
 
-      <Modal onClose={closeComposer} open={composerOpen} title="Create post">
+      <Modal onClose={closeComposer} open={composerOpen} title={t(language, "posts.createPost")}>
         <form className="grid gap-4 md:grid-cols-2" onSubmit={handleComposerSubmit}>
           <label className="space-y-2 md:col-span-2">
-            <span className="text-sm font-medium text-foreground">Title</span>
-            <input className="app-input w-full rounded-[20px] px-4 py-3" maxLength={100} />
+            <span className="text-sm font-medium text-foreground">{t(language, "common.title")}</span>
+            <input
+              className="app-input w-full rounded-[20px] px-4 py-3"
+              maxLength={100}
+              onChange={(event) => setComposerTitle(event.target.value)}
+              value={composerTitle}
+            />
           </label>
           <label className="space-y-2 md:col-span-2">
-            <span className="text-sm font-medium text-foreground">Description</span>
-            <textarea className="app-input min-h-36 w-full rounded-[24px] px-4 py-3" maxLength={2000} />
+            <span className="text-sm font-medium text-foreground">{t(language, "common.description")}</span>
+            <textarea
+              className="app-input min-h-36 w-full rounded-[24px] px-4 py-3"
+              maxLength={2000}
+              onChange={(event) => setComposerDescription(event.target.value)}
+              value={composerDescription}
+            />
           </label>
           <label className="space-y-2">
-            <span className="text-sm font-medium text-foreground">Tags</span>
-            <input className="app-input w-full rounded-[20px] px-4 py-3" placeholder="Type tag + Enter" />
+            <span className="text-sm font-medium text-foreground">{t(language, "posts.tags")}</span>
+            <input
+              className="app-input w-full rounded-[20px] px-4 py-3"
+              onChange={(event) => setComposerTags(event.target.value)}
+              placeholder={t(language, "posts.tagsPlaceholder")}
+              value={composerTags}
+            />
           </label>
           <label className="space-y-2">
-            <span className="text-sm font-medium text-foreground">Time range</span>
-            <input className="app-input w-full rounded-[20px] px-4 py-3" placeholder="Today 13:00 to 20:00" />
+            <span className="text-sm font-medium text-foreground">{t(language, "posts.timeRange")}</span>
+            <input
+              className="app-input w-full rounded-[20px] px-4 py-3"
+              onChange={(event) => setComposerTimeRange(event.target.value)}
+              placeholder={t(language, "posts.timeRangePlaceholder")}
+              value={composerTimeRange}
+            />
           </label>
           {mode === "secondHand" || mode === "lostFound" ? (
             <label className="space-y-2">
-              <span className="text-sm font-medium text-foreground">Price / Reward</span>
-              <input className="app-input w-full rounded-[20px] px-4 py-3" placeholder="0" />
+              <span className="text-sm font-medium text-foreground">{t(language, "posts.priceReward")}</span>
+              <input
+                className="app-input w-full rounded-[20px] px-4 py-3"
+                onChange={(event) => setComposerPriceReward(event.target.value)}
+                placeholder="0"
+                value={composerPriceReward}
+              />
             </label>
           ) : null}
           <label className="space-y-2 md:col-span-2">
-            <span className="text-sm font-medium text-foreground">Media</span>
+            <span className="text-sm font-medium text-foreground">{t(language, "posts.media")}</span>
             <input
               className="app-input w-full rounded-[20px] px-4 py-3"
               multiple
@@ -378,7 +467,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
           </label>
           {composerFiles.length ? (
             <p className="md:col-span-2 text-xs text-muted">
-              Selected {composerFiles.length} media file(s) for Cloudinary upload.
+              {t(language, "posts.selectedFiles").replace("{n}", String(composerFiles.length))}
             </p>
           ) : null}
           <div className="md:col-span-2 flex justify-end gap-3">
@@ -387,14 +476,14 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
               onClick={closeComposer}
               type="button"
             >
-              Cancel
+              {t(language, "common.cancel")}
             </button>
             <button
               className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white"
               disabled={composerSubmitting}
               type="submit"
             >
-              {composerSubmitting ? "Uploading..." : "Submit"}
+              {composerSubmitting ? t(language, "common.uploading") : t(language, "common.submit")}
             </button>
           </div>
         </form>
@@ -412,22 +501,22 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
               ))}
             </div>
             <p>
-              Created: {formatAppDateTime(selected.createdAt, language, { joiner: " ", weekday: "long" })}
+              {t(language, "posts.created")} {formatAppDateTime(selected.createdAt, language, { joiner: " ", weekday: "long" })}
             </p>
             {selected.expiresAt ? (
-              <p>Time limit: {formatAppDateTime(selected.expiresAt, language, { joiner: " " })}</p>
+              <p>{t(language, "posts.timeLimit")} {formatAppDateTime(selected.expiresAt, language, { joiner: " " })}</p>
             ) : null}
-            {selected.questState ? <p>Quest state: {selected.questState}</p> : null}
+            {selected.questState ? <p>{t(language, "posts.questState")} {selected.questState}</p> : null}
           </div>
         ) : null}
       </Modal>
 
-      <Modal onClose={closeDeleteDialog} open={Boolean(deleteCandidate)} title={deleteCandidate?.category === "quest" ? "Delete quest" : "Delete post"}>
+      <Modal onClose={closeDeleteDialog} open={Boolean(deleteCandidate)} title={deleteCandidate?.category === "quest" ? t(language, "posts.deleteQuest") : t(language, "posts.deletePost")}>
         <div className="space-y-4">
           <p className="text-sm leading-7 text-muted">
             {deleteCandidate?.category === "quest"
-              ? "Are you sure you want to delete this quest?"
-              : "Are you sure you want to delete this post?"}
+              ? t(language, "posts.deleteQuestConfirm")
+              : t(language, "posts.deleteConfirm")}
           </p>
           <div className="flex justify-between gap-3">
             <button
@@ -446,14 +535,14 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
               }}
               type="button"
             >
-              {countdown > 0 ? `Delete (${countdown})` : "Delete"}
+              {countdown > 0 ? `${t(language, "common.delete")} (${countdown})` : t(language, "common.delete")}
             </button>
             <button
               className="rounded-full bg-panel px-5 py-3 text-sm font-semibold text-muted"
               onClick={closeDeleteDialog}
               type="button"
             >
-              No
+              {t(language, "common.no")}
             </button>
           </div>
         </div>

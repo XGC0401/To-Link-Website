@@ -29,7 +29,7 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
-import { APP_NAME, FONT_SCALE_LABELS } from "@/lib/app-config";
+import { FONT_SCALE_LABELS } from "@/lib/app-config";
 import { currentUser } from "@/lib/demo-data";
 import { getFirebaseServices } from "@/lib/firebase";
 import { infoNavigation, sidebarNavigation, type NavigationIcon } from "@/lib/navigation";
@@ -113,7 +113,7 @@ export function Sidebar() {
       const services = getFirebaseServices();
 
       if (!services) {
-        toast.success("Signed out.");
+        toast.success(t(language, "auth.signedOut"));
         closeInfoPanel();
         router.push("/");
         return;
@@ -121,13 +121,13 @@ export function Sidebar() {
 
       void signOut(services.auth)
         .then(() => {
-          toast.success("Signed out.");
+          toast.success(t(language, "auth.signedOut"));
           closeInfoPanel();
           router.push("/");
         })
         .catch((error: unknown) => {
           toast.error(
-            error instanceof Error ? error.message : "Could not sign out right now.",
+            error instanceof Error ? error.message : t(language, "auth.signOutError"),
           );
         });
       return;
@@ -154,7 +154,7 @@ export function Sidebar() {
         </div>
         {sidebarOpen ? (
           <div>
-            <p className="font-display text-xl font-semibold">{APP_NAME}</p>
+            <p className="font-display text-xl font-semibold">{t(language, "brand")}</p>
             <p className="text-xs text-muted">{currentUser.name}</p>
           </div>
         ) : null}

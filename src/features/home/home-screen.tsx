@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Panel, PanelHeader } from "@/components/ui/panel";
-import { advertisements, adminMessage, homeFeed } from "@/lib/demo-data";
+import { getAdvertisements, homeFeed } from "@/lib/demo-data";
 import { formatAppDateTime, formatAppDayLabel } from "@/lib/date";
 import { t } from "@/lib/translations";
 import { cn, truncate } from "@/lib/utils";
@@ -93,6 +93,7 @@ function getWeatherVisual(code: number) {
 export function HomeScreen() {
   const { language } = useToLink();
   const weather = useWeather(language);
+  const advertisements = getAdvertisements(language);
   const [activeAd, setActiveAd] = useState(0);
   const [currentTimeLabel, setCurrentTimeLabel] = useState("");
 
@@ -247,7 +248,7 @@ export function HomeScreen() {
               ))}
             </div>
             <button className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-panel-strong px-4 py-2 text-sm font-semibold text-foreground transition hover:border-accent/40 hover:text-accent">
-              Manage ads
+              {t(language, "home.manageAds")}
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>
@@ -256,10 +257,10 @@ export function HomeScreen() {
         <Panel className="flex min-h-[15.5rem] min-w-0 flex-col overflow-hidden">
           <PanelHeader
             title={t(language, "page.adminMessage")}
-            description="Broadcasts and operational reminders from building management."
+            description={t(language, "home.adminBroadcast")}
           />
           <div className="mt-4 flex-1 overflow-y-auto pr-2 text-sm leading-7 text-muted">
-            {adminMessage}
+            {t(language, "home.adminMessageContent")}
           </div>
         </Panel>
       </div>
@@ -267,12 +268,14 @@ export function HomeScreen() {
       <div className="grid min-h-fit gap-4 grid-cols-[repeat(auto-fit,minmax(19rem,1fr))]">
         <HomeFeedColumn
           items={recentSharing}
+          language={language}
           title={t(language, "page.recentSharing")}
           viewMoreHref="/posts/sharing"
         />
-        <HomeFeedColumn items={ownQuests} title={t(language, "page.yourQuests")} viewMoreHref="/posts/quests" />
+        <HomeFeedColumn items={ownQuests} language={language} title={t(language, "page.yourQuests")} viewMoreHref="/posts/quests" />
         <HomeFeedColumn
           items={acceptedQuests}
+          language={language}
           title={t(language, "page.acceptedQuests")}
           viewMoreHref="/connections/messages"
           highlightAction
@@ -345,11 +348,13 @@ function MetricIconBadge({ icon: Icon }: { icon: LucideIcon }) {
 function HomeFeedColumn({
   highlightAction,
   items,
+  language,
   title,
   viewMoreHref,
 }: {
   highlightAction?: boolean;
   items: typeof homeFeed;
+  language: import("@/lib/types").Language;
   title: string;
   viewMoreHref: string;
 }) {
@@ -366,17 +371,17 @@ function HomeFeedColumn({
               </div>
               {item.edited ? (
                 <span className="rounded-full bg-panel px-3 py-1 text-[11px] font-medium text-muted">
-                  edited
+                  {t(language, "common.edited")}
                 </span>
               ) : null}
             </div>
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
+            <div className="mt-4 flex flex-wrap items-center gap-3">
               <div className="flex flex-wrap items-center gap-3">
-                <span>{item.likes} likes</span>
-                <span>{item.comments} comments</span>
+                <span>{item.likes} {t(language, "home.likes")}</span>
+                <span>{item.comments} {t(language, "home.comments")}</span>
               </div>
               <button className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-panel px-3 py-2 font-semibold text-foreground transition hover:border-accent/40 hover:text-accent">
-                {highlightAction ? "Contact requester" : "View"}
+                {highlightAction ? t(language, "home.contactRequester") : t(language, "common.view")}
                 {highlightAction ? <MessagesSquare className="h-3.5 w-3.5" /> : null}
               </button>
             </div>
@@ -384,7 +389,7 @@ function HomeFeedColumn({
         ))}
       </div>
       <a className="mt-4 inline-flex w-fit items-center gap-2 text-sm font-semibold text-accent-strong" href={viewMoreHref}>
-        View More
+        {t(language, "common.viewMore")}
         <ArrowRight className="h-4 w-4" />
       </a>
     </Panel>

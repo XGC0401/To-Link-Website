@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
 import { Panel, PanelHeader } from "@/components/ui/panel";
-import { aboutUsCopy, faqItems, notifications } from "@/lib/demo-data";
+import { getFaqItems, getNotifications } from "@/lib/demo-data";
 import {
   cloudinarySetupHint,
   uploadFilesToCloudinary,
@@ -60,8 +60,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
       toast.success(
         uploads.length
-          ? `Thank you. Your feedback and ${uploads.length} attachment(s) have been submitted.`
-          : "Thank you. Your feedback has been submitted.",
+          ? t(language, "toast.feedbackWithFiles").replace("{n}", String(uploads.length))
+          : t(language, "toast.feedbackSubmitted"),
       );
       closeInfoPanelWithReset();
     } catch (error) {
@@ -91,7 +91,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 <Panel className="space-y-4">
                   <PanelHeader
                     eyebrow={t(language, "control.notifications")}
-                    title="Priority inbox"
+                    title={t(language, "notif.priorityInbox")}
                     action={
                       <button
                         className="rounded-full p-2 text-muted transition hover:bg-panel-strong hover:text-foreground"
@@ -103,7 +103,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                     }
                   />
                   <div className="space-y-3">
-                    {notifications.map((item) => (
+                    {getNotifications(language).map((item) => (
                       <div
                         key={item.id}
                         className={cn(
@@ -167,7 +167,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
                     {activeInfoPanel === "faq" ? (
                       <div className="max-h-[62vh] space-y-3 overflow-y-auto pr-2">
-                        {faqItems.map((item) => (
+                        {getFaqItems(language).map((item) => (
                           <div key={item.id} className="space-y-2">
                             <div className="rounded-3xl bg-rose-500/90 px-5 py-4 text-sm font-semibold text-white">
                               {item.question}
@@ -182,12 +182,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
                     {activeInfoPanel === "aboutUs" ? (
                       <div className="space-y-4 text-sm leading-7 text-muted">
-                        <p>{aboutUsCopy}</p>
-                        <p>
-                          The platform is structured to keep social, operational, and building-specific
-                          tools modular, so feature updates can evolve safely without destabilizing
-                          unrelated areas.
-                        </p>
+                        <p>{t(language, "about.description")}</p>
+                        <p>{t(language, "about.platformNote")}</p>
                       </div>
                     ) : null}
 
@@ -199,14 +195,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                         <textarea
                           className="app-input min-h-36 w-full rounded-[28px] px-4 py-4 text-sm"
                           maxLength={2000}
-                          placeholder="Share your thoughts, concerns, or suggestions here."
+                          placeholder={t(language, "feedback.placeholder")}
                         />
                         <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center gap-3 rounded-[28px] border border-dashed border-border bg-panel-strong px-6 py-8 text-center text-sm text-muted transition hover:border-accent/40 hover:text-foreground">
                           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft text-accent-strong">
                             <ImageUp className="h-6 w-6" />
                           </div>
-                          Upload up to 5 images or videos
-                          <span className="text-xs">JPG, PNG, WEBP, or MP4</span>
+                          {t(language, "feedback.upload")}
+                          <span className="text-xs">{t(language, "feedback.fileTypes")}</span>
                           <input
                             className="sr-only"
                             multiple
@@ -216,7 +212,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                         </label>
                         {feedbackFiles.length ? (
                           <p className="text-xs text-muted">
-                            Selected {feedbackFiles.length} attachment(s) for Cloudinary upload.
+                            {t(language, "feedback.selectedFiles").replace("{n}", String(feedbackFiles.length))}
                           </p>
                         ) : null}
                         <div className="flex justify-end">
@@ -226,7 +222,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                             type="submit"
                           >
                             <Upload className="h-4 w-4" />
-                            {feedbackSubmitting ? "Uploading..." : "Submit feedback"}
+                            {feedbackSubmitting ? t(language, "feedback.uploading") : t(language, "feedback.submit")}
                           </button>
                         </div>
                       </form>

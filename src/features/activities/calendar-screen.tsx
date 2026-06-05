@@ -13,11 +13,14 @@ import {
 import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
 import { Modal } from "@/components/ui/modal";
 import { calendarEvents } from "@/lib/demo-data";
+import { t } from "@/lib/translations";
 
 export function CalendarScreen() {
+  const { language } = useToLink();
   const [selectedDay, setSelectedDay] = useState(new Date());
   const [composerOpen, setComposerOpen] = useState(false);
   const monthStart = startOfMonth(selectedDay);
@@ -37,7 +40,7 @@ export function CalendarScreen() {
   return (
     <div className="relative flex h-full w-full">
       <FeatureShell
-        description="Bookings, joined events, and personal plans stay on one calendar with a day-detail panel and quick event creation."
+        description={t(language, "calendar.pageDesc")}
         title="Calendar"
       >
         <div className="grid h-full gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
@@ -46,15 +49,15 @@ export function CalendarScreen() {
               <h3 className="font-display text-xl font-semibold text-foreground">{format(selectedDay, "MMMM yyyy")}</h3>
               <div className="flex gap-2">
                 <button className="rounded-full border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground" onClick={() => setSelectedDay(addDays(selectedDay, -30))} type="button">
-                  Prev
+                  {t(language, "common.prev")}
                 </button>
                 <button className="rounded-full border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground" onClick={() => setSelectedDay(addDays(selectedDay, 30))} type="button">
-                  Next
+                  {t(language, "common.next")}
                 </button>
               </div>
             </div>
             <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
+              {[t(language, "calendar.mon"), t(language, "calendar.tue"), t(language, "calendar.wed"), t(language, "calendar.thu"), t(language, "calendar.fri"), t(language, "calendar.sat"), t(language, "calendar.sun")].map((day) => (
                 <div key={day}>{day}</div>
               ))}
             </div>
@@ -83,7 +86,7 @@ export function CalendarScreen() {
           <div className="min-h-0 overflow-y-auto pr-1">
             <div className="mb-4 flex items-center justify-between gap-3 rounded-[28px] border border-border bg-panel-strong p-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-strong">Selected day</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-strong">{t(language, "calendar.selectedDay")}</p>
                 <h3 className="mt-1 text-xl font-semibold text-foreground">{format(selectedDay, "EEEE, d MMMM yyyy")}</h3>
               </div>
               <button
@@ -92,7 +95,7 @@ export function CalendarScreen() {
                 type="button"
               >
                 <Plus className="h-4 w-4" />
-                Create Event
+                {t(language, "calendar.createEvent")}
               </button>
             </div>
             <div className="space-y-3">
@@ -111,7 +114,7 @@ export function CalendarScreen() {
                 ))
               ) : (
                 <div className="rounded-[26px] border border-dashed border-border bg-panel-strong p-8 text-center text-sm text-muted">
-                  No activities on this day yet.
+                  {t(language, "calendar.noActivities")}
                 </div>
               )}
             </div>
@@ -119,29 +122,29 @@ export function CalendarScreen() {
         </div>
       </FeatureShell>
 
-      <Modal onClose={() => setComposerOpen(false)} open={composerOpen} title="Create event">
+      <Modal onClose={() => setComposerOpen(false)} open={composerOpen} title={t(language, "calendar.createEvent")}>
         <form
           className="grid gap-4"
           onSubmit={(event) => {
             event.preventDefault();
-            toast.success("Personal event created in the calendar interface.");
+            toast.success(t(language, "toast.calendarEventCreated"));
             setComposerOpen(false);
           }}
         >
-          <input className="app-input rounded-[20px] px-4 py-3" placeholder="Title" />
-          <textarea className="app-input min-h-32 rounded-[24px] px-4 py-3" placeholder="Description" />
+          <input className="app-input rounded-[20px] px-4 py-3" placeholder={t(language, "common.title")} />
+          <textarea className="app-input min-h-32 rounded-[24px] px-4 py-3" placeholder={t(language, "common.description")} />
           <input className="app-input rounded-[20px] px-4 py-3" defaultValue={format(selectedDay, "yyyy-MM-dd")} />
-          <input className="app-input rounded-[20px] px-4 py-3" placeholder="Time" />
+          <input className="app-input rounded-[20px] px-4 py-3" placeholder={t(language, "calendar.timePlaceholder")} />
           <div className="flex justify-end gap-3">
             <button
               className="rounded-full border border-border bg-panel px-4 py-3 text-sm font-semibold text-foreground"
               onClick={() => setComposerOpen(false)}
               type="button"
             >
-              Cancel
+              {t(language, "common.cancel")}
             </button>
             <button className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white" type="submit">
-              Save
+              {t(language, "common.save")}
             </button>
           </div>
         </form>

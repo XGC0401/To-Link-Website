@@ -2,13 +2,16 @@
 
 import { MessageSquareMore } from "lucide-react";
 import { toast } from "sonner";
+import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
 import { bookings } from "@/lib/demo-data";
+import { t } from "@/lib/translations";
 
 export function BookingStatusScreen() {
+  const { language } = useToLink();
   return (
     <FeatureShell
-      description="Track requests across shops, facilities, and other reservable spaces with explicit pending, accepted, denied, and canceled states."
+      description={t(language, "booking.pageDesc")}
       title="Booking Status"
     >
       <div className="grid h-full gap-4 overflow-y-auto pr-1 xl:grid-cols-2">
@@ -21,51 +24,54 @@ export function BookingStatusScreen() {
                 <p className="mt-1 text-sm text-muted">{booking.dateLabel}</p>
               </div>
               <span className={booking.status === "accepted" ? "rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700" : booking.status === "denied" ? "rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700" : booking.status === "canceled" ? "rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700" : "rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700"}>
-                {booking.status}
+              {booking.status === "accepted" ? t(language, "booking.status.accepted")
+                : booking.status === "denied" ? t(language, "booking.status.denied")
+                : booking.status === "canceled" ? t(language, "booking.status.canceled")
+                : t(language, "booking.status.pending")}
               </span>
             </div>
 
-            <p className="mt-4 text-sm leading-7 text-muted">Participants: {booking.participantCount}</p>
+            <p className="mt-4 text-sm leading-7 text-muted">{t(language, "booking.participants")} {booking.participantCount}</p>
             {booking.reason ? (
               <div className="mt-4 rounded-[22px] border border-border bg-panel px-4 py-4 text-sm leading-7 text-muted">
-                Denial reason: {booking.reason}
+                {t(language, "booking.denialReason")} {booking.reason}
               </div>
             ) : null}
 
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 className="inline-flex items-center gap-2 rounded-full border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground"
-                onClick={() => toast.success("Booking conversation opened in Messages.")}
+                onClick={() => toast.success(t(language, "toast.bookingConversation"))}
                 type="button"
               >
                 <MessageSquareMore className="h-4 w-4" />
-                Message
+                {t(language, "common.message")}
               </button>
               {booking.status === "pending" ? (
                 <>
                   <button
                     className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
-                    onClick={() => toast.success("Booking accepted in the owner review flow.")}
+                onClick={() => toast.success(t(language, "toast.bookingAccepted"))}
                     type="button"
                   >
-                    Accept
+                    {t(language, "common.accept")}
                   </button>
                   <button
                     className="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
-                    onClick={() => toast.success("Deny flow prepared with required reason field.")}
+                    onClick={() => toast.success(t(language, "toast.denyFlow"))}
                     type="button"
                   >
-                    Deny
+                    {t(language, "common.deny")}
                   </button>
                 </>
               ) : null}
               {booking.status === "accepted" || booking.status === "pending" ? (
                 <button
                   className="rounded-full border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700"
-                  onClick={() => toast.success("Cancel confirmation prepared for requester flow.")}
+                  onClick={() => toast.success(t(language, "toast.cancelConfirm"))}
                   type="button"
                 >
-                  Cancel Booking
+                  {t(language, "booking.cancelBooking")}
                 </button>
               ) : null}
             </div>
