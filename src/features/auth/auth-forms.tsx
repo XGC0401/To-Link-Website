@@ -188,7 +188,7 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
 
     if (!recaptchaVerifierRef.current) {
       recaptchaVerifierRef.current = new RecaptchaVerifier(services.auth, "register-phone-recaptcha", {
-        size: "invisible",
+        size: "normal",
       });
       await recaptchaVerifierRef.current.render();
     }
