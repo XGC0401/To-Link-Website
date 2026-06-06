@@ -162,3 +162,6 @@ The admin system must support report handling, warnings, and bans. Users can rep
 The AI Chat system must use Copilot (or equivalent) and allow users to ask questions related to building, community, or general queries. Each user is limited to 20 AI queries per day, and the UI must display a counter showing remaining questions, with warnings when nearing the limit.
 The system must include comprehensive error handling. Every user action (e.g., booking, uploading, posting) must show appropriate loading indicators, success messages, or error messages if something fails (e.g., “Upload failed, please try again”).
 Overall, the system must be modular, scalable, and built using real APIs and services, with a strong focus on consistent UI/UX, clear user flows, detailed interaction rules, and handling of edge cases.
+
+
+hello
