@@ -12,6 +12,10 @@ const firebaseConfig = {
 
 export const isFirebaseConfigured = Object.values(firebaseConfig).every(Boolean);
 
+const missingFirebaseConfigKeys = Object.entries(firebaseConfig)
+  .filter(([, value]) => !value)
+  .map(([key]) => key);
+
 export function getFirebaseApp() {
   if (!isFirebaseConfigured) {
     return null;
@@ -35,4 +39,6 @@ export function getFirebaseServices() {
 }
 
 export const firebaseSetupHint =
-  "Add Firebase public environment variables to enable live authentication and Firestore data.";
+  missingFirebaseConfigKeys.length
+    ? `Missing Firebase public environment variables: ${missingFirebaseConfigKeys.join(", ")}. Add them to your environment and redeploy.`
+    : "Add Firebase public environment variables to enable live authentication and Firestore data.";
