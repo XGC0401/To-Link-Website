@@ -37,6 +37,35 @@ import { cn } from "@/lib/utils";
 import { useToLink } from "@/lib/app-state";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
+const COUNTRY_CODES = [
+  { code: "+852", label: "🇭🇰 +852" },
+  { code: "+853", label: "🇲🇴 +853" },
+  { code: "+86",  label: "🇨🇳 +86" },
+  { code: "+886", label: "🇹🇼 +886" },
+  { code: "+1",   label: "🇺🇸 +1" },
+  { code: "+44",  label: "🇬🇧 +44" },
+  { code: "+61",  label: "🇦🇺 +61" },
+  { code: "+81",  label: "🇯🇵 +81" },
+  { code: "+82",  label: "🇰🇷 +82" },
+  { code: "+65",  label: "🇸🇬 +65" },
+  { code: "+60",  label: "🇲🇾 +60" },
+  { code: "+63",  label: "🇵🇭 +63" },
+  { code: "+66",  label: "🇹🇭 +66" },
+  { code: "+84",  label: "🇻🇳 +84" },
+  { code: "+62",  label: "🇮🇩 +62" },
+  { code: "+91",  label: "🇮🇳 +91" },
+  { code: "+49",  label: "🇩🇪 +49" },
+  { code: "+33",  label: "🇫🇷 +33" },
+  { code: "+39",  label: "🇮🇹 +39" },
+  { code: "+34",  label: "🇪🇸 +34" },
+  { code: "+7",   label: "🇷🇺 +7" },
+  { code: "+971", label: "🇦🇪 +971" },
+  { code: "+966", label: "🇸🇦 +966" },
+  { code: "+27",  label: "🇿🇦 +27" },
+  { code: "+55",  label: "🇧🇷 +55" },
+  { code: "+52",  label: "🇲🇽 +52" },
+];
+
 type AuthMode = "login" | "register" | "forgot" | "reset";
 
 interface AuthFormState {
@@ -50,6 +79,7 @@ interface AuthFormState {
   username: string;
   email: string;
   phone: string;
+  phoneCountryCode: string;
   hkid: string;
   country: string;
   currentState: "worker" | "employee" | "jobless" | "student";
@@ -71,6 +101,7 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
     username: "",
     email: "",
     phone: "",
+    phoneCountryCode: "+852",
     hkid: "",
     country: "Hong Kong",
     currentState: "employee",
@@ -344,7 +375,7 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                   const email = state.email.trim().toLowerCase();
                   const password = state.password;
                   const confirmPassword = state.confirmPassword;
-                  const phone = normalizePhoneForAuth(state.phone);
+                  const phone = normalizePhoneForAuth(state.phoneCountryCode + state.phone);
 
                   if (!email) {
                     toast.error(t(language, "auth.error.enterEmail"));
@@ -413,7 +444,7 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                       firstName: state.firstName.trim(),
                       lastName: state.lastName.trim(),
                       username: state.username.trim(),
-                      phone: state.phone.trim(),
+                      phone: (state.phoneCountryCode + state.phone).trim(),
                       country: state.country.trim(),
                       currentState: state.currentState,
                       jobTitle: state.jobTitle.trim(),
@@ -632,17 +663,41 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                     type="password"
                     value={state.confirmPassword}
                   />
-                  <InputField
-                    icon={<Phone className="h-4 w-4" />}
-                    label={t(language, "auth.phoneLabel")}
-                    onChange={(value) => {
-                      setState((current) => ({ ...current, phone: value }));
-                      setPhoneVerified(false);
-                      setConfirmationResult(null);
-                    }}
-                    placeholder="+85291234567"
-                    value={state.phone}
-                  />
+                  <div className="block space-y-2">
+                    <span className="text-sm font-medium text-foreground">{t(language, "auth.phoneLabel")}</span>
+                    <div className="flex gap-2">
+                      <div className="app-input flex items-center rounded-[22px] px-3 py-3.5">
+                        <Phone className="mr-2 h-4 w-4 shrink-0 text-muted" />
+                        <select
+                          className="bg-transparent text-sm outline-none"
+                          onChange={(event) => {
+                            setState((current) => ({ ...current, phoneCountryCode: event.target.value }));
+                            setPhoneVerified(false);
+                            setConfirmationResult(null);
+                          }}
+                          value={state.phoneCountryCode}
+                        >
+                          {COUNTRY_CODES.map((c) => (
+                            <option key={c.code} value={c.code}>{c.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="app-input flex flex-1 items-center gap-3 rounded-[22px] px-4 py-3.5">
+                        <input
+                          className="w-full bg-transparent text-sm outline-none placeholder:text-[11px] placeholder:leading-5 placeholder:text-muted"
+                          inputMode="tel"
+                          onChange={(event) => {
+                            setState((current) => ({ ...current, phone: event.target.value }));
+                            setPhoneVerified(false);
+                            setConfirmationResult(null);
+                          }}
+                          placeholder="91234567"
+                          type="tel"
+                          value={state.phone}
+                        />
+                      </div>
+                    </div>
+                  </div>
                   <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
                     <InputField
                       icon={<KeyRound className="h-4 w-4" />}
@@ -663,7 +718,7 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                           return;
                         }
 
-                        const normalizedPhone = normalizePhoneForAuth(state.phone);
+                        const normalizedPhone = normalizePhoneForAuth(state.phoneCountryCode + state.phone);
 
                         if (!normalizedPhone || !normalizedPhone.startsWith("+")) {
                           toast.error("Enter a valid international phone number, for example +85291234567.");
