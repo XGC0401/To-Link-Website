@@ -5,19 +5,17 @@ import {
   browserSessionPersistence,
   confirmPasswordReset,
   createUserWithEmailAndPassword,
-  deleteUser,
-  type ConfirmationResult,
-  RecaptchaVerifier,
+  sendEmailVerification,
   sendPasswordResetEmail,
   setPersistence,
-  signInWithPhoneNumber,
+  signOut,
   signInWithEmailAndPassword,
   updateProfile,
   verifyPasswordResetCode,
 } from "firebase/auth";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   ArrowRight,
   Eye,
@@ -108,12 +106,6 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
     jobTitle: "",
   });
   const [loading, setLoading] = useState(false);
-  const [verificationCode, setVerificationCode] = useState("");
-  const [phoneVerified, setPhoneVerified] = useState(false);
-  const [sendingVerifyCode, setSendingVerifyCode] = useState(false);
-  const [verifyingCode, setVerifyingCode] = useState(false);
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
 
   const formModeTitle = {
     login: t(language, "auth.login"),
@@ -179,29 +171,12 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
     return compact;
   }
 
-  async function ensureRecaptchaVerifier() {
-    const services = getFirebaseServices();
-
-    if (!services) {
-      throw new Error(firebaseSetupHint);
-    }
-
-    if (!recaptchaVerifierRef.current) {
-      recaptchaVerifierRef.current = new RecaptchaVerifier(services.auth, "register-phone-recaptcha", {
-        size: "normal",
-      });
-      await recaptchaVerifierRef.current.render();
-    }
-
-    return { services, verifier: recaptchaVerifierRef.current };
-  }
-
-  useEffect(() => {
-    return () => {
-      recaptchaVerifierRef.current?.clear();
-      recaptchaVerifierRef.current = null;
+  function getEmailVerificationSettings() {
+    return {
+      url: typeof window !== "undefined" ? `${window.location.origin}/` : "/",
+      handleCodeInApp: false,
     };
-  }, []);
+  }
 
   function getFriendlyAuthError(error: unknown) {
     if (
@@ -354,7 +329,19 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                       services.auth,
                       state.rememberMe ? browserLocalPersistence : browserSessionPersistence,
                     );
-                    await signInWithEmailAndPassword(services.auth, email, state.password);
+                    const credential = await signInWithEmailAndPassword(
+                      services.auth,
+                      email,
+                      state.password,
+                    );
+
+                    if (!credential.user.emailVerified) {
+                      await sendEmailVerification(credential.user, getEmailVerificationSettings());
+                      await signOut(services.auth);
+                      toast.error("Email not verified yet. We sent a new verification link to your inbox.");
+                      return;
+                    }
+
                     toast.success(t(language, "auth.signedIn"));
                     router.push("/home");
                   } catch (error) {
@@ -394,11 +381,6 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
 
                   if (!phone.startsWith("+")) {
                     toast.error(t(language, "auth.phoneFormat"));
-                    return;
-                  }
-
-                  if (!phoneVerified) {
-                    toast.error(t(language, "auth.verifyPhoneFirst"));
                     return;
                   }
 
@@ -467,8 +449,11 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                       });
                     }
 
-                    toast.success(t(language, "auth.accountCreated"));
-                    router.push("/home");
+                    await sendEmailVerification(credential.user, getEmailVerificationSettings());
+                    await signOut(services.auth);
+
+                    toast.success("Account created. Please verify your email before signing in.");
+                    router.push("/");
                   } catch (error) {
                     toast.error(getFriendlyAuthError(error));
                   } finally {
@@ -670,11 +655,9 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                         <Phone className="mr-2 h-4 w-4 shrink-0 text-muted" />
                         <select
                           className="bg-transparent text-sm outline-none"
-                          onChange={(event) => {
-                            setState((current) => ({ ...current, phoneCountryCode: event.target.value }));
-                            setPhoneVerified(false);
-                            setConfirmationResult(null);
-                          }}
+                          onChange={(event) =>
+                            setState((current) => ({ ...current, phoneCountryCode: event.target.value }))
+                          }
                           value={state.phoneCountryCode}
                         >
                           {COUNTRY_CODES.map((c) => (
@@ -686,11 +669,9 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                         <input
                           className="w-full bg-transparent text-sm outline-none placeholder:text-[11px] placeholder:leading-5 placeholder:text-muted"
                           inputMode="tel"
-                          onChange={(event) => {
-                            setState((current) => ({ ...current, phone: event.target.value }));
-                            setPhoneVerified(false);
-                            setConfirmationResult(null);
-                          }}
+                          onChange={(event) =>
+                            setState((current) => ({ ...current, phone: event.target.value }))
+                          }
                           placeholder="91234567"
                           type="tel"
                           value={state.phone}
@@ -698,104 +679,6 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                       </div>
                     </div>
                   </div>
-                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
-                    <InputField
-                      icon={<KeyRound className="h-4 w-4" />}
-                      label={t(language, "auth.verificationCode")}
-                      onChange={setVerificationCode}
-                      placeholder={t(language, "auth.verificationCode")}
-                      value={verificationCode}
-                    />
-                    <button
-                      className={cn(
-                        "self-end rounded-full border border-border bg-panel px-4 py-3 text-sm font-semibold text-foreground transition hover:border-accent/40 hover:text-accent",
-                        sendingVerifyCode && "cursor-not-allowed opacity-60",
-                      )}
-                      disabled={sendingVerifyCode}
-                      onClick={async () => { // send verify
-                        if (!isFirebaseConfigured) {
-                          toast.error(firebaseSetupHint);
-                          return;
-                        }
-
-                        const normalizedPhone = normalizePhoneForAuth(state.phoneCountryCode + state.phone);
-
-                        if (!normalizedPhone || !normalizedPhone.startsWith("+")) {
-                          toast.error("Enter a valid international phone number, for example +85291234567.");
-                          return;
-                        }
-
-                        setSendingVerifyCode(true);
-
-                        try {
-                          const { services, verifier } = await ensureRecaptchaVerifier();
-                          const result = await signInWithPhoneNumber(
-                            services.auth,
-                            normalizedPhone,
-                            verifier,
-                          );
-                          setConfirmationResult(result);
-                          setPhoneVerified(false);
-                          toast.success("Verification code sent to your phone.");
-                        } catch (error) {
-                          recaptchaVerifierRef.current?.clear();
-                          recaptchaVerifierRef.current = null;
-                          toast.error(getFriendlyAuthError(error));
-                        } finally {
-                          setSendingVerifyCode(false);
-                        }
-                      }}
-                      type="button"
-                    >
-                      {sendingVerifyCode ? t(language, "auth.sending") : t(language, "auth.sendVerifyCode")}
-                    </button>
-                  </div>
-                  <button
-                    className={cn(
-                      "rounded-full border border-border bg-panel px-4 py-3 text-sm font-semibold text-foreground transition hover:border-accent/40 hover:text-accent",
-                      verifyingCode && "cursor-not-allowed opacity-60",
-                    )}
-                    disabled={verifyingCode}
-                    onClick={async () => {
-                      if (!confirmationResult) {
-                        toast.error("Please send a verification code first.");
-                        return;
-                      }
-
-                      if (!verificationCode.trim()) {
-                        toast.error("Enter the verification code from SMS.");
-                        return;
-                      }
-
-                      setVerifyingCode(true);
-
-                      try {
-                        const credential = await confirmationResult.confirm(verificationCode.trim());
-                        await deleteUser(credential.user);
-                        setPhoneVerified(true);
-                        setConfirmationResult(null);
-                        toast.success("Phone number verified successfully.");
-                      } catch (error) {
-                        setPhoneVerified(false);
-                        toast.error(getFriendlyAuthError(error));
-                      } finally {
-                        setVerifyingCode(false);
-                      }
-                    }}
-                    type="button"
-                  >
-                    {verifyingCode ? t(language, "auth.verifying") : t(language, "auth.verifyCode")}
-                  </button>
-                  <p
-                    className={cn(
-                      "text-xs",
-                      phoneVerified ? "text-success" : "text-muted",
-                    )}
-                  >
-                    {phoneVerified
-                      ? "Phone verified. You can now create your account."
-                      : "Phone not verified yet."}
-                  </p>
                   <InputField
                     icon={<KeyRound className="h-4 w-4" />}
                     label={t(language, "auth.hkid")}
@@ -832,8 +715,6 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                 </div>
               ) : null}
 
-
-                  {mode === "register" ? <div id="register-phone-recaptcha" /> : null}
               {mode === "forgot" ? (
                 <InputField
                   icon={<Mail className="h-4 w-4" />}
