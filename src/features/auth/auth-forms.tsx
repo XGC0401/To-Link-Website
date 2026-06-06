@@ -5,10 +5,8 @@ import {
   browserSessionPersistence,
   confirmPasswordReset,
   createUserWithEmailAndPassword,
-  sendEmailVerification,
   sendPasswordResetEmail,
   setPersistence,
-  signOut,
   signInWithEmailAndPassword,
   updateProfile,
   verifyPasswordResetCode,
@@ -106,6 +104,11 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
     jobTitle: "",
   });
   const [loading, setLoading] = useState(false);
+  const [emailVerificationCode, setEmailVerificationCode] = useState("");
+  const [codeSentToEmail, setCodeSentToEmail] = useState("");
+  const [emailCodeVerified, setEmailCodeVerified] = useState(false);
+  const [sendingEmailCode, setSendingEmailCode] = useState(false);
+  const [verifyingEmailCode, setVerifyingEmailCode] = useState(false);
 
   const formModeTitle = {
     login: t(language, "auth.login"),
@@ -171,11 +174,90 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
     return compact;
   }
 
-  function getEmailVerificationSettings() {
-    return {
-      url: typeof window !== "undefined" ? `${window.location.origin}/` : "/",
-      handleCodeInApp: false,
-    };
+  async function sendRegisterEmailCode() {
+    const email = state.email.trim().toLowerCase();
+
+    if (!email || !email.includes("@")) {
+      toast.error("Enter a valid email address first.");
+      return;
+    }
+
+    setSendingEmailCode(true);
+
+    try {
+      const response = await fetch("/api/auth/email-code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "send",
+          email,
+        }),
+      });
+
+      const payload = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        toast.error(payload.error ?? "Unable to send verification code.");
+        return;
+      }
+
+      setCodeSentToEmail(email);
+      setEmailCodeVerified(false);
+      toast.success("Verification code sent. Please check your email.");
+    } catch {
+      toast.error("Unable to send verification code.");
+    } finally {
+      setSendingEmailCode(false);
+    }
+  }
+
+  async function verifyRegisterEmailCode() {
+    const email = state.email.trim().toLowerCase();
+    const code = emailVerificationCode.trim();
+
+    if (!email || !email.includes("@")) {
+      toast.error("Enter a valid email address first.");
+      return;
+    }
+
+    if (!code || code.length !== 6) {
+      toast.error("Enter the 6-digit code from your email.");
+      return;
+    }
+
+    setVerifyingEmailCode(true);
+
+    try {
+      const response = await fetch("/api/auth/email-code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "verify",
+          email,
+          code,
+        }),
+      });
+
+      const payload = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        setEmailCodeVerified(false);
+        toast.error(payload.error ?? "Verification failed.");
+        return;
+      }
+
+      setEmailCodeVerified(true);
+      toast.success("Email verified successfully.");
+    } catch {
+      setEmailCodeVerified(false);
+      toast.error("Verification failed.");
+    } finally {
+      setVerifyingEmailCode(false);
+    }
   }
 
   function getFriendlyAuthError(error: unknown) {
@@ -329,18 +411,7 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                       services.auth,
                       state.rememberMe ? browserLocalPersistence : browserSessionPersistence,
                     );
-                    const credential = await signInWithEmailAndPassword(
-                      services.auth,
-                      email,
-                      state.password,
-                    );
-
-                    if (!credential.user.emailVerified) {
-                      await sendEmailVerification(credential.user, getEmailVerificationSettings());
-                      await signOut(services.auth);
-                      toast.error("Email not verified yet. We sent a new verification link to your inbox.");
-                      return;
-                    }
+                    await signInWithEmailAndPassword(services.auth, email, state.password);
 
                     toast.success(t(language, "auth.signedIn"));
                     router.push("/home");
@@ -371,6 +442,11 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
 
                   if (!password) {
                     toast.error(t(language, "auth.createPassword"));
+                    return;
+                  }
+
+                  if (!emailCodeVerified || codeSentToEmail !== email) {
+                    toast.error("Please verify your email with the code first.");
                     return;
                   }
 
@@ -449,11 +525,8 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                       });
                     }
 
-                    await sendEmailVerification(credential.user, getEmailVerificationSettings());
-                    await signOut(services.auth);
-
-                    toast.success("Account created. Please verify your email before signing in.");
-                    router.push("/");
+                    toast.success(t(language, "auth.accountCreated"));
+                    router.push("/home");
                   } catch (error) {
                     toast.error(getFriendlyAuthError(error));
                   } finally {
@@ -623,11 +696,56 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                   <InputField
                     icon={<Mail className="h-4 w-4" />}
                     label={t(language, "auth.emailLabel")}
-                    onChange={(value) => setState((current) => ({ ...current, email: value }))}
+                    onChange={(value) => {
+                      const normalizedEmail = value.trim().toLowerCase();
+                      setState((current) => ({ ...current, email: value }));
+
+                      if (codeSentToEmail && codeSentToEmail !== normalizedEmail) {
+                        setEmailCodeVerified(false);
+                      }
+                    }}
                     placeholder="resident@email.com"
                     type="email"
                     value={state.email}
                   />
+                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+                    <InputField
+                      icon={<KeyRound className="h-4 w-4" />}
+                      label="Email Verification Code"
+                      onChange={(value) => setEmailVerificationCode(value.replace(/\D/g, "").slice(0, 6))}
+                      placeholder="Enter 6-digit email code"
+                      value={emailVerificationCode}
+                    />
+                    <button
+                      className={cn(
+                        "self-end rounded-full border border-border bg-panel px-4 py-3 text-sm font-semibold text-foreground transition hover:border-accent/40 hover:text-accent",
+                        sendingEmailCode && "cursor-not-allowed opacity-60",
+                      )}
+                      disabled={sendingEmailCode}
+                      onClick={sendRegisterEmailCode}
+                      type="button"
+                    >
+                      {sendingEmailCode ? "Sending..." : "Send Verification Code"}
+                    </button>
+                  </div>
+                  <button
+                    className={cn(
+                      "rounded-full border border-border bg-panel px-4 py-3 text-sm font-semibold text-foreground transition hover:border-accent/40 hover:text-accent",
+                      verifyingEmailCode && "cursor-not-allowed opacity-60",
+                    )}
+                    disabled={verifyingEmailCode}
+                    onClick={verifyRegisterEmailCode}
+                    type="button"
+                  >
+                    {verifyingEmailCode ? "Verifying..." : "Verify Code"}
+                  </button>
+                  <p className={cn("text-xs", emailCodeVerified ? "text-success" : "text-muted")}>
+                    {emailCodeVerified
+                      ? "Email verified. You can now create your account."
+                      : codeSentToEmail
+                        ? `Code sent to ${codeSentToEmail}.`
+                        : "Email not verified yet."}
+                  </p>
                   <InputField
                     icon={<KeyRound className="h-4 w-4" />}
                     label={t(language, "auth.passwordLabel")}
