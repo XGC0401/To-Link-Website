@@ -16,13 +16,20 @@ import { toast } from "sonner";
 import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
 import { Modal } from "@/components/ui/modal";
-import { calendarEvents } from "@/lib/demo-data";
+import { addCalendarEvent, useCalendarEvents } from "@/hooks/use-calendar-events";
 import { t } from "@/lib/translations";
 
 export function CalendarScreen() {
   const { language } = useToLink();
+  const calendarEvents = useCalendarEvents();
   const [selectedDay, setSelectedDay] = useState(new Date());
   const [composerOpen, setComposerOpen] = useState(false);
+  const [draftEvent, setDraftEvent] = useState(() => ({
+    date: format(new Date(), "yyyy-MM-dd"),
+    description: "",
+    timeLabel: "",
+    title: "",
+  }));
   const monthStart = startOfMonth(selectedDay);
   const calendarDays = useMemo(
     () =>
@@ -36,6 +43,36 @@ export function CalendarScreen() {
   const selectedEvents = calendarEvents.filter((event) =>
     isSameDay(new Date(event.date), selectedDay),
   );
+
+  function closeComposer() {
+    setComposerOpen(false);
+    setDraftEvent({
+      date: format(selectedDay, "yyyy-MM-dd"),
+      description: "",
+      timeLabel: "",
+      title: "",
+    });
+  }
+
+  function handleCreateEvent(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!draftEvent.title.trim() || !draftEvent.description.trim() || !draftEvent.date || !draftEvent.timeLabel.trim()) {
+      toast.error("Please complete the event title, description, date, and time.");
+      return;
+    }
+
+    addCalendarEvent({
+      id: crypto.randomUUID(),
+      title: draftEvent.title.trim(),
+      description: draftEvent.description.trim(),
+      date: draftEvent.date,
+      timeLabel: draftEvent.timeLabel.trim(),
+      type: "personal",
+    });
+    toast.success(t(language, "toast.calendarEventCreated"));
+    closeComposer();
+  }
 
   return (
     <div className="relative flex h-full w-full">
@@ -91,7 +128,13 @@ export function CalendarScreen() {
               </div>
               <button
                 className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white"
-                onClick={() => setComposerOpen(true)}
+                onClick={() => {
+                  setDraftEvent((current) => ({
+                    ...current,
+                    date: format(selectedDay, "yyyy-MM-dd"),
+                  }));
+                  setComposerOpen(true);
+                }}
                 type="button"
               >
                 <Plus className="h-4 w-4" />
@@ -125,20 +168,56 @@ export function CalendarScreen() {
       <Modal onClose={() => setComposerOpen(false)} open={composerOpen} title={t(language, "calendar.createEvent")}>
         <form
           className="grid gap-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            toast.success(t(language, "toast.calendarEventCreated"));
-            setComposerOpen(false);
-          }}
+          onSubmit={handleCreateEvent}
         >
-          <input className="app-input rounded-[20px] px-4 py-3" placeholder={t(language, "common.title")} />
-          <textarea className="app-input min-h-32 rounded-[24px] px-4 py-3" placeholder={t(language, "common.description")} />
-          <input className="app-input rounded-[20px] px-4 py-3" defaultValue={format(selectedDay, "yyyy-MM-dd")} />
-          <input className="app-input rounded-[20px] px-4 py-3" placeholder={t(language, "calendar.timePlaceholder")} />
+          <input
+            className="app-input rounded-[20px] px-4 py-3"
+            onChange={(event) =>
+              setDraftEvent((current) => ({
+                ...current,
+                title: event.target.value,
+              }))
+            }
+            placeholder={t(language, "common.title")}
+            value={draftEvent.title}
+          />
+          <textarea
+            className="app-input min-h-32 rounded-[24px] px-4 py-3"
+            onChange={(event) =>
+              setDraftEvent((current) => ({
+                ...current,
+                description: event.target.value,
+              }))
+            }
+            placeholder={t(language, "common.description")}
+            value={draftEvent.description}
+          />
+          <input
+            className="app-input rounded-[20px] px-4 py-3"
+            onChange={(event) =>
+              setDraftEvent((current) => ({
+                ...current,
+                date: event.target.value,
+              }))
+            }
+            type="date"
+            value={draftEvent.date}
+          />
+          <input
+            className="app-input rounded-[20px] px-4 py-3"
+            onChange={(event) =>
+              setDraftEvent((current) => ({
+                ...current,
+                timeLabel: event.target.value,
+              }))
+            }
+            placeholder={t(language, "calendar.timePlaceholder")}
+            value={draftEvent.timeLabel}
+          />
           <div className="flex justify-end gap-3">
             <button
               className="rounded-full border border-border bg-panel px-4 py-3 text-sm font-semibold text-foreground"
-              onClick={() => setComposerOpen(false)}
+              onClick={closeComposer}
               type="button"
             >
               {t(language, "common.cancel")}

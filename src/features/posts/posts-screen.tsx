@@ -5,7 +5,14 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { FeatureShell } from "@/components/ui/feature-shell";
 import { Modal } from "@/components/ui/modal";
-import { postFeed } from "@/lib/demo-data";
+import {
+  appendPersistedProfileHistory,
+  createPersistedPost,
+  deletePersistedPost,
+  likePersistedPost,
+  usePersistedCurrentUserProfile,
+  usePersistedPosts,
+} from "@/hooks/use-persisted-app-data";
 import { formatAppDateTime } from "@/lib/date";
 import {
   cloudinarySetupHint,
@@ -55,7 +62,8 @@ const sortOptions: Record<PostsMode, Array<{ label: string; value: string }>> = 
 
 export function PostsScreen({ mode }: { mode: PostsMode }) {
   const { language } = useToLink();
-  const [items, setItems] = useState(postFeed);
+  const posts = usePersistedPosts();
+  const { profile } = usePersistedCurrentUserProfile();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState(sortOptions[mode][0]?.value ?? "latest");
   const [showOthersOnly, setShowOthersOnly] = useState(true);
@@ -85,7 +93,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
   }, [countdown, deleteCandidate]);
 
   const filteredItems = useMemo(() => {
-    return items
+    return posts.items
       .filter((item) => (mode === "all" ? true : item.category === mode))
       .filter((item) => {
         if (!showOthersOnly) {
@@ -101,7 +109,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
         return haystack.includes(query.toLowerCase());
       })
       .sort((left, right) => sortItems(left, right, sort));
-  }, [items, mode, query, showOthersOnly, sort]);
+  }, [mode, posts.items, query, showOthersOnly, sort]);
 
   const pageTitle = {
     all: t(language, "posts.pageTitle.all"),
@@ -184,29 +192,26 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
         .map((tag) => tag.trim().toLowerCase())
         .filter(Boolean);
 
-      setItems((current) => [
-        {
-          id: `${category}-${Date.now()}`,
-          category,
-          title: translatedTitleText,
-          description: translatedDescriptionText,
-          tags: parsedTags.length ? parsedTags : ["translated"],
-          authorName: "Bobby Lee",
-          authorAvatar: "BL",
-          createdAt: new Date().toISOString(),
-          edited: false,
-          likes: 0,
-          comments: 0,
-          owner: true,
-          expiresAt: composerTimeRange.trim() || undefined,
-          price:
-            (category === "secondHand" || category === "lostFound") && Number.isFinite(parsedPriceReward)
-              ? parsedPriceReward
-              : undefined,
-          reward: category === "quest" && Number.isFinite(parsedPriceReward) ? parsedPriceReward : undefined,
-        },
-        ...current,
-      ]);
+      await createPersistedPost({
+        id: `${category}-${Date.now()}`,
+        category,
+        title: translatedTitleText,
+        description: translatedDescriptionText,
+        tags: parsedTags.length ? parsedTags : ["translated"],
+        authorName: profile.name,
+        authorAvatar: profile.avatar,
+        createdAt: new Date().toISOString(),
+        edited: false,
+        likes: 0,
+        comments: 0,
+        owner: true,
+        expiresAt: composerTimeRange.trim() || undefined,
+        price:
+          (category === "secondHand" || category === "lostFound") && Number.isFinite(parsedPriceReward)
+            ? parsedPriceReward
+            : undefined,
+        reward: category === "quest" && Number.isFinite(parsedPriceReward) ? parsedPriceReward : undefined,
+      });
 
       toast.success(
         uploads.length
@@ -331,11 +336,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
                   <button
                     className="inline-flex items-center gap-2 rounded-full border border-border bg-panel px-3 py-2 text-xs font-semibold text-foreground"
                     onClick={() => {
-                      setItems((current) =>
-                        current.map((entry) =>
-                          entry.id === item.id ? { ...entry, likes: entry.likes + 1 } : entry,
-                        ),
-                      );
+                      void likePersistedPost(item.id);
                     }}
                     type="button"
                   >
@@ -525,12 +526,23 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
                 countdown > 0 ? "cursor-not-allowed bg-rose-900/70" : "bg-rose-600 hover:bg-rose-700",
               )}
               disabled={countdown > 0}
-              onClick={() => {
+              onClick={async () => {
                 if (!deleteCandidate) {
                   return;
                 }
-                setItems((current) => current.filter((entry) => entry.id !== deleteCandidate.id));
-                toast.success("Item moved to history in Profile Settings.");
+
+                const removed = await deletePersistedPost(deleteCandidate.id);
+
+                if (removed) {
+                  await appendPersistedProfileHistory({
+                    id: `history-${removed.id}`,
+                    title: removed.title,
+                    category: removed.category,
+                    deletedAt: new Date().toISOString(),
+                  });
+                }
+
+                toast.success(t(language, "toast.itemDeleted"));
                 closeDeleteDialog();
               }}
               type="button"

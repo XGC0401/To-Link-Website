@@ -6,23 +6,25 @@ import { toast } from "sonner";
 import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
 import { Modal } from "@/components/ui/modal";
-import { friendList, friendSuggestions } from "@/lib/demo-data";
+import { removePersistedFriend, usePersistedConnections } from "@/hooks/use-persisted-app-data";
 import { t } from "@/lib/translations";
+import type { FriendCard } from "@/lib/types";
 
 export function FriendsScreen() {
   const { language } = useToLink();
+  const connections = usePersistedConnections();
   const [query, setQuery] = useState("");
-  const [candidate, setCandidate] = useState<(typeof friendList)[number] | null>(null);
+  const [candidate, setCandidate] = useState<FriendCard | null>(null);
 
   const suggestions = useMemo(() => {
     if (!query) {
-      return friendSuggestions;
+      return connections.friendSuggestions;
     }
 
-    return [...friendSuggestions, ...friendList].filter((friend) =>
+    return [...connections.friendSuggestions, ...connections.friendList].filter((friend) =>
       `${friend.name} ${friend.username}`.toLowerCase().includes(query.toLowerCase()),
     );
-  }, [query]);
+  }, [connections.friendList, connections.friendSuggestions, query]);
 
   return (
     <div className="relative flex h-full w-full">
@@ -64,7 +66,7 @@ export function FriendsScreen() {
 
           <div className="min-h-0 overflow-y-auto pr-1">
             <div className="space-y-3">
-              {friendList.map((friend) => (
+                {connections.friendList.map((friend) => (
                 <article key={friend.id} className="rounded-[26px] border border-border bg-panel-strong p-4">
                   <div className="flex items-start gap-4">
                     <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">
@@ -114,8 +116,13 @@ export function FriendsScreen() {
             </button>
             <button
               className="rounded-full bg-rose-600 px-5 py-3 text-sm font-semibold text-white"
-              onClick={() => {
-                toast.success(`${candidate?.name} removed from the friend list.`);
+              onClick={async () => {
+                if (!candidate) {
+                  return;
+                }
+
+                await removePersistedFriend(candidate.id);
+                toast.success(`${candidate.name} removed from the friend list.`);
                 setCandidate(null);
               }}
               type="button"

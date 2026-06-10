@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Bell, Menu, MoonStar, SunMedium } from "lucide-react";
-import { currentUser } from "@/lib/demo-data";
+import { usePersistedCurrentUserProfile, usePersistedDashboardData } from "@/hooks/use-persisted-app-data";
 import { getPageTitle } from "@/lib/navigation";
 import { t } from "@/lib/translations";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,7 @@ import { usePathname } from "next/navigation";
 export function TopBar() {
   const pathname = usePathname();
   const showWelcome = pathname === "/home";
+  const { profile } = usePersistedCurrentUserProfile();
   const {
     language,
     notificationsOpen,
@@ -21,6 +22,8 @@ export function TopBar() {
     theme,
     toggleTheme,
   } = useToLink();
+  const dashboardData = usePersistedDashboardData();
+  const notificationCount = dashboardData.notificationsByLanguage[language]?.length ?? 0;
 
   return (
     <header className="app-panel app-panel-strong flex items-center justify-between gap-4 rounded-[28px] border px-4 py-3 md:px-5">
@@ -58,7 +61,7 @@ export function TopBar() {
           <Bell className="h-4 w-4" />
           <span className="hidden md:inline">{t(language, "control.notifications")}</span>
           <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/15 text-xs font-semibold">
-            3
+            {notificationCount}
           </span>
         </button>
 
@@ -79,14 +82,14 @@ export function TopBar() {
           href="/settings/profile"
         >
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-bold text-white transition group-hover:scale-105 group-hover:bg-accent-strong">
-            {currentUser.avatar}
+            {profile.avatar}
           </div>
           <div className="hidden text-left md:block">
             <p className="text-sm font-semibold text-foreground transition group-hover:text-accent-strong">
-              {currentUser.name}
+              {profile.name}
             </p>
             <p className="text-xs text-muted transition group-hover:text-accent-strong/80">
-              @{currentUser.username}
+              @{profile.username}
             </p>
           </div>
         </Link>

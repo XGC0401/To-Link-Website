@@ -4,24 +4,25 @@ import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
-import { documents } from "@/lib/demo-data";
+import { usePersistedSharedContent } from "@/hooks/use-persisted-app-data";
 import { t } from "@/lib/translations";
 
 export function DocumentsScreen() {
   const { language } = useToLink();
+  const sharedContent = usePersistedSharedContent();
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("latest");
 
   const filtered = useMemo(
     () =>
-      [...documents]
+      [...sharedContent.documents]
         .filter((document) => document.title.toLowerCase().includes(query.toLowerCase()))
         .sort((left, right) =>
           sortBy === "latest"
             ? right.updatedAt.localeCompare(left.updatedAt)
             : left.updatedAt.localeCompare(right.updatedAt),
         ),
-    [query, sortBy],
+    [query, sharedContent.documents, sortBy],
   );
 
   return (

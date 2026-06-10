@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
 import { Panel, PanelHeader } from "@/components/ui/panel";
-import { getFaqItems, getNotifications } from "@/lib/demo-data";
+import { usePersistedDashboardData, usePersistedSharedContent } from "@/hooks/use-persisted-app-data";
 import {
   cloudinarySetupHint,
   uploadFilesToCloudinary,
@@ -25,8 +25,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     notificationsOpen,
     setNotificationsOpen,
   } = useToLink();
+  const dashboardData = usePersistedDashboardData();
+  const sharedContent = usePersistedSharedContent();
   const [feedbackFiles, setFeedbackFiles] = useState<File[]>([]);
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+  const notifications = dashboardData.notificationsByLanguage[language] ?? [];
+  const faqItems = sharedContent.faqItemsByLanguage[language] ?? [];
 
   function closeInfoPanelWithReset() {
     setFeedbackFiles([]);
@@ -103,7 +107,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                     }
                   />
                   <div className="space-y-3">
-                    {getNotifications(language).map((item) => (
+                    {notifications.map((item) => (
                       <div
                         key={item.id}
                         className={cn(
@@ -167,7 +171,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
                     {activeInfoPanel === "faq" ? (
                       <div className="max-h-[62vh] space-y-3 overflow-y-auto pr-2">
-                        {getFaqItems(language).map((item) => (
+                        {faqItems.map((item) => (
                           <div key={item.id} className="space-y-2">
                             <div className="rounded-3xl bg-rose-500/90 px-5 py-4 text-sm font-semibold text-white">
                               {item.question}

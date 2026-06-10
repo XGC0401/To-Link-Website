@@ -4,18 +4,19 @@ import { MessageSquareMore } from "lucide-react";
 import { toast } from "sonner";
 import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
-import { bookings } from "@/lib/demo-data";
+import { updatePersistedBookingStatus, usePersistedBookings } from "@/hooks/use-persisted-app-data";
 import { t } from "@/lib/translations";
 
 export function BookingStatusScreen() {
   const { language } = useToLink();
+  const bookings = usePersistedBookings();
   return (
     <FeatureShell
       description={t(language, "booking.pageDesc")}
       title="Booking Status"
     >
       <div className="grid h-full gap-4 overflow-y-auto pr-1 xl:grid-cols-2">
-        {bookings.map((booking) => (
+        {bookings.items.map((booking) => (
           <article key={booking.id} className="rounded-[28px] border border-border bg-panel-strong p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -51,14 +52,20 @@ export function BookingStatusScreen() {
                 <>
                   <button
                     className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
-                onClick={() => toast.success(t(language, "toast.bookingAccepted"))}
+                    onClick={async () => {
+                      await updatePersistedBookingStatus(booking.id, "accepted");
+                      toast.success(t(language, "toast.bookingAccepted"));
+                    }}
                     type="button"
                   >
                     {t(language, "common.accept")}
                   </button>
                   <button
                     className="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
-                    onClick={() => toast.success(t(language, "toast.denyFlow"))}
+                    onClick={async () => {
+                      await updatePersistedBookingStatus(booking.id, "denied", "Manual review required.");
+                      toast.success(t(language, "toast.denyFlow"));
+                    }}
                     type="button"
                   >
                     {t(language, "common.deny")}
@@ -68,7 +75,10 @@ export function BookingStatusScreen() {
               {booking.status === "accepted" || booking.status === "pending" ? (
                 <button
                   className="rounded-full border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700"
-                  onClick={() => toast.success(t(language, "toast.cancelConfirm"))}
+                  onClick={async () => {
+                    await updatePersistedBookingStatus(booking.id, "canceled");
+                    toast.success(t(language, "toast.cancelConfirm"));
+                  }}
                   type="button"
                 >
                   {t(language, "booking.cancelBooking")}

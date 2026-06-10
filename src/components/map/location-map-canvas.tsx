@@ -2,7 +2,8 @@
 
 import L from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer, Tooltip } from "react-leaflet";
-import type { PlaceItem } from "@/lib/types";
+import { t } from "@/lib/translations";
+import type { Language, PlaceItem } from "@/lib/types";
 
 function createMarker(color: string) {
   return L.divIcon({
@@ -19,10 +20,12 @@ const shopMarker = createMarker("#2a9d6f");
 export default function LocationMapCanvas({
   activeId,
   items,
+  language,
   userLocation,
 }: {
   activeId?: string;
   items: PlaceItem[];
+  language: Language;
   userLocation: { lat: number; lng: number; label: string };
 }) {
   const centerItem = items.find((item) => item.id === activeId) ?? items[0];
@@ -39,15 +42,28 @@ export default function LocationMapCanvas({
       <Marker icon={residentMarker} position={[userLocation.lat, userLocation.lng]}>
         <Popup>{userLocation.label}</Popup>
         <Tooltip direction="top" offset={[0, -8]} permanent>
-          You are here
+          {t(language, "nearby.youAreHere")}
         </Tooltip>
       </Marker>
       {items.map((item) => (
         <Marker key={item.id} icon={shopMarker} position={[item.lat, item.lng]}>
           <Popup>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <p className="font-semibold">{item.name}</p>
               <p className="text-xs text-zinc-600">{item.description}</p>
+              <p className="text-xs text-zinc-600">
+                {t(language, "common.phone")} {item.phone || "N/A"}
+              </p>
+              <p className="text-xs text-zinc-600">
+                {t(language, "common.website")}{" "}
+                {item.website && item.website !== "N/A" ? (
+                  <a className="text-accent-strong underline" href={item.website} rel="noreferrer" target="_blank">
+                    {item.website}
+                  </a>
+                ) : (
+                  "N/A"
+                )}
+              </p>
             </div>
           </Popup>
           <Tooltip direction="top" offset={[0, -8]} permanent>

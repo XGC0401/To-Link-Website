@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { FONT_SCALE_LABELS } from "@/lib/app-config";
-import { currentUser } from "@/lib/demo-data";
+import { usePersistedCurrentUserProfile } from "@/hooks/use-persisted-app-data";
 import { getFirebaseServices } from "@/lib/firebase";
 import { infoNavigation, sidebarNavigation, type NavigationIcon } from "@/lib/navigation";
 import { t } from "@/lib/translations";
@@ -63,9 +63,13 @@ const iconMap: Record<NavigationIcon, React.ComponentType<{ className?: string }
   document: FileText,
 };
 
+const infoItems = infoNavigation.filter((item) => item.action.type !== "signOut");
+const signOutItem = infoNavigation.find((item) => item.action.type === "signOut");
+
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { profile } = usePersistedCurrentUserProfile();
   const {
     activeInfoPanel,
     closeInfoPanel,
@@ -155,7 +159,7 @@ export function Sidebar() {
         {sidebarOpen ? (
           <div>
             <p className="font-display text-xl font-semibold">{t(language, "brand")}</p>
-            <p className="text-xs text-muted">{currentUser.name}</p>
+            <p className="text-xs text-muted">{profile.name}</p>
           </div>
         ) : null}
       </div>
@@ -298,7 +302,7 @@ export function Sidebar() {
 
           {sidebarOpen && expandedGroups.has("nav.info") ? (
             <div className="space-y-1 pl-4">
-              {infoNavigation.map((item) => {
+              {infoItems.map((item) => {
                 const Icon = iconMap[item.icon];
                 const isOpen =
                   item.action.type === "infoModal" && activeInfoPanel === item.action.panelId;
@@ -324,6 +328,23 @@ export function Sidebar() {
           ) : null}
         </div>
       </nav>
+
+      {signOutItem ? (
+        <div className="mt-3 border-t border-border/80 pt-3">
+          <button
+            className={cn(
+              "flex w-full items-center gap-3 rounded-2xl border border-rose-200/80 bg-rose-50/70 px-3 py-2.5 text-left text-sm font-medium text-rose-700 transition",
+              "hover:border-rose-300 hover:bg-rose-100/80 hover:text-rose-800",
+              !sidebarOpen && "justify-center",
+            )}
+            onClick={() => handleActionItem(signOutItem)}
+            type="button"
+          >
+            <LogOut className="h-4.5 w-4.5 shrink-0" />
+            {sidebarOpen ? <span>{t(language, signOutItem.labelKey)}</span> : null}
+          </button>
+        </div>
+      ) : null}
     </aside>
   );
 }

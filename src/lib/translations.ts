@@ -291,6 +291,20 @@ export type CopyKey =
   | "nearby.bookTitle"
   | "nearby.joinTitle"
   | "nearby.participantsNumber"
+  | "nearby.loadingLive"
+  | "nearby.loadError"
+  | "nearby.noResults"
+  | "nearby.contactLimit"
+  | "nearby.addContact"
+  | "nearby.completeBooking"
+  | "nearby.completeJoin"
+  | "nearby.contactPhone"
+  | "nearby.addParticipant"
+  | "nearby.pendingConfirmation"
+  | "nearby.youAreHere"
+  | "nearby.date"
+  | "nearby.startTime"
+  | "nearby.endTime"
   | "posts.pageDesc"
   | "nearby.pageDesc"
   | "calendar.pageDesc"
@@ -644,6 +658,20 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "nearby.bookTitle": "Book nearby place",
     "nearby.joinTitle": "Join community event",
     "nearby.participantsNumber": "Participants Number",
+    "nearby.loadingLive": "Loading live nearby places...",
+    "nearby.loadError": "Could not load live nearby places right now.",
+    "nearby.noResults": "No live nearby places matched your search.",
+    "nearby.contactLimit": "You can add up to 3 contact numbers.",
+    "nearby.addContact": "Add contact number",
+    "nearby.completeBooking": "Please complete all booking fields before submitting.",
+    "nearby.completeJoin": "Please complete the join request before submitting.",
+    "nearby.contactPhone": "Contact Phone Number",
+    "nearby.addParticipant": "Add participant",
+    "nearby.pendingConfirmation": "Pending confirmation",
+    "nearby.youAreHere": "You are here",
+    "nearby.date": "Date",
+    "nearby.startTime": "Start Time",
+    "nearby.endTime": "End Time",
     "posts.pageDesc": "Search, sort, and manage community content with route-specific actions and moderation controls.",
     "nearby.pageDesc": "Use browser geolocation to discover places nearby, then switch between a list-detail workspace and a live map view.",
     "calendar.pageDesc": "Bookings, joined events, and personal plans stay on one calendar with a day-detail panel and quick event creation.",
@@ -996,6 +1024,20 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "nearby.bookTitle": "預約附近地點",
     "nearby.joinTitle": "加入社區活動",
     "nearby.participantsNumber": "參與人數",
+    "nearby.loadingLive": "正在載入附近的即時地點資料...",
+    "nearby.loadError": "目前未能載入附近的即時地點資料。",
+    "nearby.noResults": "附近沒有符合搜尋條件的即時地點。",
+    "nearby.contactLimit": "最多只可加入 3 個聯絡電話。",
+    "nearby.addContact": "加入聯絡電話",
+    "nearby.completeBooking": "請先填妥所有預約資料再提交。",
+    "nearby.completeJoin": "請先填妥加入申請再提交。",
+    "nearby.contactPhone": "聯絡電話",
+    "nearby.addParticipant": "加入參與者",
+    "nearby.pendingConfirmation": "待確認",
+    "nearby.youAreHere": "你的位置",
+    "nearby.date": "日期",
+    "nearby.startTime": "開始時間",
+    "nearby.endTime": "結束時間",
     "posts.pageDesc": "搜尋、排序及管理社區內容，支援各路由的特定操作及管理功能。",
     "nearby.pageDesc": "使用瀏覽器地理位置發現附近地點，切換列表詳情模式與地圖模式。",
     "calendar.pageDesc": "預約、已加入活動及個人行程均顯示於同一日曆，支援日游詳情面板及快速創建活動。",

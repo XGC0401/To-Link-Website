@@ -20,9 +20,10 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Panel, PanelHeader } from "@/components/ui/panel";
-import { getAdvertisements, homeFeed } from "@/lib/demo-data";
+import { usePersistedPosts, usePersistedSharedContent } from "@/hooks/use-persisted-app-data";
 import { formatAppDateTime, formatAppDayLabel } from "@/lib/date";
 import { t } from "@/lib/translations";
+import type { FeedItem, Language } from "@/lib/types";
 import { cn, truncate } from "@/lib/utils";
 import { useToLink } from "@/lib/app-state";
 import { useWeather } from "@/hooks/use-weather";
@@ -93,7 +94,10 @@ function getWeatherVisual(code: number) {
 export function HomeScreen() {
   const { language } = useToLink();
   const weather = useWeather(language);
-  const advertisements = getAdvertisements(language);
+  const sharedContent = usePersistedSharedContent();
+  const posts = usePersistedPosts();
+  const advertisements = sharedContent.advertisementsByLanguage[language] ?? [];
+  const activeAdvertisement = advertisements[activeAd] ?? advertisements[0];
   const [activeAd, setActiveAd] = useState(0);
   const [currentTimeLabel, setCurrentTimeLabel] = useState("");
 
@@ -115,16 +119,16 @@ export function HomeScreen() {
   }, [language]);
 
   const recentSharing = useMemo(
-    () => homeFeed.filter((item) => item.category === "sharing").slice(0, 5),
-    [],
+    () => posts.items.filter((item) => item.category === "sharing").slice(0, 5),
+    [posts.items],
   );
   const ownQuests = useMemo(
-    () => homeFeed.filter((item) => item.category === "quest" && item.createdByCurrentUser),
-    [],
+    () => posts.items.filter((item) => item.category === "quest" && item.createdByCurrentUser),
+    [posts.items],
   );
   const acceptedQuests = useMemo(
-    () => homeFeed.filter((item) => item.category === "quest" && item.acceptedByCurrentUser),
-    [],
+    () => posts.items.filter((item) => item.category === "quest" && item.acceptedByCurrentUser),
+    [posts.items],
   );
 
   const currentWeatherLabel = weather.current
@@ -206,22 +210,24 @@ export function HomeScreen() {
           <div className="relative flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent-strong">
-                {advertisements[activeAd]?.badge}
+                {activeAdvertisement?.badge}
               </p>
               <h2 className="mt-2 font-display text-[clamp(1.15rem,2.2vw,1.45rem)] font-semibold text-foreground">
-                {advertisements[activeAd]?.title}
+                {activeAdvertisement?.title}
               </h2>
               <p className="mt-3 max-w-none text-sm leading-6 text-muted">
-                {advertisements[activeAd]?.description}
+                {activeAdvertisement?.description}
               </p>
             </div>
             <div className="flex shrink-0 gap-2">
               <button
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-panel-strong"
                 onClick={() =>
-                  setActiveAd((current) =>
-                    current === 0 ? advertisements.length - 1 : current - 1,
-                  )
+                  advertisements.length
+                    ? setActiveAd((current) =>
+                        current === 0 ? advertisements.length - 1 : current - 1,
+                      )
+                    : undefined
                 }
                 type="button"
               >
@@ -229,7 +235,11 @@ export function HomeScreen() {
               </button>
               <button
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-panel-strong"
-                onClick={() => setActiveAd((current) => (current + 1) % advertisements.length)}
+                onClick={() =>
+                  advertisements.length
+                    ? setActiveAd((current) => (current + 1) % advertisements.length)
+                    : undefined
+                }
                 type="button"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -260,7 +270,7 @@ export function HomeScreen() {
             description={t(language, "home.adminBroadcast")}
           />
           <div className="mt-4 flex-1 overflow-y-auto pr-2 text-sm leading-7 text-muted">
-            {t(language, "home.adminMessageContent")}
+            {sharedContent.adminMessage}
           </div>
         </Panel>
       </div>
@@ -353,8 +363,8 @@ function HomeFeedColumn({
   viewMoreHref,
 }: {
   highlightAction?: boolean;
-  items: typeof homeFeed;
-  language: import("@/lib/types").Language;
+  items: FeedItem[];
+  language: Language;
   title: string;
   viewMoreHref: string;
 }) {

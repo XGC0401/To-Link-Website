@@ -6,26 +6,34 @@ import { toast } from "sonner";
 import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
 import { Modal } from "@/components/ui/modal";
-import { chatRooms, currentUser, friendList } from "@/lib/demo-data";
+import {
+  createPersistedGroupChat,
+  sendPersistedMessage,
+  usePersistedConnections,
+  usePersistedCurrentUserProfile,
+} from "@/hooks/use-persisted-app-data";
 import { autoTranslateText } from "@/lib/translation";
 import { t } from "@/lib/translations";
 import { truncate } from "@/lib/utils";
 
 export function MessagesScreen() {
   const { language } = useToLink();
+  const connections = usePersistedConnections();
+  const { profile } = usePersistedCurrentUserProfile();
   const [query, setQuery] = useState("");
-  const [rooms, setRooms] = useState(chatRooms);
-  const [activeRoomId, setActiveRoomId] = useState(chatRooms[0]?.id);
+  const [activeRoomId, setActiveRoomId] = useState<string | undefined>(undefined);
   const [composerOpen, setComposerOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
   const [translatedMessages, setTranslatedMessages] = useState<Record<string, string>>({});
   const [shownTranslations, setShownTranslations] = useState<Record<string, boolean>>({});
   const [translatingMessages, setTranslatingMessages] = useState<Record<string, boolean>>({});
 
   const filteredRooms = useMemo(
-    () => rooms.filter((room) => room.title.toLowerCase().includes(query.toLowerCase())),
-    [query, rooms],
+    () => connections.chatRooms.filter((room) => room.title.toLowerCase().includes(query.toLowerCase())),
+    [connections.chatRooms, query],
   );
   const activeRoom = filteredRooms.find((room) => room.id === activeRoomId) ?? filteredRooms[0];
 
@@ -75,30 +83,15 @@ export function MessagesScreen() {
         hour12: false,
       });
 
-      setRooms((current) =>
-        current.map((room) => {
-          if (room.id !== activeRoom.id) {
-            return room;
-          }
-
-          return {
-            ...room,
-            preview: truncate(content.replace(/\s+/g, " "), 80),
-            messages: [
-              ...room.messages,
-              {
-                id: `msg-local-${Date.now()}`,
-                senderName: currentUser.name,
-                senderAvatar: currentUser.avatar,
-                kind: "text",
-                content,
-                sentAt,
-                inbound: false,
-              },
-            ],
-          };
-        }),
-      );
+      await sendPersistedMessage(activeRoom.id, {
+        id: `msg-local-${Date.now()}`,
+        senderName: profile.name,
+        senderAvatar: profile.avatar,
+        kind: "text",
+        content: truncate(content.replace(/\s+/g, " "), 80),
+        sentAt,
+        inbound: false,
+      });
 
       setDraft("");
       toast.success(t(language, "toast.messageSent"));
@@ -228,10 +221,26 @@ export function MessagesScreen() {
           <p className="text-sm leading-7 text-muted">
             Add at least 3 people including the current user. Suggestions are pulled from the friends list for now.
           </p>
+          <input
+            className="app-input w-full rounded-[20px] px-4 py-3"
+            onChange={(event) => setGroupName(event.target.value)}
+            placeholder="Group name"
+            value={groupName}
+          />
           <div className="space-y-3">
-            {friendList.map((friend) => (
+            {connections.friendList.map((friend) => (
               <label key={friend.id} className="flex items-center gap-3 rounded-[22px] border border-border bg-panel px-4 py-3">
-                <input type="checkbox" />
+                <input
+                  checked={selectedFriendIds.includes(friend.id)}
+                  onChange={() =>
+                    setSelectedFriendIds((current) =>
+                      current.includes(friend.id)
+                        ? current.filter((id) => id !== friend.id)
+                        : [...current, friend.id],
+                    )
+                  }
+                  type="checkbox"
+                />
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">
                   {friend.avatar}
                 </div>
@@ -252,8 +261,31 @@ export function MessagesScreen() {
             </button>
             <button
               className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white"
-              onClick={() => {
-                toast.success("Group chat draft created.");
+              onClick={async () => {
+                if (selectedFriendIds.length < 2) {
+                  toast.error(language === "zh-HK" ? "請至少選擇兩位好友。" : "Select at least two friends.");
+                  return;
+                }
+
+                const selectedFriends = connections.friendList.filter((friend) =>
+                  selectedFriendIds.includes(friend.id),
+                );
+                const nextRoom = {
+                  id: `room-${Date.now()}`,
+                  title: groupName.trim() || selectedFriends.map((friend) => friend.name.split(" ")[0]).join(", "),
+                  members: [profile.name, ...selectedFriends.map((friend) => friend.name)],
+                  preview: language === "zh-HK" ? "群組已建立。" : "Group created.",
+                  unreadCount: 0,
+                  online: true,
+                  group: true,
+                  messages: [],
+                };
+
+                await createPersistedGroupChat(nextRoom);
+                setActiveRoomId(nextRoom.id);
+                setGroupName("");
+                setSelectedFriendIds([]);
+                toast.success(language === "zh-HK" ? "群組對話已建立。" : "Group chat created.");
                 setComposerOpen(false);
               }}
               type="button"

@@ -5,17 +5,27 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
-import { aiConversations } from "@/lib/demo-data";
+import {
+  savePersistedAiConversations,
+  usePersistedAiConversations,
+  usePersistedCurrentUserProfile,
+} from "@/hooks/use-persisted-app-data";
 import { t } from "@/lib/translations";
 import type { ChatMessage, Language } from "@/lib/types";
 
 const DAILY_QUESTION_LIMIT = 20;
 
-function createChatMessage(content: string, inbound: boolean, language: Language): ChatMessage {
+function createChatMessage(
+  content: string,
+  inbound: boolean,
+  language: Language,
+  senderName?: string,
+  senderAvatar?: string,
+): ChatMessage {
   return {
     id: crypto.randomUUID(),
-    senderName: inbound ? t(language, "ai.senderName") : "Bobby Lee",
-    senderAvatar: inbound ? "AI" : "BL",
+    senderName: inbound ? t(language, "ai.senderName") : senderName ?? "User",
+    senderAvatar: inbound ? "AI" : senderAvatar ?? "U",
     kind: "text",
     content,
     sentAt: new Date().toLocaleTimeString([], {
@@ -28,11 +38,13 @@ function createChatMessage(content: string, inbound: boolean, language: Language
 
 export function AIChatScreen() {
   const { language } = useToLink();
-  const [conversations, setConversations] = useState(aiConversations);
-  const [activeId, setActiveId] = useState(aiConversations[0]?.id);
+  const aiData = usePersistedAiConversations();
+  const { profile } = usePersistedCurrentUserProfile();
+  const [activeId, setActiveId] = useState<string | undefined>(undefined);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [remainingQuestions, setRemainingQuestions] = useState(DAILY_QUESTION_LIMIT);
+  const conversations = aiData.conversations;
+  const remainingQuestions = aiData.remainingQuestions ?? DAILY_QUESTION_LIMIT;
 
   const activeConversation = useMemo(
     () => conversations.find((conversation) => conversation.id === activeId) ?? conversations[0],
@@ -52,28 +64,32 @@ export function AIChatScreen() {
     }
 
     const conversationId = activeConversation.id;
-    const userMessage = createChatMessage(message, false, language);
+    const userMessage = createChatMessage(message, false, language, profile.name, profile.avatar);
 
     setDraft("");
     setIsSending(true);
-    setConversations((current) =>
-      current.map((conversation) => {
-        if (conversation.id !== conversationId) {
-          return conversation;
-        }
 
-        const nextMessages = [...conversation.messages, userMessage];
+    const nextConversations = conversations.map((conversation) => {
+      if (conversation.id !== conversationId) {
+        return conversation;
+      }
 
-        return {
-          ...conversation,
-          title:
-            conversation.messages.length === 0
-              ? message.slice(0, 36) || conversation.title
-              : conversation.title,
-          messages: nextMessages,
-        };
-      }),
-    );
+      const nextMessages = [...conversation.messages, userMessage];
+
+      return {
+        ...conversation,
+        title:
+          conversation.messages.length === 0
+            ? message.slice(0, 36) || conversation.title
+            : conversation.title,
+        messages: nextMessages,
+      };
+    });
+
+    await savePersistedAiConversations({
+      conversations: nextConversations,
+      remainingQuestions,
+    });
 
     try {
       const response = await fetch("/api/ai-assistant", {
@@ -98,18 +114,19 @@ export function AIChatScreen() {
       }
 
       const assistantMessage = createChatMessage(payload.reply, true, language);
-
-      setConversations((current) =>
-        current.map((conversation) =>
-          conversation.id === conversationId
-            ? {
-                ...conversation,
-                messages: [...conversation.messages, assistantMessage],
-              }
-            : conversation,
-        ),
+      const finalConversations = nextConversations.map((conversation) =>
+        conversation.id === conversationId
+          ? {
+              ...conversation,
+              messages: [...conversation.messages, assistantMessage],
+            }
+          : conversation,
       );
-      setRemainingQuestions((current) => Math.max(current - 1, 0));
+
+      await savePersistedAiConversations({
+        conversations: finalConversations,
+        remainingQuestions: Math.max(remainingQuestions - 1, 0),
+      });
     } catch (error) {
       setDraft(message);
       toast.error(error instanceof Error ? error.message : "The AI assistant request failed.");
@@ -128,22 +145,25 @@ export function AIChatScreen() {
           <button
             className="inline-flex items-center justify-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white"
             disabled={conversations.length >= 10}
-            onClick={() => {
+            onClick={async () => {
               if (conversations.length >= 10) {
                 toast.error(t(language, "toast.chatHistoryLimit"));
                 return;
               }
 
               const nextId = `ai-${conversations.length + 1}`;
-              setConversations((current) => [
-                {
-                  id: nextId,
-                  title: `New chat ${current.length + 1}`,
-                  createdAt: new Date().toISOString(),
-                  messages: [],
-                },
-                ...current,
-              ]);
+              await savePersistedAiConversations({
+                conversations: [
+                  {
+                    id: nextId,
+                    title: `New chat ${conversations.length + 1}`,
+                    createdAt: new Date().toISOString(),
+                    messages: [],
+                  },
+                  ...conversations,
+                ],
+                remainingQuestions,
+              });
               setActiveId(nextId);
             }}
             type="button"
@@ -172,9 +192,12 @@ export function AIChatScreen() {
                   </button>
                   <button
                     className="rounded-full border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-600"
-                    onClick={() => {
+                    onClick={async () => {
                       const next = conversations.filter((conversationItem) => conversationItem.id !== conversation.id);
-                      setConversations(next.length ? next : [{ id: "ai-reset", title: "New chat 1", createdAt: new Date().toISOString(), messages: [] }]);
+                      await savePersistedAiConversations({
+                        conversations: next.length ? next : [{ id: "ai-reset", title: "New chat 1", createdAt: new Date().toISOString(), messages: [] }],
+                        remainingQuestions,
+                      });
                       setActiveId(next[0]?.id ?? "ai-reset");
                     }}
                     type="button"

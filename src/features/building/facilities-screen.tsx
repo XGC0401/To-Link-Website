@@ -5,14 +5,22 @@ import { toast } from "sonner";
 import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
 import { Modal } from "@/components/ui/modal";
-import { facilities } from "@/lib/demo-data";
+import {
+  addPersistedBooking,
+  usePersistedCurrentUserProfile,
+  usePersistedSharedContent,
+} from "@/hooks/use-persisted-app-data";
+import { addCalendarEvent } from "@/hooks/use-calendar-events";
 import { t } from "@/lib/translations";
 
 export function FacilitiesScreen() {
   const { language } = useToLink();
-  const [selectedId, setSelectedId] = useState(facilities[0]?.id);
+  const sharedContent = usePersistedSharedContent();
+  const { profile } = usePersistedCurrentUserProfile();
+  const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [participants, setParticipants] = useState(3);
+  const facilities = sharedContent.facilities;
 
   const selected = facilities.find((item) => item.id === selectedId) ?? facilities[0];
   const pricePreview = useMemo(() => {
@@ -103,8 +111,44 @@ export function FacilitiesScreen() {
       <Modal onClose={() => setBookingOpen(false)} open={bookingOpen} title={t(language, "facilities.bookingTitle")}>
         <form
           className="grid gap-4 md:grid-cols-2"
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault();
+
+            if (!selected) {
+              return;
+            }
+
+            const formData = new FormData(event.currentTarget);
+            const organizerName = String(formData.get("organizerName") ?? "").trim() || profile.name;
+            const contactNumber = String(formData.get("contactNumber") ?? "").trim();
+            const dateTimeValue = String(formData.get("dateTime") ?? "").trim();
+            const [date = new Date().toISOString().slice(0, 10), time = "Pending"] = dateTimeValue.split("T");
+
+            await addPersistedBooking({
+              id: crypto.randomUUID(),
+              targetName: selected.roomName,
+              organizer: organizerName,
+              participantCount: participants,
+              dateLabel: dateTimeValue ? `${date} · ${time}` : t(language, "booking.status.pending"),
+              status: "pending",
+            });
+
+            addCalendarEvent({
+              id: crypto.randomUUID(),
+              title: `${selected.roomName} booking`,
+              description: [
+                `Organizer: ${organizerName}`,
+                contactNumber ? `Contact: ${contactNumber}` : null,
+                `Participants: ${participants}`,
+                `Pricing: ${pricePreview}`,
+              ]
+                .filter(Boolean)
+                .join(". "),
+              date,
+              timeLabel: time,
+              type: "booking",
+            });
+
             toast.success(t(language, "toast.facilityBooked"));
             setBookingOpen(false);
           }}
@@ -115,7 +159,7 @@ export function FacilitiesScreen() {
           </label>
           <label className="space-y-2">
             <span className="text-sm font-medium text-foreground">{t(language, "common.contactNumbers")}</span>
-            <input className="app-input w-full rounded-[20px] px-4 py-3" placeholder="1234 8765" />
+            <input className="app-input w-full rounded-[20px] px-4 py-3" name="contactNumber" placeholder="1234 8765" />
           </label>
           <label className="space-y-2">
             <span className="text-sm font-medium text-foreground">{t(language, "facilities.participantsNumbers")}</span>
@@ -127,11 +171,11 @@ export function FacilitiesScreen() {
           </label>
           <label className="space-y-2">
             <span className="text-sm font-medium text-foreground">{t(language, "common.organizerName")}</span>
-            <input className="app-input w-full rounded-[20px] px-4 py-3" placeholder={t(language, "common.namePlaceholder")} />
+            <input className="app-input w-full rounded-[20px] px-4 py-3" defaultValue={profile.name} name="organizerName" placeholder={t(language, "common.namePlaceholder")} />
           </label>
           <label className="space-y-2">
             <span className="text-sm font-medium text-foreground">{t(language, "common.dateTime")}</span>
-            <input className="app-input w-full rounded-[20px] px-4 py-3" placeholder={t(language, "common.dateTimePlaceholder")} />
+            <input className="app-input w-full rounded-[20px] px-4 py-3" name="dateTime" type="datetime-local" />
           </label>
           <label className="space-y-2 md:col-span-2">
             <span className="text-sm font-medium text-foreground">{t(language, "common.price")}</span>
