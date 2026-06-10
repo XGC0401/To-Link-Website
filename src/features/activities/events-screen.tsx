@@ -1,22 +1,37 @@
 "use client";
 
+import { useMemo } from "react";
 import { toast } from "sonner";
 import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
-import { addCalendarEvent } from "@/hooks/use-calendar-events";
+import { addCalendarEvent, useCalendarEvents } from "@/hooks/use-calendar-events";
 import { usePersistedSharedContent } from "@/hooks/use-persisted-app-data";
 import { t } from "@/lib/translations";
 
 export function EventsScreen() {
   const { language } = useToLink();
   const sharedContent = usePersistedSharedContent();
+  const calendarEvents = useCalendarEvents();
+  const joinedEventTitles = useMemo(
+    () =>
+      new Set(
+        calendarEvents
+          .filter((event) => event.type === "joined")
+          .map((event) => event.title),
+      ),
+    [calendarEvents],
+  );
+
   return (
     <FeatureShell
       description={t(language, "events.pageDesc")}
-      title="Events"
+      title={t(language, "nav.activities.events")}
     >
       <div className="grid h-full gap-4 overflow-y-auto pr-1 xl:grid-cols-2">
-        {sharedContent.communityEvents.map((item) => (
+        {sharedContent.communityEvents.map((item) => {
+          const joined = joinedEventTitles.has(item.eventTitle);
+
+          return (
           <article key={item.id} className="rounded-[28px] border border-border bg-panel-strong p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-strong">{t(language, "events.communityEvent")}</p>
             <h3 className="mt-2 text-xl font-semibold text-foreground">{item.eventTitle}</h3>
@@ -30,7 +45,8 @@ export function EventsScreen() {
               ))}
             </div>
             <button
-              className="mt-5 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white"
+              className={joined ? "mt-5 rounded-full border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700" : "mt-5 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white"}
+              disabled={joined}
               onClick={() => {
                 const [date = new Date().toISOString().slice(0, 10), time = t(language, "nearby.pendingConfirmation")] = item.eventDate.split(" ");
                 addCalendarEvent({
@@ -45,10 +61,10 @@ export function EventsScreen() {
               }}
               type="button"
             >
-              {t(language, "common.join")}
+              {joined ? (language === "zh-HK" ? "已加入！" : "Joined !") : t(language, "common.join")}
             </button>
           </article>
-        ))}
+        );})}
       </div>
     </FeatureShell>
   );

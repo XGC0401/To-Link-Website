@@ -8,11 +8,19 @@ export type InfoPanelId =
   | "appFeedback"
   | "communityFeedback"
   | "faq"
-  | "aboutUs";
+  | "aboutUs"
+  | "privacyPolicy"
+  | "termsOfService";
 
 export type NotificationLevel = "critical" | "info" | "success" | "warning";
 
 export type PostCategory = "sharing" | "secondHand" | "lostFound" | "quest";
+
+export type QuestApplicationStatus = "pending" | "accepted" | "denied" | "autoDeclined";
+
+export type LostFoundLeadKind = "clue" | "found";
+
+export type LostFoundLeadStatus = "pending" | "helpful" | "notHelpful";
 
 export type QuestState =
   | "open"
@@ -74,12 +82,17 @@ export interface FeedItem {
   title: string;
   description: string;
   tags: string[];
+  authorId: string;
   authorName: string;
   authorAvatar: string;
   createdAt: string;
   edited: boolean;
   likes: number;
+  likedByUserIds?: string[];
   comments: number;
+  commentEntries?: PostComment[];
+  questApplications?: QuestApplication[];
+  lostFoundLeads?: LostFoundLead[];
   owner: boolean;
   price?: number;
   reward?: number;
@@ -87,10 +100,56 @@ export interface FeedItem {
   questState?: QuestState;
   acceptedByCurrentUser?: boolean;
   createdByCurrentUser?: boolean;
+  foundResolvedAt?: string;
+  foundResolvedByName?: string;
+}
+
+export interface PostComment {
+  id: string;
+  authorName: string;
+  authorAvatar: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface QuestApplication {
+  id: string;
+  applicantId: string;
+  applicantName: string;
+  applicantAvatar: string;
+  capabilityReason: string;
+  appliedAt: string;
+  status: QuestApplicationStatus;
+  denialReason?: string;
+  cooldownUntil?: string;
+  ownerFinished?: boolean;
+  workerFinished?: boolean;
+}
+
+export interface LostFoundLead {
+  id: string;
+  kind: LostFoundLeadKind;
+  authorId: string;
+  authorName: string;
+  authorAvatar: string;
+  whereSeen: string;
+  whenSeen: string;
+  details?: string;
+  photoNames: string[];
+  submittedAt: string;
+  status: LostFoundLeadStatus;
+}
+
+export interface BlockedUserItem {
+  id: string;
+  name: string;
+  avatar: string;
+  blockedAt: string;
 }
 
 export interface ChatMessage {
   id: string;
+  senderId?: string;
   senderName: string;
   senderAvatar: string;
   kind: MessageKind;

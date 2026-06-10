@@ -19,6 +19,7 @@ export const postCatalog: FeedItem[] = [
     description:
       "I cleaned up bilingual notes from last night's fire drill session and can share both PDF and printed copies.",
     tags: ["notes", "safety", "sharing"],
+    authorId: "bobby-lee",
     authorName: "Bobby Lee",
     authorAvatar: "BL",
     createdAt: "2026-06-03T09:10:00+08:00",
@@ -34,6 +35,7 @@ export const postCatalog: FeedItem[] = [
     description:
       "Still in good condition and recently cleaned. Happy to pass it on to a neighbor who actually uses it.",
     tags: ["free", "fitness"],
+    authorId: "may-chan",
     authorName: "May Chan",
     authorAvatar: "MC",
     createdAt: "2026-06-03T07:00:00+08:00",
@@ -49,6 +51,7 @@ export const postCatalog: FeedItem[] = [
     description:
       "Used for eight months only. Includes original basket and manual. Collection from Tower B lobby.",
     tags: ["kitchen", "appliance"],
+    authorId: "chris-ho",
     authorName: "Chris Ho",
     authorAvatar: "CH",
     createdAt: "2026-06-02T20:10:00+08:00",
@@ -65,6 +68,7 @@ export const postCatalog: FeedItem[] = [
     description:
       "Ten English and Chinese titles for ages 5 to 8. Free for any family in the estate.",
     tags: ["books", "kids"],
+    authorId: "bobby-lee",
     authorName: "Bobby Lee",
     authorAvatar: "BL",
     createdAt: "2026-06-01T15:00:00+08:00",
@@ -81,6 +85,7 @@ export const postCatalog: FeedItem[] = [
     description:
       "Small silver pouch with two keys and a blue access tag. Reward available if found before Thursday.",
     tags: ["keys", "reward"],
+    authorId: "daisy-wong",
     authorName: "Daisy Wong",
     authorAvatar: "DW",
     createdAt: "2026-06-03T08:40:00+08:00",
@@ -97,6 +102,7 @@ export const postCatalog: FeedItem[] = [
     description:
       "Pink bottle with a rabbit sticker. I left it with the clubhouse desk and can confirm details in chat.",
     tags: ["found", "playroom"],
+    authorId: "bobby-lee",
     authorName: "Bobby Lee",
     authorAvatar: "BL",
     createdAt: "2026-06-02T11:10:00+08:00",
@@ -113,6 +119,7 @@ export const postCatalog: FeedItem[] = [
     description:
       "Need a trusted neighbor to collect a pharmacy order and drop it at Tower C concierge tonight.",
     tags: ["errand", "urgent"],
+    authorId: "bobby-lee",
     authorName: "Bobby Lee",
     authorAvatar: "BL",
     createdAt: "2026-06-03T10:05:00+08:00",
@@ -132,6 +139,7 @@ export const postCatalog: FeedItem[] = [
     description:
       "Accepted yesterday. Needs completion before 19:00 tomorrow. Elevator booking already reserved.",
     tags: ["moving", "help"],
+    authorId: "daisy-wong",
     authorName: "Daisy Wong",
     authorAvatar: "DW",
     createdAt: "2026-06-02T18:30:00+08:00",
@@ -151,6 +159,7 @@ export const postCatalog: FeedItem[] = [
     description:
       "My renovation contractor arrives at 15:00 but I am stuck in transit. Need a neighbor to open the flat for inspection.",
     tags: ["contractor", "time-sensitive"],
+    authorId: "ivan-yuen",
     authorName: "Ivan Yuen",
     authorAvatar: "IY",
     createdAt: "2026-06-03T12:00:00+08:00",
@@ -171,6 +180,7 @@ export const deletedPostHistory: FeedItem[] = [
     title: "Old donation notice",
     description: "Archived after the donation drive ended successfully.",
     tags: ["history"],
+    authorId: "bobby-lee",
     authorName: "Bobby Lee",
     authorAvatar: "BL",
     createdAt: "2026-05-20T10:00:00+08:00",

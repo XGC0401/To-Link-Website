@@ -94,6 +94,7 @@ export const homeFeed: FeedItem[] = [
     description:
       "I organized bilingual notes for the building safety seminar and can share digital copies with anyone who missed the session.",
     tags: ["notes", "community", "sharing"],
+    authorId: "bobby-lee",
     authorName: "Bobby Lee",
     authorAvatar: "BL",
     createdAt: "2026-06-03T09:20:00+08:00",
@@ -109,6 +110,7 @@ export const homeFeed: FeedItem[] = [
     description:
       "Putting together a simple rota to water the rooftop herb corner while some neighbors travel this month.",
     tags: ["plants", "volunteer"],
+    authorId: "bobby-lee",
     authorName: "Bobby Lee",
     authorAvatar: "BL",
     createdAt: "2026-06-02T16:10:00+08:00",
@@ -124,6 +126,7 @@ export const homeFeed: FeedItem[] = [
     description:
       "Looking for someone nearby to collect a prescription from the ground-floor pharmacy before 20:00 today.",
     tags: ["errand", "urgent"],
+    authorId: "bobby-lee",
     authorName: "Bobby Lee",
     authorAvatar: "BL",
     createdAt: "2026-06-03T10:00:00+08:00",
@@ -143,6 +146,7 @@ export const homeFeed: FeedItem[] = [
     description:
       "I accepted this move-in assistance request yesterday and still need to complete it before the evening deadline.",
     tags: ["moving", "help"],
+    authorId: "daisy-wong",
     authorName: "Daisy Wong",
     authorAvatar: "DW",
     createdAt: "2026-06-02T18:30:00+08:00",
@@ -355,6 +359,7 @@ export const postFeed: FeedItem[] = [
     description:
       "Starting a rotating bookshelf in tower C lobby for families who want to share picture books and beginner readers.",
     tags: ["books", "families", "sharing"],
+    authorId: "mabel-chan",
     authorName: "Mabel Chan",
     authorAvatar: "MC",
     createdAt: "2026-06-01T10:00:00+08:00",
@@ -370,6 +375,7 @@ export const postFeed: FeedItem[] = [
     description:
       "Selling a lightly used standing fan with adjustable height, ideal for small rooms and balcony corners.",
     tags: ["home", "appliance"],
+    authorId: "adrian-mok",
     authorName: "Adrian Mok",
     authorAvatar: "AM",
     createdAt: "2026-06-02T08:00:00+08:00",
@@ -387,6 +393,7 @@ export const postFeed: FeedItem[] = [
     description:
       "Five sturdy moving boxes available for pickup near concierge. Free to anyone who can collect tonight.",
     tags: ["free", "moving"],
+    authorId: "bobby-lee",
     authorName: "Bobby Lee",
     authorAvatar: "BL",
     createdAt: "2026-06-01T19:40:00+08:00",
@@ -404,6 +411,7 @@ export const postFeed: FeedItem[] = [
     description:
       "Orange tabby wearing a green collar disappeared after 19:00 yesterday near the podium garden entrance.",
     tags: ["pet", "urgent", "garden"],
+    authorId: "sonia-ho",
     authorName: "Sonia Ho",
     authorAvatar: "SH",
     createdAt: "2026-06-03T07:45:00+08:00",
@@ -421,6 +429,7 @@ export const postFeed: FeedItem[] = [
     description:
       "I lost an office access card in an orange card holder somewhere between the lift lobby and the bus stop.",
     tags: ["card", "office"],
+    authorId: "bobby-lee",
     authorName: "Bobby Lee",
     authorAvatar: "BL",
     createdAt: "2026-06-02T11:15:00+08:00",
@@ -438,6 +447,7 @@ export const postFeed: FeedItem[] = [
     description:
       "Need help translating a maintenance announcement for several expatriate residents before tomorrow morning.",
     tags: ["translation", "language"],
+    authorId: "may-chan",
     authorName: "May Chan",
     authorAvatar: "MC",
     createdAt: "2026-06-03T06:30:00+08:00",
@@ -786,31 +796,59 @@ export const facilities: FacilityItem[] = [
 export const documents: DocumentItem[] = [
   {
     id: "doc-1",
-    title: "Building Fire Safety Regulations",
-    category: "Safety",
-    updatedAt: "2026-05-28",
-    summary: "Emergency assembly, stairwell, and extinguisher usage guidance for residents and guests.",
+    title: "Fire Safety and Evacuation Regulations",
+    category: "Fire",
+    updatedAt: "2026-06-04",
+    summary: "Assembly points, smoke-stop doors, extinguisher access, and evacuation conduct for residents, guests, and staff.",
   },
   {
     id: "doc-2",
-    title: "Clubhouse Facility Booking Policy",
-    category: "Facilities",
-    updatedAt: "2026-05-20",
-    summary: "Rules for booking, payment, cancellation, and participant limits across all facility types.",
+    title: "Quiet Hours and Noise Control Regulations",
+    category: "Noise",
+    updatedAt: "2026-06-02",
+    summary: "Quiet hours, amplified sound limits, furniture-moving restrictions, and complaint handling for repeated disturbance.",
   },
   {
     id: "doc-3",
-    title: "Renovation and Noise Control Guide",
-    category: "Operations",
-    updatedAt: "2026-04-12",
-    summary: "Approved hours, permit process, and contact flow for renovation notices.",
+    title: "Privacy, CCTV, and Access Log Notice",
+    category: "Privacy",
+    updatedAt: "2026-05-30",
+    summary: "How CCTV footage, visitor records, and access logs are retained, reviewed, and disclosed within the building.",
   },
   {
     id: "doc-4",
-    title: "Data Privacy and CCTV Notice",
-    category: "Privacy",
-    updatedAt: "2026-03-01",
-    summary: "Retention, access, and operational safeguards for building security footage.",
+    title: "Visitor Registration and Lobby Security Rules",
+    category: "Security",
+    updatedAt: "2026-05-27",
+    summary: "Requirements for guest registration, access cards, parcel release, and tailgating prevention in common entrances.",
+  },
+  {
+    id: "doc-5",
+    title: "Renovation Hours and Contractor Access Rules",
+    category: "Renovation",
+    updatedAt: "2026-05-24",
+    summary: "Approved work windows, material delivery limits, lift protection, and deposit conditions for renovation works.",
+  },
+  {
+    id: "doc-6",
+    title: "Waste Disposal and Recycling Regulations",
+    category: "Waste",
+    updatedAt: "2026-05-18",
+    summary: "Sorting rules, bulky-item disposal bookings, chute restrictions, and penalties for leaving refuse in corridors.",
+  },
+  {
+    id: "doc-7",
+    title: "Pet Registration and Shared Area Etiquette",
+    category: "Pets",
+    updatedAt: "2026-05-12",
+    summary: "Registration expectations, leash requirements, cleaning obligations, and pet access limits in shared facilities.",
+  },
+  {
+    id: "doc-8",
+    title: "Common Area Use and Corridor Storage Rules",
+    category: "Common Areas",
+    updatedAt: "2026-05-08",
+    summary: "Rules on leaving items in corridors, use of lobbies and lifts, and safe access through all shared areas.",
   },
 ];
 

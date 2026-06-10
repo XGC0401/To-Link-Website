@@ -224,12 +224,6 @@ export const infoNavigation: ActionNavItem[] = [
   },
   {
     kind: "action",
-    labelKey: "nav.info.help",
-    icon: "info",
-    action: { type: "infoToast", message: "Help Center is preparing personalized support options." },
-  },
-  {
-    kind: "action",
     labelKey: "nav.info.about",
     icon: "info",
     action: { type: "infoModal", panelId: "aboutUs" },
@@ -238,13 +232,13 @@ export const infoNavigation: ActionNavItem[] = [
     kind: "action",
     labelKey: "nav.info.privacy",
     icon: "info",
-    action: { type: "infoToast", message: "Privacy Policy is available and will open as a full document in the next phase." },
+    action: { type: "infoModal", panelId: "privacyPolicy" },
   },
   {
     kind: "action",
     labelKey: "nav.info.terms",
     icon: "info",
-    action: { type: "infoToast", message: "Terms of Service are being prepared for publication." },
+    action: { type: "infoModal", panelId: "termsOfService" },
   },
   {
     kind: "action",
@@ -283,4 +277,24 @@ export function getPageTitle(pathname: string) {
   ];
 
   return orderedRoutes.find((route) => pathname.startsWith(route.startsWith))?.titleKey ?? "nav.home";
+}
+
+export function getPageDescription(pathname: string): CopyKey | null {
+  const orderedRoutes: Array<{ startsWith: string; descriptionKey: CopyKey }> = [
+    { startsWith: "/home", descriptionKey: "home.pageDesc" },
+    { startsWith: "/posts", descriptionKey: "posts.pageDesc" },
+    { startsWith: "/nearby", descriptionKey: "nearby.pageDesc" },
+    { startsWith: "/connections/messages", descriptionKey: "messages.pageDesc" },
+    { startsWith: "/connections/friends", descriptionKey: "friends.pageDesc" },
+    { startsWith: "/activities/events", descriptionKey: "events.pageDesc" },
+    { startsWith: "/activities/calendar", descriptionKey: "calendar.pageDesc" },
+    { startsWith: "/activities/booking-status", descriptionKey: "booking.pageDesc" },
+    { startsWith: "/building/facilities", descriptionKey: "facilities.pageDesc" },
+    { startsWith: "/building/ai-chat", descriptionKey: "ai.pageDesc" },
+    { startsWith: "/building/documents", descriptionKey: "documents.pageDesc" },
+    { startsWith: "/settings/website", descriptionKey: "settings.description" },
+    { startsWith: "/settings/profile", descriptionKey: "profile.description" },
+  ];
+
+  return orderedRoutes.find((route) => pathname.startsWith(route.startsWith))?.descriptionKey ?? null;
 }

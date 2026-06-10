@@ -1,6 +1,8 @@
 "use client";
 
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
+import { useEffect, useMemo, useState } from "react";
 import {
   adminMessage,
   aiConversations as seededAiConversations,
@@ -18,10 +20,26 @@ import {
   postFeed as seededPostFeed,
   profileHistory as seededProfileHistory,
 } from "@/lib/demo-data";
+import { useToLink } from "@/lib/app-state";
 import { getFirebaseServices } from "@/lib/firebase";
+import {
+  localizeAdminMessage,
+  localizeAiConversations,
+  localizeAvailableSlots,
+  localizeBookings,
+  localizeChatRooms,
+  localizeCommunityItems,
+  localizeDocuments,
+  localizeFacilities,
+  localizeFeedItems,
+  localizeFriendCards,
+  localizeProfileHistory,
+  localizeSeededUserProfile,
+} from "@/lib/seeded-content-localization";
 import type {
   Advertisement,
   AIConversation,
+  BlockedUserItem,
   BookingItem,
   ChatMessage,
   ChatRoom,
@@ -32,8 +50,12 @@ import type {
   FeedItem,
   FriendCard,
   Language,
+  LostFoundLead,
   NotificationItem,
+  PostComment,
+  PostCategory,
   ProfileHistoryItem,
+  QuestApplication,
   UserProfile,
 } from "@/lib/types";
 import { useSeededFirestoreDocument, useSeededUserDocument } from "@/hooks/use-seeded-firestore-document";
@@ -66,6 +88,10 @@ interface ConnectionsDocument {
   friendList: FriendCard[];
 }
 
+interface ChatRoomOverridesDocument {
+  rooms: ChatRoom[];
+}
+
 interface FriendSuggestionsDocument {
   items: FriendCard[];
 }
@@ -73,6 +99,71 @@ interface FriendSuggestionsDocument {
 interface AIConversationsDocument {
   conversations: AIConversation[];
   remainingQuestions: number;
+}
+
+interface ModerationReportItem {
+  category: PostCategory;
+  createdAt: string;
+  details: string;
+  id: string;
+  postId: string;
+  postTitle: string;
+  reason: string;
+  reporterName: string;
+}
+
+interface ModerationReportsDocument {
+  items: ModerationReportItem[];
+}
+
+interface BlockedUsersDocument {
+  items: BlockedUserItem[];
+}
+
+interface ChatRoomMemberProfile {
+  avatar: string;
+  id: string;
+  name: string;
+  status?: FriendCard["status"] | UserProfile["status"];
+  username?: string;
+}
+
+interface SharedChatRoomDocument {
+  createdAt: string;
+  group: boolean;
+  groupName?: string;
+  id: string;
+  memberIds: string[];
+  memberProfiles: ChatRoomMemberProfile[];
+  messages: ChatMessage[];
+  updatedAt: string;
+}
+
+interface SharedChatRoomsDocument {
+  rooms: SharedChatRoomDocument[];
+}
+
+interface SharedChatRoomsState {
+  currentUserId: string | null;
+  error: string | null;
+  ready: boolean;
+  rooms: SharedChatRoomDocument[];
+  status: "error" | "loading" | "ready";
+}
+
+interface GroupChatRequest {
+  groupName: string;
+  members: ChatRoomMemberProfile[];
+}
+
+interface DirectChatRequest {
+  memberIds?: string[];
+  memberProfiles?: ChatRoomMemberProfile[];
+  members?: string[];
+  message?: ChatMessage;
+  online?: boolean;
+  preview?: string;
+  title: string;
 }
 
 export const DEFAULT_AVAILABLE_SLOTS = [
@@ -110,6 +201,10 @@ const POSTS_SEED: PostsDocument = {
   items: seededPostFeed,
 };
 
+const POSTS_OVERRIDES_SEED: PostsDocument = {
+  items: [],
+};
+
 const BOOKINGS_SEED: BookingsDocument = {
   items: seededBookings,
 };
@@ -117,6 +212,10 @@ const BOOKINGS_SEED: BookingsDocument = {
 const CONNECTIONS_SEED: ConnectionsDocument = {
   chatRooms: seededChatRooms,
   friendList: seededFriendList,
+};
+
+const CHAT_ROOM_OVERRIDES_SEED: ChatRoomOverridesDocument = {
+  rooms: [],
 };
 
 const FRIEND_SUGGESTIONS_SEED: FriendSuggestionsDocument = {
@@ -128,57 +227,121 @@ const AI_CONVERSATIONS_SEED: AIConversationsDocument = {
   remainingQuestions: 20,
 };
 
+const MODERATION_REPORTS_SEED: ModerationReportsDocument = {
+  items: [],
+};
+
+const BLOCKED_USERS_SEED: BlockedUsersDocument = {
+  items: [],
+};
+
 export function usePersistedCurrentUserProfile() {
+  const { language } = useToLink();
   const state = useSeededUserDocument<UserProfile>({
     pathFactory: (uid) => ["userProfiles", uid],
     parse: normalizeUserProfile,
     seedData: currentUser,
   });
+  const profile = localizeSeededUserProfile(language, state.data);
 
   return {
     ...state,
-    profile: state.data,
+    data: profile,
+    profile,
   };
 }
 
 export function usePersistedDashboardData() {
+  const { language } = useToLink();
   const state = useSeededUserDocument<DashboardDocument>({
     pathFactory: (uid) => ["userProfiles", uid, "appData", "dashboard"],
     parse: normalizeDashboardDocument,
     seedData: DASHBOARD_SEED,
   });
+  const localizedData = {
+    ...state.data,
+    availableSlots: localizeAvailableSlots(language, state.data.availableSlots),
+    profileHistory: localizeProfileHistory(language, state.data.profileHistory),
+  };
 
   return {
     ...state,
-    availableSlots: state.data.availableSlots,
+    data: localizedData,
+    availableSlots: localizedData.availableSlots,
     notificationsByLanguage: state.data.notificationsByLanguage,
-    profileHistory: state.data.profileHistory,
+    profileHistory: localizedData.profileHistory,
+    rawAvailableSlots: state.data.availableSlots,
   };
 }
 
 export function usePersistedSharedContent() {
+  const { language } = useToLink();
   const state = useSeededFirestoreDocument<SharedContentDocument>({
     parse: normalizeSharedContentDocument,
     path: ["appData", "sharedContent"],
     seedData: SHARED_CONTENT_SEED,
   });
+  const localizedData = {
+    ...state.data,
+    adminMessage: localizeAdminMessage(language, state.data.adminMessage),
+    communityEvents: localizeCommunityItems(language, state.data.communityEvents),
+    documents: localizeDocuments(language, state.data.documents),
+    facilities: localizeFacilities(language, state.data.facilities),
+  };
 
   return {
     ...state,
-    adminMessage: state.data.adminMessage,
+    data: localizedData,
+    adminMessage: localizedData.adminMessage,
     advertisementsByLanguage: state.data.advertisementsByLanguage,
-    communityEvents: state.data.communityEvents,
-    documents: state.data.documents,
-    facilities: state.data.facilities,
+    communityEvents: localizedData.communityEvents,
+    documents: localizedData.documents,
+    facilities: localizedData.facilities,
     faqItemsByLanguage: state.data.faqItemsByLanguage,
   };
 }
 
 export function usePersistedPosts() {
+  const { language } = useToLink();
   const state = useSeededFirestoreDocument<PostsDocument>({
     parse: normalizePostsDocument,
     path: ["appData", "posts"],
     seedData: POSTS_SEED,
+  });
+  const overridesState = useSeededUserDocument<PostsDocument>({
+    pathFactory: (uid) => ["userProfiles", uid, "appData", "postOverrides"],
+    parse: normalizePostsDocument,
+    seedData: POSTS_OVERRIDES_SEED,
+  });
+  const mergedItems = useMemo(
+    () => mergePersistedPosts(state.data.items, overridesState.data.items),
+    [overridesState.data.items, state.data.items],
+  );
+  const localizedData = {
+    ...state.data,
+    items: localizeFeedItems(language, mergedItems),
+  };
+
+  return {
+    ...state,
+    data: localizedData,
+    error: state.error ?? overridesState.error,
+    items: localizedData.items,
+    ready: state.ready && overridesState.ready,
+    status:
+      state.status === "error" || overridesState.status === "error"
+        ? "error"
+        : state.status === "loading" || overridesState.status === "loading"
+          ? "loading"
+          : "ready",
+  };
+}
+
+export function usePersistedBlockedUsers() {
+  const state = useSeededUserDocument<BlockedUsersDocument>({
+    pathFactory: (uid) => ["userProfiles", uid, "appData", "blockedUsers"],
+    parse: normalizeBlockedUsersDocument,
+    seedData: BLOCKED_USERS_SEED,
   });
 
   return {
@@ -188,56 +351,116 @@ export function usePersistedPosts() {
 }
 
 export function usePersistedBookings() {
+  const { language } = useToLink();
   const state = useSeededUserDocument<BookingsDocument>({
     pathFactory: (uid) => ["userProfiles", uid, "appData", "bookings"],
     parse: normalizeBookingsDocument,
     seedData: BOOKINGS_SEED,
   });
+  const localizedData = {
+    ...state.data,
+    items: localizeBookings(language, state.data.items),
+  };
 
   return {
     ...state,
-    items: state.data.items,
+    data: localizedData,
+    items: localizedData.items,
   };
 }
 
 export function usePersistedConnections() {
+  const { language } = useToLink();
   const connectionsState = useSeededUserDocument<ConnectionsDocument>({
     pathFactory: (uid) => ["userProfiles", uid, "appData", "connections"],
     parse: normalizeConnectionsDocument,
     seedData: CONNECTIONS_SEED,
+  });
+  const chatRoomOverridesState = useSeededUserDocument<ChatRoomOverridesDocument>({
+    pathFactory: (uid) => ["userProfiles", uid, "appData", "chatRoomOverrides"],
+    parse: normalizeChatRoomOverridesDocument,
+    seedData: CHAT_ROOM_OVERRIDES_SEED,
   });
   const suggestionsState = useSeededFirestoreDocument<FriendSuggestionsDocument>({
     parse: normalizeFriendSuggestionsDocument,
     path: ["appData", "friendSuggestions"],
     seedData: FRIEND_SUGGESTIONS_SEED,
   });
+  const sharedChatRooms = usePersistedSharedChatRooms();
+  const friendLookup = useMemo(
+    () =>
+      new Map(
+        [...connectionsState.data.friendList, ...suggestionsState.data.items].map((friend) => [
+          friend.id,
+          friend,
+        ]),
+      ),
+    [connectionsState.data.friendList, suggestionsState.data.items],
+  );
+  const chatRooms = localizeChatRooms(
+    language,
+    mergeChatRoomViews(
+      sharedChatRooms.rooms.map((room) =>
+        toChatRoomView(room, sharedChatRooms.currentUserId ?? currentUser.id, friendLookup),
+      ),
+      chatRoomOverridesState.data.rooms,
+    ),
+  );
+  const fallbackChatRooms = localizeChatRooms(
+    language,
+    mergeChatRoomViews(connectionsState.data.chatRooms, chatRoomOverridesState.data.rooms),
+  );
+  const friendList = localizeFriendCards(language, connectionsState.data.friendList);
+  const friendSuggestions = localizeFriendCards(language, suggestionsState.data.items);
 
   return {
-    chatRooms: connectionsState.data.chatRooms,
-    error: connectionsState.error ?? suggestionsState.error,
-    friendList: connectionsState.data.friendList,
-    friendSuggestions: suggestionsState.data.items,
-    ready: connectionsState.ready && suggestionsState.ready,
+    chatRooms: sharedChatRooms.ready
+      ? chatRooms
+      : fallbackChatRooms,
+    error:
+      connectionsState.error ??
+      chatRoomOverridesState.error ??
+      suggestionsState.error ??
+      sharedChatRooms.error,
+    friendList,
+    friendSuggestions,
+    ready:
+      connectionsState.ready &&
+      chatRoomOverridesState.ready &&
+      suggestionsState.ready &&
+      sharedChatRooms.ready,
     status:
-      connectionsState.status === "error" || suggestionsState.status === "error"
+      connectionsState.status === "error" ||
+      chatRoomOverridesState.status === "error" ||
+      suggestionsState.status === "error" ||
+      sharedChatRooms.status === "error"
         ? "error"
-        : connectionsState.status === "loading" || suggestionsState.status === "loading"
+        : connectionsState.status === "loading" ||
+            chatRoomOverridesState.status === "loading" ||
+            suggestionsState.status === "loading" ||
+            sharedChatRooms.status === "loading"
           ? "loading"
           : "ready",
   };
 }
 
 export function usePersistedAiConversations() {
+  const { language } = useToLink();
   const state = useSeededUserDocument<AIConversationsDocument>({
     pathFactory: (uid) => ["userProfiles", uid, "appData", "aiConversations"],
     parse: normalizeAIConversationsDocument,
     seedData: AI_CONVERSATIONS_SEED,
   });
+  const localizedData = {
+    ...state.data,
+    conversations: localizeAiConversations(language, state.data.conversations),
+  };
 
   return {
     ...state,
-    conversations: state.data.conversations,
-    remainingQuestions: state.data.remainingQuestions,
+    data: localizedData,
+    conversations: localizedData.conversations,
+    remainingQuestions: localizedData.remainingQuestions,
   };
 }
 
@@ -273,33 +496,507 @@ export async function appendPersistedProfileHistory(entry: ProfileHistoryItem) {
   });
 }
 
-export async function createPersistedPost(item: FeedItem) {
-  const currentPosts = await loadSharedDocument(["appData", "posts"], POSTS_SEED, normalizePostsDocument);
+export async function savePersistedDashboardData(dashboardPatch: Partial<DashboardDocument>) {
+  const currentDashboard = await loadCurrentUserDocument(["appData", "dashboard"], DASHBOARD_SEED, normalizeDashboardDocument);
 
-  await saveSharedDocument(["appData", "posts"], {
-    items: [item, ...currentPosts.items.filter((entry) => entry.id !== item.id)],
+  if (!currentDashboard) {
+    return false;
+  }
+
+  return saveCurrentUserDocument(["appData", "dashboard"], {
+    ...currentDashboard,
+    ...dashboardPatch,
+  });
+}
+
+function preparePersistedPostItem(item: FeedItem): FeedItem {
+  const authorName = item.authorName.trim() || "Resident";
+  const nextItem: FeedItem = {
+    authorAvatar: item.authorAvatar || getAvatarLabel(authorName),
+    authorId: normalizePersistedActorId(item.authorId, authorName),
+    authorName,
+    category: item.category,
+    comments: item.comments,
+    createdAt: item.createdAt,
+    description: item.description,
+    edited: item.edited,
+    id: item.id,
+    likes: item.likes,
+    owner: item.owner,
+    tags: item.tags,
+    title: item.title,
+  };
+
+  if (Array.isArray(item.likedByUserIds)) {
+    nextItem.likedByUserIds = [...new Set(item.likedByUserIds.filter(Boolean))];
+  }
+
+  if (Array.isArray(item.commentEntries)) {
+    nextItem.commentEntries = item.commentEntries
+      .map((comment) => normalizePersistedPostComment(comment))
+      .filter((comment) => Boolean(comment.content));
+  }
+
+  if (Array.isArray(item.questApplications)) {
+    nextItem.questApplications = item.questApplications.map((application) =>
+      normalizePersistedQuestApplication(application),
+    );
+  }
+
+  if (Array.isArray(item.lostFoundLeads)) {
+    nextItem.lostFoundLeads = item.lostFoundLeads.map((lead) => normalizePersistedLostFoundLead(lead));
+  }
+
+  if (typeof item.expiresAt === "string" && item.expiresAt.trim()) {
+    nextItem.expiresAt = item.expiresAt.trim();
+  }
+
+  if (typeof item.price === "number" && Number.isFinite(item.price)) {
+    nextItem.price = item.price;
+  }
+
+  if (typeof item.reward === "number" && Number.isFinite(item.reward)) {
+    nextItem.reward = item.reward;
+  }
+
+  if (item.questState) {
+    nextItem.questState = item.questState;
+  }
+
+  if (typeof item.acceptedByCurrentUser === "boolean") {
+    nextItem.acceptedByCurrentUser = item.acceptedByCurrentUser;
+  }
+
+  if (typeof item.createdByCurrentUser === "boolean") {
+    nextItem.createdByCurrentUser = item.createdByCurrentUser;
+  }
+
+  if (typeof item.foundResolvedAt === "string" && item.foundResolvedAt) {
+    nextItem.foundResolvedAt = item.foundResolvedAt;
+  }
+
+  if (typeof item.foundResolvedByName === "string" && item.foundResolvedByName.trim()) {
+    nextItem.foundResolvedByName = item.foundResolvedByName.trim();
+  }
+
+  return nextItem;
+}
+
+function normalizePersistedPostComment(comment: PostComment): PostComment {
+  const authorName = comment.authorName.trim() || "Resident";
+
+  return {
+    authorAvatar: comment.authorAvatar || getAvatarLabel(authorName),
+    authorName,
+    content: comment.content.trim(),
+    createdAt: typeof comment.createdAt === "string" && comment.createdAt ? comment.createdAt : new Date().toISOString(),
+    id: typeof comment.id === "string" && comment.id ? comment.id : `comment-${Date.now()}`,
+  };
+}
+
+function normalizePersistedActorId(actorId: string | undefined, name: string) {
+  if (typeof actorId === "string" && actorId.trim()) {
+    return actorId.trim();
+  }
+
+  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-") || "resident";
+}
+
+function normalizePersistedQuestApplication(application: QuestApplication): QuestApplication {
+  const applicantName = application.applicantName.trim() || "Resident";
+
+  return {
+    applicantAvatar: application.applicantAvatar || getAvatarLabel(applicantName),
+    applicantId: application.applicantId,
+    applicantName,
+    appliedAt:
+      typeof application.appliedAt === "string" && application.appliedAt
+        ? application.appliedAt
+        : new Date().toISOString(),
+    capabilityReason: application.capabilityReason.trim(),
+    cooldownUntil:
+      typeof application.cooldownUntil === "string" && application.cooldownUntil
+        ? application.cooldownUntil
+        : undefined,
+    denialReason:
+      typeof application.denialReason === "string" && application.denialReason.trim()
+        ? application.denialReason.trim()
+        : undefined,
+    id: typeof application.id === "string" && application.id ? application.id : `quest-application-${Date.now()}`,
+    ownerFinished: Boolean(application.ownerFinished),
+    status:
+      application.status === "accepted" ||
+      application.status === "denied" ||
+      application.status === "autoDeclined"
+        ? application.status
+        : "pending",
+    workerFinished: Boolean(application.workerFinished),
+  };
+}
+
+function normalizePersistedLostFoundLead(lead: LostFoundLead): LostFoundLead {
+  const authorName = lead.authorName.trim() || "Resident";
+
+  return {
+    authorAvatar: lead.authorAvatar || getAvatarLabel(authorName),
+    authorId: lead.authorId,
+    authorName,
+    details: typeof lead.details === "string" && lead.details.trim() ? lead.details.trim() : undefined,
+    id: typeof lead.id === "string" && lead.id ? lead.id : `lost-found-lead-${Date.now()}`,
+    kind: lead.kind === "found" ? "found" : "clue",
+    photoNames: Array.isArray(lead.photoNames) ? lead.photoNames.filter(Boolean).slice(0, 3) : [],
+    status: lead.status === "helpful" || lead.status === "notHelpful" ? lead.status : "pending",
+    submittedAt:
+      typeof lead.submittedAt === "string" && lead.submittedAt
+        ? lead.submittedAt
+        : new Date().toISOString(),
+    whenSeen: lead.whenSeen.trim(),
+    whereSeen: lead.whereSeen.trim(),
+  };
+}
+
+export async function createPersistedPost(item: FeedItem) {
+  const currentPosts = await loadEditablePostsDocument();
+  const nextItem = preparePersistedPostItem(item);
+
+  await persistEditablePostsDocument({
+    items: [nextItem, ...currentPosts.items.filter((entry) => entry.id !== nextItem.id)],
+  });
+}
+
+export async function updatePersistedPost(postId: string, postPatch: Partial<FeedItem>): Promise<FeedItem | null> {
+  const currentPosts = await loadEditablePostsDocument();
+  let updatedPost: FeedItem | null = null;
+
+  const saved = await persistEditablePostsDocument({
+    items: currentPosts.items.map((item) => {
+      if (item.id !== postId) {
+        return item;
+      }
+
+      updatedPost = preparePersistedPostItem({
+        ...item,
+        ...postPatch,
+        edited: true,
+      });
+
+      return updatedPost;
+    }),
+  });
+
+  return saved ? updatedPost : null;
+}
+
+export async function addPersistedPostComment(postId: string, comment: PostComment): Promise<FeedItem | null> {
+  const currentPosts = await loadEditablePostsDocument();
+  const nextComment = normalizePersistedPostComment(comment);
+  let updatedPost: FeedItem | null = null;
+
+  const saved = await persistEditablePostsDocument({
+    items: currentPosts.items.map((item) => {
+      if (item.id !== postId) {
+        return item;
+      }
+
+      updatedPost = preparePersistedPostItem({
+        ...item,
+        commentEntries: [...(item.commentEntries ?? []), nextComment],
+        comments: item.comments + 1,
+      });
+
+      return updatedPost;
+    }),
+  });
+
+  return saved ? updatedPost : null;
+}
+
+export async function submitPersistedQuestApplication(
+  postId: string,
+  application: QuestApplication,
+): Promise<FeedItem | null> {
+  const currentPosts = await loadEditablePostsDocument();
+  const nextApplication = normalizePersistedQuestApplication(application);
+  let updatedPost: FeedItem | null = null;
+
+  const saved = await persistEditablePostsDocument({
+    items: currentPosts.items.map((item) => {
+      if (item.id !== postId) {
+        return item;
+      }
+
+      updatedPost = preparePersistedPostItem({
+        ...item,
+        questApplications: [...(item.questApplications ?? []), nextApplication],
+        questState: item.questState === "completed" ? item.questState : "open",
+      });
+
+      return updatedPost;
+    }),
+  });
+
+  return saved ? updatedPost : null;
+}
+
+export async function reviewPersistedQuestApplication(
+  postId: string,
+  applicationId: string,
+  decision: "accepted" | "denied",
+  denialReason?: string,
+): Promise<FeedItem | null> {
+  const currentPosts = await loadEditablePostsDocument();
+  let updatedPost: FeedItem | null = null;
+  const normalizedDenialReason = denialReason?.trim();
+  const cooldownUntil = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+  const saved = await persistEditablePostsDocument({
+    items: currentPosts.items.map((item) => {
+      if (item.id !== postId) {
+        return item;
+      }
+
+      const updatedApplications = (item.questApplications ?? []).map((application) => {
+        if (application.id === applicationId) {
+          return normalizePersistedQuestApplication({
+            ...application,
+            cooldownUntil: decision === "denied" ? cooldownUntil : undefined,
+            denialReason:
+              decision === "denied"
+                ? normalizedDenialReason || "Application declined by the requester."
+                : undefined,
+            ownerFinished: false,
+            status: decision,
+            workerFinished: false,
+          });
+        }
+
+        if (decision === "accepted" && application.status === "pending") {
+          return normalizePersistedQuestApplication({
+            ...application,
+            denialReason: "This quest is already accepted by others.",
+            status: "autoDeclined",
+          });
+        }
+
+        return normalizePersistedQuestApplication(application);
+      });
+
+      updatedPost = preparePersistedPostItem({
+        ...item,
+        questApplications: updatedApplications,
+        questState: decision === "accepted" ? "accepted" : "open",
+      });
+
+      return updatedPost;
+    }),
+  });
+
+  return saved ? updatedPost : null;
+}
+
+export async function confirmPersistedQuestCompletion(
+  postId: string,
+  applicationId: string,
+  actor: "owner" | "worker",
+): Promise<FeedItem | null> {
+  const currentPosts = await loadEditablePostsDocument();
+  let updatedPost: FeedItem | null = null;
+
+  const saved = await persistEditablePostsDocument({
+    items: currentPosts.items.map((item) => {
+      if (item.id !== postId) {
+        return item;
+      }
+
+      const updatedApplications = (item.questApplications ?? []).map((application) => {
+        if (application.id !== applicationId) {
+          return normalizePersistedQuestApplication(application);
+        }
+
+        return normalizePersistedQuestApplication({
+          ...application,
+          ownerFinished: actor === "owner" ? true : application.ownerFinished,
+          workerFinished: actor === "worker" ? true : application.workerFinished,
+        });
+      });
+      const acceptedApplication = updatedApplications.find((application) => application.id === applicationId);
+      const completed = Boolean(acceptedApplication?.ownerFinished && acceptedApplication.workerFinished);
+
+      updatedPost = preparePersistedPostItem({
+        ...item,
+        questApplications: updatedApplications,
+        questState: completed ? "completed" : item.questState,
+      });
+
+      return updatedPost;
+    }),
+  });
+
+  return saved ? updatedPost : null;
+}
+
+export async function addPersistedLostFoundLead(postId: string, lead: LostFoundLead): Promise<FeedItem | null> {
+  const currentPosts = await loadEditablePostsDocument();
+  const nextLead = normalizePersistedLostFoundLead(lead);
+  let updatedPost: FeedItem | null = null;
+
+  const saved = await persistEditablePostsDocument({
+    items: currentPosts.items.map((item) => {
+      if (item.id !== postId) {
+        return item;
+      }
+
+      updatedPost = preparePersistedPostItem({
+        ...item,
+        lostFoundLeads: [...(item.lostFoundLeads ?? []), nextLead],
+      });
+
+      return updatedPost;
+    }),
+  });
+
+  return saved ? updatedPost : null;
+}
+
+export async function reviewPersistedLostFoundLead(
+  postId: string,
+  leadId: string,
+  status: "helpful" | "notHelpful",
+): Promise<FeedItem | null> {
+  const currentPosts = await loadEditablePostsDocument();
+  let updatedPost: FeedItem | null = null;
+
+  const saved = await persistEditablePostsDocument({
+    items: currentPosts.items.map((item) => {
+      if (item.id !== postId) {
+        return item;
+      }
+
+      const updatedLeads = (item.lostFoundLeads ?? []).map((lead) =>
+        lead.id === leadId ? normalizePersistedLostFoundLead({ ...lead, status }) : normalizePersistedLostFoundLead(lead),
+      );
+      const reviewedLead = updatedLeads.find((lead) => lead.id === leadId);
+
+      updatedPost = preparePersistedPostItem({
+        ...item,
+        foundResolvedAt:
+          reviewedLead?.kind === "found" && status === "helpful"
+            ? new Date().toISOString()
+            : item.foundResolvedAt,
+        foundResolvedByName:
+          reviewedLead?.kind === "found" && status === "helpful"
+            ? reviewedLead.authorName
+            : item.foundResolvedByName,
+        lostFoundLeads: updatedLeads,
+      });
+
+      return updatedPost;
+    }),
+  });
+
+  return saved ? updatedPost : null;
+}
+
+export async function addPersistedBlockedUser(blockedUser: BlockedUserItem) {
+  const currentBlockedUsers = await loadCurrentUserDocument(
+    ["appData", "blockedUsers"],
+    BLOCKED_USERS_SEED,
+    normalizeBlockedUsersDocument,
+  );
+
+  if (!currentBlockedUsers) {
+    return false;
+  }
+
+  const nextBlockedUser = normalizeBlockedUserItem(blockedUser);
+
+  return saveCurrentUserDocument(["appData", "blockedUsers"], {
+    items: [nextBlockedUser, ...currentBlockedUsers.items.filter((item) => item.id !== nextBlockedUser.id)],
+  });
+}
+
+export async function removePersistedBlockedUser(blockedUserId: string) {
+  const currentBlockedUsers = await loadCurrentUserDocument(
+    ["appData", "blockedUsers"],
+    BLOCKED_USERS_SEED,
+    normalizeBlockedUsersDocument,
+  );
+
+  if (!currentBlockedUsers) {
+    return false;
+  }
+
+  return saveCurrentUserDocument(["appData", "blockedUsers"], {
+    items: currentBlockedUsers.items.filter((item) => item.id !== blockedUserId),
   });
 }
 
 export async function likePersistedPost(postId: string) {
-  const currentPosts = await loadSharedDocument(["appData", "posts"], POSTS_SEED, normalizePostsDocument);
+  const services = getFirebaseServices();
+  const currentUserId = services?.auth.currentUser?.uid;
 
-  await saveSharedDocument(["appData", "posts"], {
-    items: currentPosts.items.map((item) =>
-      item.id === postId ? { ...item, likes: item.likes + 1 } : item,
-    ),
+  if (!currentUserId) {
+    return false;
+  }
+
+  const currentPosts = await loadEditablePostsDocument();
+  let updated = false;
+
+  return persistEditablePostsDocument({
+    items: currentPosts.items.map((item) => {
+      if (item.id !== postId) {
+        return item;
+      }
+
+      const likedByUserIds = item.likedByUserIds ?? [];
+
+      if (likedByUserIds.includes(currentUserId)) {
+        return item;
+      }
+
+      updated = true;
+
+      return preparePersistedPostItem({
+        ...item,
+        likedByUserIds: [...likedByUserIds, currentUserId],
+        likes: item.likes + 1,
+      });
+    }),
+  }).then((saved) => (updated ? saved : false));
+}
+
+export async function acceptPersistedQuest(postId: string): Promise<FeedItem | null> {
+  const currentPosts = await loadEditablePostsDocument();
+  let acceptedPost: FeedItem | null = null;
+
+  const saved = await persistEditablePostsDocument({
+    items: currentPosts.items.map((item) => {
+      if (item.id !== postId) {
+        return item;
+      }
+
+      acceptedPost = {
+        ...item,
+        acceptedByCurrentUser: true,
+        questState: "accepted",
+      };
+
+      return acceptedPost;
+    }),
   });
+
+  return saved ? acceptedPost : null;
 }
 
 export async function deletePersistedPost(postId: string) {
-  const currentPosts = await loadSharedDocument(["appData", "posts"], POSTS_SEED, normalizePostsDocument);
+  const currentPosts = await loadEditablePostsDocument();
   const removed = currentPosts.items.find((item) => item.id === postId) ?? null;
 
-  await saveSharedDocument(["appData", "posts"], {
+  const saved = await persistEditablePostsDocument({
     items: currentPosts.items.filter((item) => item.id !== postId),
   });
 
-  return removed;
+  return saved ? removed : null;
 }
 
 export async function addPersistedBooking(item: BookingItem) {
@@ -346,41 +1043,792 @@ export async function removePersistedFriend(friendId: string) {
 }
 
 export async function sendPersistedMessage(roomId: string, message: ChatMessage) {
-  const currentConnections = await loadCurrentUserDocument(["appData", "connections"], CONNECTIONS_SEED, normalizeConnectionsDocument);
+  const services = getFirebaseServices();
+  const currentUserId = services?.auth.currentUser?.uid ?? currentUser.id;
+  const currentRoom = await loadSharedChatRoom(roomId);
+  const nextMessage = normalizeChatMessage({
+    ...message,
+    inbound: false,
+    senderId: message.senderId || currentUserId,
+  });
 
-  if (!currentConnections) {
-    return false;
+  if (!currentRoom) {
+    return appendCurrentUserChatRoomMessage(roomId, nextMessage, currentUserId);
   }
 
-  return saveCurrentUserDocument(["appData", "connections"], {
-    ...currentConnections,
-    chatRooms: currentConnections.chatRooms.map((room) =>
-      room.id === roomId
-        ? {
-            ...room,
-            preview: message.content,
-            messages: [...room.messages, message],
-          }
-        : room,
-    ),
-  });
+  return persistSharedChatRoomWithFallback(
+    {
+      ...currentRoom,
+      messages: [...currentRoom.messages, nextMessage],
+      updatedAt: new Date().toISOString(),
+    },
+    currentUserId,
+  );
 }
 
-export async function createPersistedGroupChat(chatRoom: ChatRoom) {
-  const currentConnections = await loadCurrentUserDocument(["appData", "connections"], CONNECTIONS_SEED, normalizeConnectionsDocument);
+export async function createPersistedGroupChat(request: GroupChatRequest) {
+  const services = getFirebaseServices();
+  const user = services?.auth.currentUser;
 
-  if (!currentConnections) {
-    return false;
+  if (!services || !user) {
+    return null;
   }
 
-  return saveCurrentUserDocument(["appData", "connections"], {
-    ...currentConnections,
-    chatRooms: [chatRoom, ...currentConnections.chatRooms.filter((room) => room.id !== chatRoom.id)],
+  const currentProfile = await loadUserRootDocument(user.uid, currentUser, normalizeUserProfile);
+  const currentMember = toChatRoomMemberProfile({
+    ...currentProfile,
+    id: user.uid,
   });
+  const members = normalizeChatRoomMembers([
+    currentMember,
+    ...request.members,
+  ]);
+
+  if (members.length < 3) {
+    return null;
+  }
+
+  const roomId = `group-${Date.now()}`;
+  const timestamp = new Date().toISOString();
+
+  const room = {
+    createdAt: timestamp,
+    group: true,
+    groupName:
+      request.groupName.trim() ||
+      members
+        .filter((member) => member.id !== currentMember.id)
+        .map((member) => member.name)
+        .join(", "),
+    id: roomId,
+    memberIds: members.map((member) => member.id),
+    memberProfiles: members,
+    messages: [],
+    updatedAt: timestamp,
+  } satisfies SharedChatRoomDocument;
+
+  const saved = await persistSharedChatRoomWithFallback(room, user.uid);
+
+  if (!saved) {
+    return null;
+  }
+
+  return roomId;
+}
+
+export async function openPersistedDirectChat({
+  memberIds,
+  memberProfiles,
+  members,
+  message,
+  title,
+}: DirectChatRequest) {
+  const services = getFirebaseServices();
+  const user = services?.auth.currentUser;
+
+  if (!services || !user) {
+    return null;
+  }
+
+  const currentProfile = await loadUserRootDocument(user.uid, currentUser, normalizeUserProfile);
+  const currentMember = toChatRoomMemberProfile({
+    ...currentProfile,
+    id: user.uid,
+  });
+  const currentConnections = await loadCurrentUserDocument(
+    ["appData", "connections"],
+    CONNECTIONS_SEED,
+    normalizeConnectionsDocument,
+  );
+  const resolvedMembers = normalizeChatRoomMembers([
+    currentMember,
+    ...resolveDirectChatMembers(
+      {
+        memberIds,
+        memberProfiles,
+        members,
+        title,
+      },
+      currentProfile,
+      currentConnections?.friendList ?? CONNECTIONS_SEED.friendList,
+    ),
+  ]);
+
+  if (resolvedMembers.length < 2) {
+    return null;
+  }
+
+  const roomId = createDirectChatRoomId(resolvedMembers.map((member) => member.id));
+  const existingRoom = await loadSharedChatRoom(roomId);
+  const nextMessage = message
+    ? normalizeChatMessage({
+        ...message,
+        inbound: false,
+        senderAvatar: message.senderAvatar || currentProfile.avatar,
+        senderId: user.uid,
+        senderName: message.senderName || currentProfile.name,
+      })
+    : null;
+  const timestamp = new Date().toISOString();
+
+  const room = {
+    createdAt: existingRoom?.createdAt ?? timestamp,
+    group: false,
+    id: roomId,
+    memberIds: resolvedMembers.map((member) => member.id),
+    memberProfiles: resolvedMembers,
+    messages: nextMessage ? [...(existingRoom?.messages ?? []), nextMessage] : existingRoom?.messages ?? [],
+    updatedAt: nextMessage || !existingRoom ? timestamp : existingRoom.updatedAt,
+  } satisfies SharedChatRoomDocument;
+
+  const saved = await persistSharedChatRoomWithFallback(
+    room,
+    user.uid,
+    currentConnections?.friendList ?? CONNECTIONS_SEED.friendList,
+  );
+
+  if (!saved) {
+    return null;
+  }
+
+  return roomId;
+}
+
+export async function submitPersistedModerationReport(report: {
+  category: PostCategory;
+  details?: string;
+  postId: string;
+  postTitle: string;
+  reason: string;
+  reporterName: string;
+}) {
+  const currentReports = await loadSharedDocument(
+    ["appData", "moderationReports"],
+    MODERATION_REPORTS_SEED,
+    normalizeModerationReportsDocument,
+  );
+
+  const nextReport: ModerationReportItem = {
+    category: report.category,
+    createdAt: new Date().toISOString(),
+    details: report.details?.trim() ?? "",
+    id: `report-${Date.now()}`,
+    postId: report.postId,
+    postTitle: report.postTitle,
+    reason: report.reason,
+    reporterName: report.reporterName,
+  };
+
+  await saveSharedDocument(["appData", "moderationReports"], {
+    items: [nextReport, ...currentReports.items.filter((item) => item.id !== nextReport.id)],
+  });
+
+  return nextReport;
 }
 
 export async function savePersistedAiConversations(documentValue: AIConversationsDocument) {
   return saveCurrentUserDocument(["appData", "aiConversations"], documentValue);
+}
+
+function usePersistedSharedChatRooms(): SharedChatRoomsState {
+  const services = useMemo(() => getFirebaseServices(), []);
+  const fallbackRooms = useMemo(() => createSeedSharedChatRooms(currentUser.id), []);
+  const [state, setState] = useState<SharedChatRoomsState>({
+    currentUserId: services?.auth.currentUser?.uid ?? null,
+    error: null,
+    ready: !services,
+    rooms: fallbackRooms,
+    status: services ? "loading" : "ready",
+  });
+
+  useEffect(() => {
+    if (!services) {
+      return;
+    }
+
+    let unsubscribeRooms: (() => void) | undefined;
+    let seededFallback = false;
+
+    const unsubscribeAuth = onAuthStateChanged(services.auth, (user) => {
+      unsubscribeRooms?.();
+      unsubscribeRooms = undefined;
+
+      if (!user) {
+        setState({
+          currentUserId: null,
+          error: null,
+          ready: true,
+          rooms: fallbackRooms,
+          status: "ready",
+        });
+        return;
+      }
+
+      setState((current) => ({
+        ...current,
+        currentUserId: user.uid,
+        error: null,
+        ready: false,
+        status: "loading",
+      }));
+
+      const roomsReference = doc(services.db, "appData", "chatRooms");
+
+      unsubscribeRooms = onSnapshot(
+        roomsReference,
+        async (snapshot) => {
+          if (!snapshot.exists() && !seededFallback) {
+            seededFallback = true;
+            await seedSharedChatRoomsForUser(user.uid);
+            return;
+          }
+
+          const rooms = normalizeSharedChatRoomsDocument(snapshot.data()).rooms
+            .filter((room) => room.memberIds.includes(user.uid))
+            .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+
+          if (!rooms.length && !seededFallback) {
+            seededFallback = true;
+            await seedSharedChatRoomsForUser(user.uid);
+            return;
+          }
+
+          setState({
+            currentUserId: user.uid,
+            error: null,
+            ready: true,
+            rooms: rooms.length ? rooms : fallbackRooms,
+            status: "ready",
+          });
+        },
+        (error) => {
+          setState({
+            currentUserId: user.uid,
+            error: error.message,
+            ready: true,
+            rooms: fallbackRooms,
+            status: "error",
+          });
+        },
+      );
+    });
+
+    return () => {
+      unsubscribeRooms?.();
+      unsubscribeAuth();
+    };
+  }, [fallbackRooms, services]);
+
+  return services
+    ? state
+    : {
+        currentUserId: null,
+        error: null,
+        ready: true,
+        rooms: fallbackRooms,
+        status: "ready",
+      };
+}
+
+function createSeedSharedChatRooms(currentUserId: string) {
+  return seededChatRooms.map((room, index) => {
+    const createdAt = `2026-06-0${Math.min(index + 1, 9)}T09:00:00+08:00`;
+    const updatedAt = `2026-06-0${Math.min(index + 1, 9)}T09:${String(10 + index).padStart(2, "0")}:00+08:00`;
+    const memberProfiles = normalizeChatRoomMembers(
+      room.members.map((memberName) => resolveSeedChatMember(memberName, currentUserId)),
+    );
+
+    return {
+      createdAt,
+      group: room.group,
+      groupName: room.group ? room.title : undefined,
+      id: `seed-${sanitizeChatKey(currentUserId)}-${room.id}`,
+      memberIds: memberProfiles.map((member) => member.id),
+      memberProfiles,
+      messages: room.messages.map((message) =>
+        normalizeChatMessage({
+          ...message,
+          senderId: resolveSeedChatMember(message.senderName, currentUserId).id,
+        }),
+      ),
+      updatedAt,
+    } satisfies SharedChatRoomDocument;
+  });
+}
+
+function resolveSeedChatMember(name: string, currentUserId: string) {
+  if (name === currentUser.name || name === currentUser.username) {
+    return {
+      avatar: currentUser.avatar,
+      id: currentUserId,
+      name: currentUser.name,
+      status: currentUser.status,
+      username: currentUser.username,
+    } satisfies ChatRoomMemberProfile;
+  }
+
+  const knownFriend = [...seededFriendList, ...seededFriendSuggestions].find(
+    (friend) => friend.name === name || friend.username === name,
+  );
+
+  return knownFriend ? toChatRoomMemberProfile(knownFriend) : createExternalChatMember(name);
+}
+
+function toChatRoomView(
+  room: SharedChatRoomDocument,
+  currentUserId: string,
+  friendLookup: Map<string, FriendCard>,
+) {
+  return {
+    group: room.group,
+    id: room.id,
+    members: room.memberProfiles.map((member) => member.name),
+    messages: room.messages.map((message) => ({
+      ...message,
+      inbound:
+        typeof message.senderId === "string"
+          ? message.senderId !== currentUserId
+          : message.inbound,
+    })),
+    online: resolveChatRoomOnline(room, currentUserId, friendLookup),
+    preview: buildChatRoomPreview(room),
+    title: resolveChatRoomTitle(room, currentUserId),
+    unreadCount: 0,
+  } satisfies ChatRoom;
+}
+
+function createChatRoomView(
+  room: SharedChatRoomDocument,
+  currentUserId: string,
+  friendList: FriendCard[],
+) {
+  return toChatRoomView(
+    room,
+    currentUserId,
+    new Map(friendList.map((friend) => [friend.id, friend])),
+  );
+}
+
+function mergeChatRoomViews(primaryRooms: ChatRoom[], overrideRooms: ChatRoom[]) {
+  const seen = new Set<string>();
+
+  return [...overrideRooms, ...primaryRooms]
+    .map((room) => normalizeChatRoomView(room))
+    .filter((room) => {
+      if (!room.id || seen.has(room.id)) {
+        return false;
+      }
+
+      seen.add(room.id);
+      return true;
+    });
+}
+
+function mergePersistedPosts(primaryItems: FeedItem[], overrideItems: FeedItem[]) {
+  const merged = primaryItems.map((item) => preparePersistedPostItem(item));
+  const positions = new Map(merged.map((item, index) => [item.id, index]));
+
+  for (const overrideItem of overrideItems) {
+    const normalizedOverride = preparePersistedPostItem(overrideItem);
+    const existingIndex = positions.get(normalizedOverride.id);
+
+    if (typeof existingIndex === "number") {
+      merged[existingIndex] = normalizedOverride;
+      continue;
+    }
+
+    merged.unshift(normalizedOverride);
+  }
+
+  return merged;
+}
+
+function resolveChatRoomTitle(room: SharedChatRoomDocument, currentUserId: string) {
+  if (room.group) {
+    return (
+      room.groupName?.trim() ||
+      room.memberProfiles
+        .filter((member) => member.id !== currentUserId)
+        .map((member) => member.name)
+        .join(", ") ||
+      "Group chat"
+    );
+  }
+
+  return (
+    room.memberProfiles.find((member) => member.id !== currentUserId)?.name ||
+    room.memberProfiles[0]?.name ||
+    "Direct message"
+  );
+}
+
+function buildChatRoomPreview(room: SharedChatRoomDocument) {
+  return room.messages[room.messages.length - 1]?.content ?? "";
+}
+
+function resolveChatRoomOnline(
+  room: SharedChatRoomDocument,
+  currentUserId: string,
+  friendLookup: Map<string, FriendCard>,
+) {
+  return room.memberProfiles
+    .filter((member) => member.id !== currentUserId)
+    .some((member) => {
+      const status = friendLookup.get(member.id)?.status ?? member.status;
+      return status === "online" || status === "busy";
+    });
+}
+
+function resolveDirectChatMembers(
+  request: Pick<DirectChatRequest, "memberIds" | "memberProfiles" | "members" | "title">,
+  currentProfile: UserProfile,
+  friendList: FriendCard[],
+) {
+  if (request.memberProfiles?.length) {
+    return request.memberProfiles.map((member) => toChatRoomMemberProfile(member));
+  }
+
+  const knownFriends = [...friendList, ...seededFriendList, ...seededFriendSuggestions];
+  const friendById = new Map(knownFriends.map((friend) => [friend.id, friend]));
+  const friendByName = new Map(
+    knownFriends.flatMap((friend) => [
+      [friend.name.trim().toLowerCase(), friend] as const,
+      [friend.username.trim().toLowerCase(), friend] as const,
+    ]),
+  );
+  const resolvedById = (request.memberIds ?? []).map((memberId) => {
+    if (memberId === currentProfile.id) {
+      return toChatRoomMemberProfile(currentProfile);
+    }
+
+    const friend = friendById.get(memberId);
+    return friend ? toChatRoomMemberProfile(friend) : null;
+  });
+  const requestedNames = request.members?.length ? request.members : [request.title];
+  const resolvedByName = requestedNames.map((name) => {
+    const normalizedName = name.trim().toLowerCase();
+
+    if (!normalizedName) {
+      return null;
+    }
+
+    if (
+      normalizedName === currentProfile.name.trim().toLowerCase() ||
+      normalizedName === currentProfile.username.trim().toLowerCase()
+    ) {
+      return toChatRoomMemberProfile(currentProfile);
+    }
+
+    const friend = friendByName.get(normalizedName);
+    return friend ? toChatRoomMemberProfile(friend) : createExternalChatMember(name);
+  });
+
+  const resolvedMembers = [...resolvedById, ...resolvedByName].flatMap((member) =>
+    member ? [member] : [],
+  );
+
+  return normalizeChatRoomMembers(resolvedMembers);
+}
+
+function toChatRoomMemberProfile(
+  member: Pick<ChatRoomMemberProfile, "avatar" | "id" | "name"> & {
+    status?: ChatRoomMemberProfile["status"];
+    username?: string;
+  },
+) {
+  return {
+    avatar: member.avatar || getAvatarLabel(member.name),
+    id: member.id,
+    name: member.name,
+    status: member.status,
+    username: member.username,
+  } satisfies ChatRoomMemberProfile;
+}
+
+function createExternalChatMember(name: string) {
+  return {
+    avatar: getAvatarLabel(name),
+    id: createExternalChatMemberId(name),
+    name,
+    status: "offline",
+  } satisfies ChatRoomMemberProfile;
+}
+
+function normalizeChatRoomMembers(members: ChatRoomMemberProfile[]) {
+  const deduped = new Map<string, ChatRoomMemberProfile>();
+
+  for (const member of members) {
+    if (!member.id) {
+      continue;
+    }
+
+    deduped.set(member.id, member);
+  }
+
+  return [...deduped.values()];
+}
+
+function normalizeSharedChatRoomDocument(id: string, value: unknown): SharedChatRoomDocument {
+  const record = asRecord(value);
+  const memberProfiles = Array.isArray(record.memberProfiles)
+    ? (record.memberProfiles as ChatRoomMemberProfile[])
+        .map((member) => toChatRoomMemberProfile(member))
+        .filter((member) => Boolean(member.id))
+    : [];
+  const memberIds = Array.isArray(record.memberIds)
+    ? (record.memberIds as string[]).filter(Boolean)
+    : memberProfiles.map((member) => member.id);
+
+  return {
+    createdAt:
+      typeof record.createdAt === "string" ? record.createdAt : new Date().toISOString(),
+    group: Boolean(record.group),
+    groupName: typeof record.groupName === "string" ? record.groupName : undefined,
+    id,
+    memberIds,
+    memberProfiles,
+    messages: Array.isArray(record.messages)
+      ? (record.messages as ChatMessage[]).map((message) => normalizeChatMessage(message))
+      : [],
+    updatedAt:
+      typeof record.updatedAt === "string" ? record.updatedAt : new Date().toISOString(),
+  };
+}
+
+function normalizeSharedChatRoomsDocument(value: unknown): SharedChatRoomsDocument {
+  const record = asRecord(value);
+  const rooms = Array.isArray(record.rooms) ? record.rooms : [];
+
+  return {
+    rooms: rooms
+      .map((roomValue, index) => {
+        const roomRecord = asRecord(roomValue);
+        const roomId = typeof roomRecord.id === "string" ? roomRecord.id : `chat-room-${index}`;
+
+        return normalizeSharedChatRoomDocument(roomId, roomValue);
+      })
+      .filter((room) => Boolean(room.id)),
+  };
+}
+
+function normalizeChatMessage(message: ChatMessage) {
+  return {
+    ...message,
+    accentLabel: message.accentLabel?.trim() || undefined,
+    content: message.content,
+    senderAvatar: message.senderAvatar || getAvatarLabel(message.senderName),
+    senderId: message.senderId,
+    senderName: message.senderName,
+  } satisfies ChatMessage;
+}
+
+function createDirectChatRoomId(memberIds: string[]) {
+  return `dm-${memberIds
+    .map((memberId) => sanitizeChatKey(memberId))
+    .sort()
+    .join("-")}`;
+}
+
+function createExternalChatMemberId(name: string) {
+  return `external-${sanitizeChatKey(name)}`;
+}
+
+function sanitizeChatKey(value: string) {
+  return value.trim().replace(/[^A-Za-z0-9_-]+/g, "_") || "member";
+}
+
+async function seedSharedChatRoomsForUser(currentUserId: string) {
+  const currentDocument = await loadSharedChatRoomsDocument();
+
+  if (!currentDocument) {
+    return false;
+  }
+
+  const rooms = createSeedSharedChatRooms(currentUserId);
+  const existingIds = new Set(currentDocument.rooms.map((room) => room.id));
+  const nextRooms = [...currentDocument.rooms];
+
+  for (const room of rooms) {
+    if (!existingIds.has(room.id)) {
+      nextRooms.push(room);
+    }
+  }
+
+  return saveSharedChatRoomsDocument({ rooms: nextRooms });
+}
+
+async function loadSharedChatRoom(roomId: string) {
+  const currentDocument = await loadSharedChatRoomsDocument();
+
+  if (!currentDocument) {
+    return null;
+  }
+
+  return currentDocument.rooms.find((room) => room.id === roomId) ?? null;
+}
+
+async function saveSharedChatRoom(room: SharedChatRoomDocument) {
+  const currentDocument = await loadSharedChatRoomsDocument();
+
+  if (!currentDocument) {
+    return false;
+  }
+
+  const nextRooms = [room, ...currentDocument.rooms.filter((entry) => entry.id !== room.id)];
+
+  return saveSharedChatRoomsDocument({ rooms: nextRooms });
+}
+
+async function loadSharedChatRoomsDocument() {
+  const services = getFirebaseServices();
+
+  if (!services) {
+    return null;
+  }
+
+  const reference = doc(services.db, "appData", "chatRooms");
+  const snapshot = await getDoc(reference);
+
+  if (!snapshot.exists()) {
+    return { rooms: [] } satisfies SharedChatRoomsDocument;
+  }
+
+  return normalizeSharedChatRoomsDocument(snapshot.data());
+}
+
+async function saveSharedChatRoomsDocument(documentValue: SharedChatRoomsDocument) {
+  const services = getFirebaseServices();
+
+  if (!services) {
+    return false;
+  }
+
+  await setDoc(doc(services.db, "appData", "chatRooms"), documentValue, { merge: true });
+  return true;
+}
+
+async function loadEditablePostsDocument() {
+  const [sharedPosts, overridePosts] = await Promise.all([
+    loadSharedDocument(["appData", "posts"], POSTS_SEED, normalizePostsDocument),
+    loadCurrentUserDocument(["appData", "postOverrides"], POSTS_OVERRIDES_SEED, normalizePostsDocument),
+  ]);
+
+  return {
+    items: mergePersistedPosts(sharedPosts.items, overridePosts?.items ?? []),
+  } satisfies PostsDocument;
+}
+
+async function persistEditablePostsDocument(documentValue: PostsDocument) {
+  const normalizedDocument = {
+    items: documentValue.items.map((item) => preparePersistedPostItem(item)),
+  } satisfies PostsDocument;
+
+  try {
+    const saved = await saveSharedDocument(["appData", "posts"], normalizedDocument);
+
+    if (!saved) {
+      return saveCurrentUserDocument(["appData", "postOverrides"], normalizedDocument);
+    }
+
+    await saveCurrentUserDocument(["appData", "postOverrides"], POSTS_OVERRIDES_SEED);
+    return true;
+  } catch {
+    return saveCurrentUserDocument(["appData", "postOverrides"], normalizedDocument);
+  }
+}
+
+async function loadCurrentUserChatRoomOverride(roomId: string) {
+  const [overrides, connections] = await Promise.all([
+    loadCurrentUserDocument(
+      ["appData", "chatRoomOverrides"],
+      CHAT_ROOM_OVERRIDES_SEED,
+      normalizeChatRoomOverridesDocument,
+    ),
+    loadCurrentUserDocument(["appData", "connections"], CONNECTIONS_SEED, normalizeConnectionsDocument),
+  ]);
+
+  return (
+    overrides?.rooms.find((room) => room.id === roomId) ??
+    connections?.chatRooms.find((room) => room.id === roomId) ??
+    CONNECTIONS_SEED.chatRooms.find((room) => room.id === roomId) ??
+    null
+  );
+}
+
+async function saveCurrentUserChatRoomOverride(room: ChatRoom) {
+  const currentOverrides = await loadCurrentUserDocument(
+    ["appData", "chatRoomOverrides"],
+    CHAT_ROOM_OVERRIDES_SEED,
+    normalizeChatRoomOverridesDocument,
+  );
+
+  if (!currentOverrides) {
+    return false;
+  }
+
+  return saveCurrentUserDocument(["appData", "chatRoomOverrides"], {
+    rooms: [normalizeChatRoomView(room), ...currentOverrides.rooms.filter((entry) => entry.id !== room.id)],
+  });
+}
+
+async function clearCurrentUserChatRoomOverride(roomId: string) {
+  const currentOverrides = await loadCurrentUserDocument(
+    ["appData", "chatRoomOverrides"],
+    CHAT_ROOM_OVERRIDES_SEED,
+    normalizeChatRoomOverridesDocument,
+  );
+
+  if (!currentOverrides) {
+    return false;
+  }
+
+  if (!currentOverrides.rooms.some((room) => room.id === roomId)) {
+    return true;
+  }
+
+  return saveCurrentUserDocument(["appData", "chatRoomOverrides"], {
+    rooms: currentOverrides.rooms.filter((room) => room.id !== roomId),
+  });
+}
+
+async function appendCurrentUserChatRoomMessage(
+  roomId: string,
+  message: ChatMessage,
+  currentUserId: string,
+) {
+  const currentRoom = await loadCurrentUserChatRoomOverride(roomId);
+
+  if (!currentRoom) {
+    return false;
+  }
+
+  const nextMessages = [...currentRoom.messages, normalizeChatMessage({ ...message, senderId: currentUserId })];
+
+  return saveCurrentUserChatRoomOverride({
+    ...currentRoom,
+    messages: nextMessages,
+    preview: nextMessages[nextMessages.length - 1]?.content ?? currentRoom.preview,
+    unreadCount: 0,
+  });
+}
+
+async function persistSharedChatRoomWithFallback(
+  room: SharedChatRoomDocument,
+  currentUserId: string,
+  friendList: FriendCard[] = [],
+) {
+  try {
+    const saved = await saveSharedChatRoom(room);
+
+    if (!saved) {
+      return saveCurrentUserChatRoomOverride(createChatRoomView(room, currentUserId, friendList));
+    }
+
+    await clearCurrentUserChatRoomOverride(room.id);
+    return true;
+  } catch {
+    return saveCurrentUserChatRoomOverride(createChatRoomView(room, currentUserId, friendList));
+  }
 }
 
 function normalizeSharedContentDocument(value: unknown): SharedContentDocument {
@@ -395,9 +1843,10 @@ function normalizeSharedContentDocument(value: unknown): SharedContentDocument {
     communityEvents: Array.isArray(record.communityEvents)
       ? (record.communityEvents as CommunityItem[])
       : SHARED_CONTENT_SEED.communityEvents,
-    documents: Array.isArray(record.documents)
-      ? (record.documents as DocumentItem[])
-      : SHARED_CONTENT_SEED.documents,
+    documents: mergeSeededItemsById(
+      Array.isArray(record.documents) ? (record.documents as DocumentItem[]) : [],
+      SHARED_CONTENT_SEED.documents,
+    ),
     facilities: Array.isArray(record.facilities)
       ? (record.facilities as FacilityItem[])
       : SHARED_CONTENT_SEED.facilities,
@@ -429,7 +1878,9 @@ function normalizePostsDocument(value: unknown): PostsDocument {
   const record = asRecord(value);
 
   return {
-    items: Array.isArray(record.items) ? (record.items as FeedItem[]) : POSTS_SEED.items,
+    items: Array.isArray(record.items)
+      ? (record.items as FeedItem[]).map((item) => preparePersistedPostItem(item))
+      : POSTS_SEED.items.map((item) => preparePersistedPostItem(item)),
   };
 }
 
@@ -446,12 +1897,37 @@ function normalizeConnectionsDocument(value: unknown): ConnectionsDocument {
 
   return {
     chatRooms: Array.isArray(record.chatRooms)
-      ? (record.chatRooms as ChatRoom[])
+      ? (record.chatRooms as ChatRoom[]).map((room) => normalizeChatRoomView(room))
       : CONNECTIONS_SEED.chatRooms,
     friendList: Array.isArray(record.friendList)
       ? (record.friendList as FriendCard[])
       : CONNECTIONS_SEED.friendList,
   };
+}
+
+function normalizeChatRoomOverridesDocument(value: unknown): ChatRoomOverridesDocument {
+  const record = asRecord(value);
+
+  return {
+    rooms: Array.isArray(record.rooms)
+      ? (record.rooms as ChatRoom[]).map((room) => normalizeChatRoomView(room))
+      : CHAT_ROOM_OVERRIDES_SEED.rooms,
+  };
+}
+
+function normalizeChatRoomView(room: ChatRoom): ChatRoom {
+  return {
+    group: Boolean(room.group),
+    id: typeof room.id === "string" ? room.id : `chat-room-${Date.now()}`,
+    members: Array.isArray(room.members) ? room.members.filter(Boolean) : [],
+    messages: Array.isArray(room.messages)
+      ? room.messages.map((message) => normalizeChatMessage(message))
+      : [],
+    online: Boolean(room.online),
+    preview: typeof room.preview === "string" ? room.preview : "",
+    title: typeof room.title === "string" ? room.title : "Direct message",
+    unreadCount: typeof room.unreadCount === "number" ? room.unreadCount : 0,
+  } satisfies ChatRoom;
 }
 
 function normalizeFriendSuggestionsDocument(value: unknown): FriendSuggestionsDocument {
@@ -473,6 +1949,37 @@ function normalizeAIConversationsDocument(value: unknown): AIConversationsDocume
       typeof record.remainingQuestions === "number"
         ? record.remainingQuestions
         : AI_CONVERSATIONS_SEED.remainingQuestions,
+  };
+}
+
+function normalizeModerationReportsDocument(value: unknown): ModerationReportsDocument {
+  const record = asRecord(value);
+
+  return {
+    items: Array.isArray(record.items)
+      ? (record.items as ModerationReportItem[])
+      : MODERATION_REPORTS_SEED.items,
+  };
+}
+
+function normalizeBlockedUserItem(item: BlockedUserItem): BlockedUserItem {
+  const name = item.name.trim() || "Resident";
+
+  return {
+    avatar: item.avatar || getAvatarLabel(name),
+    blockedAt: typeof item.blockedAt === "string" && item.blockedAt ? item.blockedAt : new Date().toISOString(),
+    id: item.id,
+    name,
+  };
+}
+
+function normalizeBlockedUsersDocument(value: unknown): BlockedUsersDocument {
+  const record = asRecord(value);
+
+  return {
+    items: Array.isArray(record.items)
+      ? (record.items as BlockedUserItem[]).map((item) => normalizeBlockedUserItem(item))
+      : BLOCKED_USERS_SEED.items,
   };
 }
 
@@ -513,18 +2020,18 @@ function normalizeUserProfile(value: unknown): UserProfile {
   };
 }
 
-async function saveSharedDocument(path: string[], value: Record<string, unknown>) {
+async function saveSharedDocument<T extends object>(path: [string, ...string[]], value: T) {
   const services = getFirebaseServices();
 
   if (!services) {
     return false;
   }
 
-  await setDoc(doc(services.db, ...path), value, { merge: true });
+  await setDoc(doc(services.db, ...path), value as Record<string, unknown>, { merge: true });
   return true;
 }
 
-async function saveCurrentUserDocument(path: string[], value: Record<string, unknown>) {
+async function saveCurrentUserDocument<T extends object>(path: [string, ...string[]], value: T) {
   const services = getFirebaseServices();
   const user = services?.auth.currentUser;
 
@@ -532,11 +2039,11 @@ async function saveCurrentUserDocument(path: string[], value: Record<string, unk
     return false;
   }
 
-  await setDoc(doc(services.db, "userProfiles", user.uid, ...path), value, { merge: true });
+  await setDoc(doc(services.db, "userProfiles", user.uid, ...path), value as Record<string, unknown>, { merge: true });
   return true;
 }
 
-async function loadSharedDocument<T>(path: string[], seedData: T, normalize: (value: unknown) => T) {
+async function loadSharedDocument<T>(path: [string, ...string[]], seedData: T, normalize: (value: unknown) => T) {
   const services = getFirebaseServices();
 
   if (!services) {
@@ -554,7 +2061,7 @@ async function loadSharedDocument<T>(path: string[], seedData: T, normalize: (va
   return normalize(snapshot.data());
 }
 
-async function loadCurrentUserDocument<T>(path: string[], seedData: T, normalize: (value: unknown) => T) {
+async function loadCurrentUserDocument<T>(path: [string, ...string[]], seedData: T, normalize: (value: unknown) => T) {
   const services = getFirebaseServices();
   const user = services?.auth.currentUser;
 
@@ -598,6 +2105,22 @@ function normalizeLocalizedArrayCollection<T>(value: unknown, fallback: Record<L
     en: Array.isArray(record.en) ? (record.en as T[]) : fallback.en,
     "zh-HK": Array.isArray(record["zh-HK"]) ? (record["zh-HK"] as T[]) : fallback["zh-HK"],
   } satisfies Record<Language, T[]>;
+}
+
+function mergeSeededItemsById<T extends { id: string }>(persisted: T[], seeded: T[]) {
+  if (!persisted.length) {
+    return seeded;
+  }
+
+  const persistedById = new Map(persisted.map((item) => [item.id, item]));
+  const seededIds = new Set(seeded.map((item) => item.id));
+  const reconciledSeededItems = seeded.map((item) => ({
+    ...persistedById.get(item.id),
+    ...item,
+  }));
+  const extraPersistedItems = persisted.filter((item) => !seededIds.has(item.id));
+
+  return [...reconciledSeededItems, ...extraPersistedItems];
 }
 
 function asRecord(value: unknown): Record<string, unknown> {

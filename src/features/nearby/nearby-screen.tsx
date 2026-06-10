@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarPlus, List, Map, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useToLink } from "@/lib/app-state";
@@ -48,6 +48,7 @@ export function NearbyScreen({ mode }: { mode: NearbyMode }) {
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("nearest");
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const [visibleCount, setVisibleCount] = useState(10);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [shopBookingDraft, setShopBookingDraft] = useState<ShopBookingDraft>(() => createShopBookingDraft());
@@ -82,8 +83,20 @@ export function NearbyScreen({ mode }: { mode: NearbyMode }) {
       });
   }, [livePlaces.items, location.lat, location.lng, query, sortBy]);
 
+  useEffect(() => {
+    setVisibleCount(10);
+  }, [mode, query, sortBy]);
+
   const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null;
+  const visibleItems = items.slice(0, visibleCount);
   const isLoadingPlaces = livePlaces.status === "idle" || livePlaces.status === "loading";
+
+  function handleShowCurrentLocation() {
+    setViewMode("map");
+    if (items[0]) {
+      setSelectedId(items[0].id);
+    }
+  }
 
   function closeForm() {
     setFormOpen(false);
@@ -249,7 +262,7 @@ export function NearbyScreen({ mode }: { mode: NearbyMode }) {
     <div className="relative flex h-full w-full">
       <FeatureShell
         description={t(language, "nearby.pageDesc")}
-        title={mode === "shops" ? "Nearby Shops" : "Nearby Communities"}
+        title={mode === "shops" ? t(language, "nav.nearby.shops") : t(language, "nav.nearby.communities")}
         toolbar={
           <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_200px_auto_auto]">
             <label className="app-input flex items-center gap-3 rounded-full px-4 py-3 text-sm">
@@ -287,7 +300,7 @@ export function NearbyScreen({ mode }: { mode: NearbyMode }) {
             </div>
             <button
               className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-panel px-4 py-3 text-sm font-semibold text-foreground"
-              onClick={() => toast.success(`Current location: ${location.label}`)}
+              onClick={handleShowCurrentLocation}
               type="button"
             >
               <CalendarPlus className="h-4 w-4" />
@@ -305,7 +318,7 @@ export function NearbyScreen({ mode }: { mode: NearbyMode }) {
                 <NearbyStatusCard message={livePlaces.error ?? t(language, "nearby.loadError")} />
               ) : items.length ? (
                 <div className="space-y-3">
-                  {items.map((item) => (
+                  {visibleItems.map((item) => (
                     <button
                       key={item.id}
                       className={item.id === selected?.id ? "w-full rounded-[26px] border border-accent bg-accent-soft p-4 text-left" : "w-full rounded-[26px] border border-border bg-panel-strong p-4 text-left"}
@@ -317,6 +330,17 @@ export function NearbyScreen({ mode }: { mode: NearbyMode }) {
                       <p className="mt-3 text-xs text-muted">{formatDistanceKm(item.distance)}</p>
                     </button>
                   ))}
+                  {visibleItems.length < items.length ? (
+                    <button
+                      className="w-full rounded-[26px] border border-border bg-panel px-4 py-4 text-sm font-semibold text-foreground transition hover:border-accent hover:text-accent-strong"
+                      onClick={() => setVisibleCount((current) => Math.min(current + 10, items.length))}
+                      type="button"
+                    >
+                      {language === "zh-HK"
+                        ? `顯示更多（再多 ${Math.min(10, items.length - visibleItems.length)} 項）`
+                        : `Show More (${Math.min(10, items.length - visibleItems.length)} more)`}
+                    </button>
+                  ) : null}
                 </div>
               ) : (
                 <NearbyStatusCard message={t(language, "nearby.noResults")} />
@@ -351,11 +375,11 @@ export function NearbyScreen({ mode }: { mode: NearbyMode }) {
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="rounded-[24px] border border-border bg-panel px-4 py-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-strong">{t(language, "common.phone")}</p>
-                      <p className="mt-2 text-sm text-foreground">{selected.phone || "N/A"}</p>
+                      <p className="mt-2 text-sm text-foreground">{selected.phone || "-"}</p>
                     </div>
                     <div className="rounded-[24px] border border-border bg-panel px-4 py-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-strong">{t(language, "common.website")}</p>
-                      <p className="mt-2 text-sm text-foreground">{selected.website || "N/A"}</p>
+                      <p className="mt-2 text-sm text-foreground">{selected.website || "-"}</p>
                     </div>
                   </div>
                   <button
@@ -428,7 +452,7 @@ export function NearbyScreen({ mode }: { mode: NearbyMode }) {
                       value={contactNumber}
                     />
                     <button
-                      aria-label="Remove contact number"
+                      aria-label={language === "zh-HK" ? "移除聯絡電話" : "Remove contact number"}
                       className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-panel text-foreground"
                       onClick={() => handleRemoveContactNumber(index)}
                       type="button"
@@ -588,7 +612,7 @@ export function NearbyScreen({ mode }: { mode: NearbyMode }) {
                     value={participantName}
                   />
                   <button
-                    aria-label="Remove participant"
+                    aria-label={language === "zh-HK" ? "移除參與者" : "Remove participant"}
                     className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-panel text-foreground"
                     onClick={() => handleRemoveParticipant(index)}
                     type="button"

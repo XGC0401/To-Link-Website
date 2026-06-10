@@ -17,18 +17,18 @@ interface FirestoreDocumentState<T> {
 interface SeededDocumentOptions<T> {
   enabled?: boolean;
   parse: (value: unknown) => T;
-  path: string[];
+  path: [string, ...string[]];
   seedData: T;
 }
 
 interface SeededUserDocumentOptions<T> {
   enabled?: boolean;
   parse: (value: unknown) => T;
-  pathFactory: (uid: string) => string[];
+  pathFactory: (uid: string) => [string, ...string[]];
   seedData: T;
 }
 
-export function useSeededFirestoreDocument<T>({
+export function useSeededFirestoreDocument<T extends object>({
   enabled = true,
   parse,
   path,
@@ -64,7 +64,7 @@ export function useSeededFirestoreDocument<T>({
       reference,
       (snapshot) => {
         if (!snapshot.exists()) {
-          void setDoc(reference, seedData, { merge: true });
+          void setDoc(reference, seedData as Record<string, unknown>, { merge: true });
           setState({
             data: seedData,
             error: null,
@@ -95,7 +95,7 @@ export function useSeededFirestoreDocument<T>({
   return enabled && services ? state : fallbackState;
 }
 
-export function useSeededUserDocument<T>({
+export function useSeededUserDocument<T extends object>({
   enabled = true,
   parse,
   pathFactory,
@@ -146,7 +146,7 @@ export function useSeededUserDocument<T>({
         reference,
         (snapshot) => {
           if (!snapshot.exists()) {
-            void setDoc(reference, seedData, { merge: true });
+            void setDoc(reference, seedData as Record<string, unknown>, { merge: true });
             setState({
               data: seedData,
               error: null,

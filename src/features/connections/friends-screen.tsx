@@ -1,17 +1,23 @@
 "use client";
 
 import { Search, UserRoundMinus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
 import { Modal } from "@/components/ui/modal";
-import { removePersistedFriend, usePersistedConnections } from "@/hooks/use-persisted-app-data";
+import {
+  openPersistedDirectChat,
+  removePersistedFriend,
+  usePersistedConnections,
+} from "@/hooks/use-persisted-app-data";
 import { t } from "@/lib/translations";
 import type { FriendCard } from "@/lib/types";
 
 export function FriendsScreen() {
   const { language } = useToLink();
+  const router = useRouter();
   const connections = usePersistedConnections();
   const [query, setQuery] = useState("");
   const [candidate, setCandidate] = useState<FriendCard | null>(null);
@@ -26,11 +32,33 @@ export function FriendsScreen() {
     );
   }, [connections.friendList, connections.friendSuggestions, query]);
 
+  async function handleOpenChat(friend: FriendCard) {
+    const roomId = await openPersistedDirectChat({
+      memberProfiles: [
+        {
+          avatar: friend.avatar,
+          id: friend.id,
+          name: friend.name,
+          status: friend.status,
+          username: friend.username,
+        },
+      ],
+      title: friend.name,
+    });
+
+    if (!roomId) {
+      toast.error(language === "zh-HK" ? "暫時無法開啟私訊。" : "Unable to open the direct message right now.");
+      return;
+    }
+
+    router.push(`/connections/messages?room=${encodeURIComponent(roomId)}`);
+  }
+
   return (
     <div className="relative flex h-full w-full">
       <FeatureShell
         description={t(language, "friends.pageDesc")}
-        title="Friends"
+        title={t(language, "nav.connections.friends")}
         toolbar={
           <label className="app-input flex items-center gap-3 rounded-full px-4 py-3 text-sm">
             <Search className="h-4 w-4 text-muted" />
@@ -82,7 +110,9 @@ export function FriendsScreen() {
                   <div className="mt-4 flex gap-2">
                     <button
                       className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white"
-                      onClick={() => toast.success(t(language, "toast.openingChat").replace("{name}", friend.name))}
+                      onClick={() => {
+                        void handleOpenChat(friend);
+                      }}
                       type="button"
                     >
                       {t(language, "common.message")}
@@ -122,7 +152,11 @@ export function FriendsScreen() {
                 }
 
                 await removePersistedFriend(candidate.id);
-                toast.success(`${candidate.name} removed from the friend list.`);
+                toast.success(
+                  language === "zh-HK"
+                    ? `${candidate.name} 已從好友名單移除。`
+                    : `${candidate.name} removed from the friend list.`,
+                );
                 setCandidate(null);
               }}
               type="button"

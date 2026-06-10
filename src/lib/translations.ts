@@ -33,6 +33,17 @@ export type CopyKey =
   | "auth.sending"
   | "auth.verifyCode"
   | "auth.verifying"
+  | "auth.verifyEmailFirst"
+  | "auth.emailVerifiedSuccess"
+  | "auth.emailVerifiedReady"
+  | "auth.emailCodeSentTo"
+  | "auth.emailNotVerified"
+  | "auth.verificationFailed"
+  | "auth.emailCodeNotFound"
+  | "auth.emailCodeExpired"
+  | "auth.emailCodeAttemptsExceeded"
+  | "auth.emailCodeIncorrect"
+  | "auth.emailCodeDigits"
   | "auth.phoneVerified"
   | "auth.phoneNotVerified"
   | "auth.working"
@@ -114,6 +125,7 @@ export type CopyKey =
   | "weather.wind"
   | "weather.rainfall"
   | "page.home"
+  | "home.pageDesc"
   | "page.welcome"
   | "page.adminMessage"
   | "page.recentSharing"
@@ -122,6 +134,7 @@ export type CopyKey =
   | "common.cancel"
   | "common.submit"
   | "common.save"
+  | "common.edit"
   | "common.delete"
   | "common.yes"
   | "common.no"
@@ -190,6 +203,7 @@ export type CopyKey =
   | "toast.feedbackWithFiles"
   | "toast.messageSent"
   | "toast.itemDeleted"
+  | "toast.itemUpdated"
   | "toast.openingChat"
   | "toast.bookingConversation"
   | "toast.reportBlock"
@@ -208,6 +222,11 @@ export type CopyKey =
   | "posts.lowestReward"
   | "posts.hideYourPosts"
   | "posts.showYourPosts"
+  | "posts.foundIt"
+  | "posts.toggleIncludingMine"
+  | "posts.toggleExcludingMine"
+  | "posts.currentShowingMine"
+  | "posts.currentHidingMine"
   | "posts.createPost"
   | "posts.createQuest"
   | "posts.createSharing"
@@ -224,6 +243,8 @@ export type CopyKey =
   | "posts.timeRangePlaceholder"
   | "posts.priceReward"
   | "posts.media"
+  | "posts.editPost"
+  | "posts.editQuest"
   | "posts.deletePost"
   | "posts.deleteQuest"
   | "posts.deleteConfirm"
@@ -400,6 +421,17 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "auth.sending": "Sending...",
     "auth.verifyCode": "Verify Code",
     "auth.verifying": "Verifying...",
+    "auth.verifyEmailFirst": "Please verify your email with the code first.",
+    "auth.emailVerifiedSuccess": "Email verified successfully.",
+    "auth.emailVerifiedReady": "Email verified. You can now create your account.",
+    "auth.emailCodeSentTo": "Code sent to {email}.",
+    "auth.emailNotVerified": "Verify email to continue.",
+    "auth.verificationFailed": "Verification failed.",
+    "auth.emailCodeNotFound": "No verification code found. Please send a new code.",
+    "auth.emailCodeExpired": "Verification code has expired. Please send a new code.",
+    "auth.emailCodeAttemptsExceeded": "Too many incorrect attempts. Please send a new code.",
+    "auth.emailCodeIncorrect": "Incorrect verification code.",
+    "auth.emailCodeDigits": "Verification code must be 6 digits.",
     "auth.phoneVerified": "Phone verified. You can now create your account.",
     "auth.phoneNotVerified": "Phone not verified yet.",
     "auth.working": "Working...",
@@ -479,8 +511,9 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "weather.unavailable": "Weather unavailable",
     "weather.today": "Today Weather",
     "weather.wind": "Wind",
-    "weather.rainfall": "Rainfall",
+    "weather.rainfall": "Rain",
     "page.home": "Home overview",
+    "home.pageDesc": "Live weather, notices, community highlights, and quick actions are gathered here for an at-a-glance daily overview.",
     "page.welcome": "Welcome back",
     "page.adminMessage": "Admin message",
     "page.recentSharing": "Recent Sharing",
@@ -489,6 +522,7 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "common.cancel": "Cancel",
     "common.submit": "Submit",
     "common.save": "Save",
+    "common.edit": "Edit",
     "common.delete": "Delete",
     "common.yes": "Yes",
     "common.no": "No",
@@ -557,6 +591,7 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "toast.feedbackWithFiles": "Thank you. Your feedback and {n} attachment(s) have been submitted.",
     "toast.messageSent": "Message sent.",
     "toast.itemDeleted": "Item moved to history in Profile Settings.",
+    "toast.itemUpdated": "Post updated.",
     "toast.openingChat": "Opening chat with {name}.",
     "toast.bookingConversation": "Booking conversation opened in Messages.",
     "toast.reportBlock": "Report and block actions are ready for admin wiring.",
@@ -575,6 +610,11 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "posts.lowestReward": "Least Reward",
     "posts.hideYourPosts": "Hide Your Posts",
     "posts.showYourPosts": "Show Your Posts",
+    "posts.foundIt": "Found It!",
+    "posts.toggleIncludingMine": "Showing all users posts including myself",
+    "posts.toggleExcludingMine": "Showing all users posts excluding myself",
+    "posts.currentShowingMine": "Current: Showing Your Posts",
+    "posts.currentHidingMine": "Current: Hiding Your Posts",
     "posts.createPost": "Create Post",
     "posts.createQuest": "Create Quest",
     "posts.createSharing": "Create Sharing Post",
@@ -591,6 +631,8 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "posts.timeRangePlaceholder": "Today 13:00 to 20:00",
     "posts.priceReward": "Price / Reward",
     "posts.media": "Media",
+    "posts.editPost": "Edit post",
+    "posts.editQuest": "Edit quest",
     "posts.deletePost": "Delete post",
     "posts.deleteQuest": "Delete quest",
     "posts.deleteConfirm": "Are you sure you want to delete this post?",
@@ -693,7 +735,7 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "profile.availableTimeSlot": "Available time slot",
     "profile.history": "History",
     "profile.deletedAt": "Deleted at",
-    "profile.statusSecurity": "Status and security",
+    "profile.statusSecurity": "Status & Security",
     "profile.onlineStatus": "Online status",
     "profile.points": "Points balance",
     "profile.personalId": "Personal ID display",
@@ -766,6 +808,17 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "auth.sending": "發送中...",
     "auth.verifyCode": "驗證",
     "auth.verifying": "驗證中...",
+    "auth.verifyEmailFirst": "請先使用驗證碼完成電郵驗證。",
+    "auth.emailVerifiedSuccess": "電郵驗證成功。",
+    "auth.emailVerifiedReady": "電郵已驗證，你現在可以建立帳戶。",
+    "auth.emailCodeSentTo": "驗證碼已發送至 {email}。",
+    "auth.emailNotVerified": "請先驗證電郵以繼續。",
+    "auth.verificationFailed": "驗證失敗。",
+    "auth.emailCodeNotFound": "找不到驗證碼，請重新發送新驗證碼。",
+    "auth.emailCodeExpired": "驗證碼已過期，請重新發送新驗證碼。",
+    "auth.emailCodeAttemptsExceeded": "錯誤次數過多，請重新發送新驗證碼。",
+    "auth.emailCodeIncorrect": "驗證碼不正確。",
+    "auth.emailCodeDigits": "驗證碼必須為 6 位數字。",
     "auth.phoneVerified": "電話號碼已驗證，您現可創建帳戶。",
     "auth.phoneNotVerified": "電話號碼尚未驗證。",
     "auth.working": "處理中...",
@@ -847,6 +900,7 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "weather.wind": "風速",
     "weather.rainfall": "雨量",
     "page.home": "主頁總覽",
+    "home.pageDesc": "即時天氣、管理通知、社區重點與快捷操作都集中在這裡，方便你快速掌握每日狀況。",
     "page.welcome": "歡迎回來",
     "page.adminMessage": "管理員訊息",
     "page.recentSharing": "最近分享",
@@ -855,6 +909,7 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "common.cancel": "取消",
     "common.submit": "提交",
     "common.save": "儲存",
+    "common.edit": "編輯",
     "common.delete": "刪除",
     "common.yes": "是",
     "common.no": "否",
@@ -896,7 +951,7 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "posts.pageTitle.sharing": "分享",
     "posts.pageTitle.secondHand": "二手",
     "posts.pageTitle.lostFound": "失物尋回",
-    "posts.pageTitle.quest": "任務广場",
+    "posts.pageTitle.quest": "任務廣場",
     "posts.selectedFiles": "已選擇 {n} 個媒體檔案待上傳。",
     "feedback.selectedFiles": "已選擇 {n} 個附件待上傳。",
     "auth.signedIn": "登入成功。",
@@ -923,6 +978,7 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "toast.feedbackWithFiles": "感謝。您的意見及 {n} 個附件已提交。",
     "toast.messageSent": "訊息已發送。",
     "toast.itemDeleted": "項目已移至個人設定的歷史記錄。",
+    "toast.itemUpdated": "帖子已更新。",
     "toast.openingChat": "正在開啟聆天：{name}。",
     "toast.bookingConversation": "預約對話已在「訊息」開啟。",
     "toast.reportBlock": "舉報及封鎖功能將由管理員處理。",
@@ -941,6 +997,11 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "posts.lowestReward": "最低賞金",
     "posts.hideYourPosts": "隱藏你的帖子",
     "posts.showYourPosts": "顯示你的帖子",
+    "posts.foundIt": "我找到了！",
+    "posts.toggleIncludingMine": "顯示所有用戶帖子，包括自己",
+    "posts.toggleExcludingMine": "顯示所有用戶帖子，不包括自己",
+    "posts.currentShowingMine": "目前：顯示你的帖子",
+    "posts.currentHidingMine": "目前：隱藏你的帖子",
     "posts.createPost": "發布帖子",
     "posts.createQuest": "發布任務",
     "posts.createSharing": "發布分享帖子",
@@ -957,6 +1018,8 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "posts.timeRangePlaceholder": "今日 13:00 至 20:00",
     "posts.priceReward": "價格 / 賞金",
     "posts.media": "媒體",
+    "posts.editPost": "編輯帖子",
+    "posts.editQuest": "編輯任務",
     "posts.deletePost": "刪除帖子",
     "posts.deleteQuest": "刪除任務",
     "posts.deleteConfirm": "確定要刪除這個帖子嗎？",
@@ -1040,14 +1103,14 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "nearby.endTime": "結束時間",
     "posts.pageDesc": "搜尋、排序及管理社區內容，支援各路由的特定操作及管理功能。",
     "nearby.pageDesc": "使用瀏覽器地理位置發現附近地點，切換列表詳情模式與地圖模式。",
-    "calendar.pageDesc": "預約、已加入活動及個人行程均顯示於同一日曆，支援日游詳情面板及快速創建活動。",
+    "calendar.pageDesc": "預約、已加入活動及個人行程均顯示於同一日曆，支援日曆詳情面板及快速建立活動。",
     "booking.pageDesc": "追蹤商行、設施及其他可預約空間的請求，包含待處理、已接受、已拒絕及已取消狀態。",
-    "events.pageDesc": "在此看突及加入社區活動，參與資料將同步至日曆系統。",
+    "events.pageDesc": "在此探索及加入社區活動，參與資料將同步至日曆系統。",
     "messages.pageDesc": "支援持續對話、特殊系統訊息及跨功能導航的直接訊息與群組聊天工作區。",
-    "friends.pageDesc": "搜尋建議的那述、管理好友關係，並直接開始私人對話。",
-    "ai.pageDesc": "AI 助手透過配置的 n8n webhook 處理建築相關問題，並保持本地聆天記錄管理及每日限額界面。",
-    "facilities.pageDesc": "會所射施使用可用性、預約邏輯及前台付款指引的分割工作區。",
-    "documents.pageDesc": "建築法規、法律及操作公告在此整理，支援快速搜尋及輕量為查閱。",
+    "friends.pageDesc": "搜尋建議住戶、管理好友關係，並直接開始私人對話。",
+    "ai.pageDesc": "AI 助手透過已配置的 n8n webhook 處理大廈相關問題，並保留本地聊天記錄管理及每日限額介面。",
+    "facilities.pageDesc": "會所設施頁集中顯示可用時段、預約邏輯及前台付款指引。",
+    "documents.pageDesc": "大廈法規、政策及營運公告集中整理於此，支援快速搜尋及輕量查閱。",
     "profile.description": "登記資料直接反映於個人設定，讓居民於一處管理身份、聯絡資料、可用時間及歷史紀錄。",
     "profile.username": "用戶名",
     "profile.phone": "電話號碼",

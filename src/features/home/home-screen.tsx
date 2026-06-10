@@ -96,10 +96,10 @@ export function HomeScreen() {
   const weather = useWeather(language);
   const sharedContent = usePersistedSharedContent();
   const posts = usePersistedPosts();
-  const advertisements = sharedContent.advertisementsByLanguage[language] ?? [];
-  const activeAdvertisement = advertisements[activeAd] ?? advertisements[0];
   const [activeAd, setActiveAd] = useState(0);
   const [currentTimeLabel, setCurrentTimeLabel] = useState("");
+  const advertisements = sharedContent.advertisementsByLanguage[language] ?? [];
+  const activeAdvertisement = advertisements[activeAd] ?? advertisements[0];
 
   useEffect(() => {
     const updateCurrentTimeLabel = () => {
@@ -158,14 +158,16 @@ export function HomeScreen() {
           />
           <div className="mt-4 flex flex-1 flex-col justify-between gap-4">
             <div className="grid gap-2 sm:grid-cols-3">
-              <div className="rounded-3xl border border-border bg-panel-strong px-3.5 py-3">
-                <div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-accent-strong">
-                  <span>{t(language, "weather.today")}</span>
-                  <WeatherStatusVisual
-                    code={currentWeatherCode}
-                    description={currentWeatherLabel}
-                    size="lg"
-                  />
+              <div className="min-w-0 rounded-3xl border border-border bg-panel-strong px-3.5 py-3">
+                <div className="flex min-w-0 min-h-[4.25rem] flex-col items-center justify-between gap-2 text-center text-[11px] font-semibold uppercase leading-4 tracking-[0.14em] text-accent-strong">
+                  <span className="min-w-0">{t(language, "weather.today")}</span>
+                  <div className="shrink-0 self-center">
+                    <WeatherStatusVisual
+                      code={currentWeatherCode}
+                      description={currentWeatherLabel}
+                      size="md"
+                    />
+                  </div>
                 </div>
               </div>
               <WeatherMetric
@@ -337,12 +339,12 @@ function WeatherMetric({
   visual: React.ReactNode;
 }) {
   return (
-    <div className="rounded-3xl border border-border bg-panel-strong px-3.5 py-3">
-      <div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-accent-strong">
-        <span>{label}</span>
-        {visual}
+    <div className="min-w-0 rounded-3xl border border-border bg-panel-strong px-3.5 py-3">
+      <div className="flex min-w-0 items-start justify-between gap-2 text-[11px] font-semibold uppercase leading-4 tracking-[0.14em] text-accent-strong">
+        <span className="min-w-0 flex-1">{label}</span>
+        <div className="shrink-0 pt-0.5">{visual}</div>
       </div>
-      <p className="mt-2 text-lg font-semibold text-foreground">{value}</p>
+      <p className="mt-3 text-lg font-semibold text-foreground">{value}</p>
     </div>
   );
 }

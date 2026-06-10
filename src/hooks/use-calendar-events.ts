@@ -3,8 +3,10 @@
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, doc, onSnapshot, orderBy, query, setDoc } from "firebase/firestore";
 import { useSyncExternalStore } from "react";
+import { useToLink } from "@/lib/app-state";
 import { calendarEvents as seededCalendarEvents } from "@/lib/demo-data";
 import { getFirebaseServices } from "@/lib/firebase";
+import { localizeCalendarEvents } from "@/lib/seeded-content-localization";
 import type { CalendarEventItem } from "@/lib/types";
 
 const STORAGE_KEY = "to-link-calendar-events";
@@ -17,7 +19,10 @@ let initialized = false;
 let disposeRemoteListener: (() => void) | null = null;
 
 export function useCalendarEvents() {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const { language } = useToLink();
+  const events = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+  return localizeCalendarEvents(language, events);
 }
 
 export function addCalendarEvent(event: CalendarEventItem) {

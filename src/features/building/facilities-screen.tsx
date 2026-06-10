@@ -20,30 +20,56 @@ export function FacilitiesScreen() {
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [participants, setParticipants] = useState(3);
+  const [contactNumber, setContactNumber] = useState("");
+  const [organizerName, setOrganizerName] = useState(profile.name);
+  const [bookingDate, setBookingDate] = useState(getTodayDateValue());
+  const [bookingStartTime, setBookingStartTime] = useState("10:00");
+  const [bookingEndTime, setBookingEndTime] = useState("12:00");
   const facilities = sharedContent.facilities;
 
   const selected = facilities.find((item) => item.id === selectedId) ?? facilities[0];
+  const roundedDurationHours = useMemo(
+    () => getRoundedDurationHours(bookingStartTime, bookingEndTime),
+    [bookingEndTime, bookingStartTime],
+  );
   const pricePreview = useMemo(() => {
     if (!selected) {
-      return "$0";
+      return language === "zh-HK" ? "HK$0" : "$0";
     }
 
-    if (selected.roomName.includes("Pool")) {
-      return `$25 * ${participants} Participant(s) = $${25 * participants}`;
+    if (selected.id === "facility-2") {
+      return language === "zh-HK"
+        ? `${participants} 位參加者 x HK$25 = HK$${25 * participants}`
+        : `$25 * ${participants} Participant(s) = $${25 * participants}`;
     }
 
-    if (selected.roomName.includes("Study")) {
-      return "$10 * 2 Hour(s) = $20";
+    if (selected.id === "facility-1") {
+      return language === "zh-HK"
+        ? `${roundedDurationHours} 小時 x HK$10 = HK$${10 * roundedDurationHours}`
+        : `$10 * ${roundedDurationHours} Hour(s) = $${10 * roundedDurationHours}`;
     }
 
     return selected.pricePreview;
-  }, [participants, selected]);
+  }, [language, participants, roundedDurationHours, selected]);
+
+  function openBookingModal() {
+    setOrganizerName(profile.name);
+    setContactNumber("");
+    setBookingDate(getTodayDateValue());
+    setBookingStartTime("10:00");
+    setBookingEndTime("12:00");
+    setBookingOpen(true);
+  }
+
+  function closeBookingModal() {
+    setBookingOpen(false);
+  }
 
   return (
     <div className="relative flex h-full w-full">
       <FeatureShell
         description={t(language, "facilities.pageDesc")}
-        title="Clubhouse & Facilities"
+        title={t(language, "nav.building.facilities")}
       >
         <div className="grid h-full gap-4 xl:grid-cols-[minmax(0,0.76fr)_minmax(0,1.24fr)]">
           <div className="min-h-0 overflow-y-auto pr-1">
@@ -97,7 +123,7 @@ export function FacilitiesScreen() {
 
                 <button
                   className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white"
-                  onClick={() => setBookingOpen(true)}
+                  onClick={openBookingModal}
                   type="button"
                 >
                   {t(language, "common.bookNow")}
@@ -108,7 +134,7 @@ export function FacilitiesScreen() {
         </div>
       </FeatureShell>
 
-      <Modal onClose={() => setBookingOpen(false)} open={bookingOpen} title={t(language, "facilities.bookingTitle")}>
+      <Modal onClose={closeBookingModal} open={bookingOpen} title={t(language, "facilities.bookingTitle")}>
         <form
           className="grid gap-4 md:grid-cols-2"
           onSubmit={async (event) => {
@@ -118,39 +144,50 @@ export function FacilitiesScreen() {
               return;
             }
 
-            const formData = new FormData(event.currentTarget);
-            const organizerName = String(formData.get("organizerName") ?? "").trim() || profile.name;
-            const contactNumber = String(formData.get("contactNumber") ?? "").trim();
-            const dateTimeValue = String(formData.get("dateTime") ?? "").trim();
-            const [date = new Date().toISOString().slice(0, 10), time = "Pending"] = dateTimeValue.split("T");
+            const normalizedOrganizerName = organizerName.trim() || profile.name;
+            const normalizedContactNumber = contactNumber.trim();
+
+            if (!bookingDate || !bookingStartTime || !bookingEndTime) {
+              toast.error(language === "zh-HK" ? "請選擇日期、開始時間及結束時間。" : "Please select a date, start time, and end time.");
+              return;
+            }
+
+            if (!roundedDurationHours) {
+              toast.error(language === "zh-HK" ? "結束時間必須晚於開始時間。" : "The end time must be later than the start time.");
+              return;
+            }
 
             await addPersistedBooking({
               id: crypto.randomUUID(),
               targetName: selected.roomName,
-              organizer: organizerName,
+              organizer: normalizedOrganizerName,
               participantCount: participants,
-              dateLabel: dateTimeValue ? `${date} · ${time}` : t(language, "booking.status.pending"),
+              dateLabel: `${bookingDate} · ${bookingStartTime} - ${bookingEndTime}`,
               status: "pending",
             });
 
             addCalendarEvent({
               id: crypto.randomUUID(),
-              title: `${selected.roomName} booking`,
+              title: language === "zh-HK" ? `${selected.roomName} 預約` : `${selected.roomName} booking`,
               description: [
-                `Organizer: ${organizerName}`,
-                contactNumber ? `Contact: ${contactNumber}` : null,
-                `Participants: ${participants}`,
-                `Pricing: ${pricePreview}`,
+                language === "zh-HK" ? `主辦人：${normalizedOrganizerName}` : `Organizer: ${normalizedOrganizerName}`,
+                normalizedContactNumber
+                  ? language === "zh-HK"
+                    ? `聯絡電話：${normalizedContactNumber}`
+                    : `Contact: ${normalizedContactNumber}`
+                  : null,
+                language === "zh-HK" ? `參加人數：${participants}` : `Participants: ${participants}`,
+                language === "zh-HK" ? `收費：${pricePreview}` : `Pricing: ${pricePreview}`,
               ]
                 .filter(Boolean)
                 .join(". "),
-              date,
-              timeLabel: time,
+              date: bookingDate,
+              timeLabel: `${bookingStartTime} - ${bookingEndTime}`,
               type: "booking",
             });
 
             toast.success(t(language, "toast.facilityBooked"));
-            setBookingOpen(false);
+            closeBookingModal();
           }}
         >
           <label className="space-y-2 md:col-span-2">
@@ -159,7 +196,7 @@ export function FacilitiesScreen() {
           </label>
           <label className="space-y-2">
             <span className="text-sm font-medium text-foreground">{t(language, "common.contactNumbers")}</span>
-            <input className="app-input w-full rounded-[20px] px-4 py-3" name="contactNumber" placeholder="1234 8765" />
+            <input className="app-input w-full rounded-[20px] px-4 py-3" onChange={(event) => setContactNumber(event.target.value)} placeholder="1234 8765" value={contactNumber} />
           </label>
           <label className="space-y-2">
             <span className="text-sm font-medium text-foreground">{t(language, "facilities.participantsNumbers")}</span>
@@ -167,15 +204,25 @@ export function FacilitiesScreen() {
               className="app-input w-full rounded-[20px] px-4 py-3"
               onChange={(event) => setParticipants(Number(event.target.value) || 1)}
               placeholder="3"
+              type="number"
+              value={participants}
             />
           </label>
           <label className="space-y-2">
             <span className="text-sm font-medium text-foreground">{t(language, "common.organizerName")}</span>
-            <input className="app-input w-full rounded-[20px] px-4 py-3" defaultValue={profile.name} name="organizerName" placeholder={t(language, "common.namePlaceholder")} />
+            <input className="app-input w-full rounded-[20px] px-4 py-3" onChange={(event) => setOrganizerName(event.target.value)} placeholder={t(language, "common.namePlaceholder")} value={organizerName} />
           </label>
           <label className="space-y-2">
-            <span className="text-sm font-medium text-foreground">{t(language, "common.dateTime")}</span>
-            <input className="app-input w-full rounded-[20px] px-4 py-3" name="dateTime" type="datetime-local" />
+            <span className="text-sm font-medium text-foreground">{t(language, "nearby.date")}</span>
+            <input className="app-input w-full rounded-[20px] px-4 py-3" onChange={(event) => setBookingDate(event.target.value)} type="date" value={bookingDate} />
+          </label>
+          <label className="space-y-2">
+            <span className="text-sm font-medium text-foreground">{t(language, "nearby.startTime")}</span>
+            <input className="app-input w-full rounded-[20px] px-4 py-3" onChange={(event) => setBookingStartTime(event.target.value)} type="time" value={bookingStartTime} />
+          </label>
+          <label className="space-y-2">
+            <span className="text-sm font-medium text-foreground">{t(language, "nearby.endTime")}</span>
+            <input className="app-input w-full rounded-[20px] px-4 py-3" onChange={(event) => setBookingEndTime(event.target.value)} type="time" value={bookingEndTime} />
           </label>
           <label className="space-y-2 md:col-span-2">
             <span className="text-sm font-medium text-foreground">{t(language, "common.price")}</span>
@@ -184,7 +231,7 @@ export function FacilitiesScreen() {
           <div className="md:col-span-2 flex justify-end gap-3">
             <button
               className="rounded-full border border-border bg-panel px-4 py-3 text-sm font-semibold text-foreground"
-              onClick={() => setBookingOpen(false)}
+              onClick={closeBookingModal}
               type="button"
             >
               {t(language, "common.cancel")}
@@ -197,4 +244,25 @@ export function FacilitiesScreen() {
       </Modal>
     </div>
   );
+}
+
+function getRoundedDurationHours(startTime: string, endTime: string) {
+  if (!startTime || !endTime) {
+    return 0;
+  }
+
+  const [startHour, startMinute] = startTime.split(":").map(Number);
+  const [endHour, endMinute] = endTime.split(":").map(Number);
+  const startMinutes = startHour * 60 + startMinute;
+  const endMinutes = endHour * 60 + endMinute;
+
+  if (!Number.isFinite(startMinutes) || !Number.isFinite(endMinutes) || endMinutes <= startMinutes) {
+    return 0;
+  }
+
+  return Math.max(1, Math.ceil((endMinutes - startMinutes) / 60));
+}
+
+function getTodayDateValue() {
+  return new Date().toISOString().slice(0, 10);
 }

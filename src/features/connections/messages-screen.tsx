@@ -2,6 +2,7 @@
 
 import { Languages, Search, Send, Users } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
@@ -12,14 +13,16 @@ import {
   usePersistedConnections,
   usePersistedCurrentUserProfile,
 } from "@/hooks/use-persisted-app-data";
+import { getFirebaseServices } from "@/lib/firebase";
 import { autoTranslateText } from "@/lib/translation";
 import { t } from "@/lib/translations";
-import { truncate } from "@/lib/utils";
 
 export function MessagesScreen() {
   const { language } = useToLink();
+  const searchParams = useSearchParams();
   const connections = usePersistedConnections();
   const { profile } = usePersistedCurrentUserProfile();
+  const currentUserId = getFirebaseServices()?.auth.currentUser?.uid ?? profile.id;
   const [query, setQuery] = useState("");
   const [activeRoomId, setActiveRoomId] = useState<string | undefined>(undefined);
   const [composerOpen, setComposerOpen] = useState(false);
@@ -35,7 +38,16 @@ export function MessagesScreen() {
     () => connections.chatRooms.filter((room) => room.title.toLowerCase().includes(query.toLowerCase())),
     [connections.chatRooms, query],
   );
-  const activeRoom = filteredRooms.find((room) => room.id === activeRoomId) ?? filteredRooms[0];
+  const requestedRoomId = searchParams.get("room");
+  const resolvedRoomId =
+    activeRoomId ??
+    (requestedRoomId && connections.chatRooms.some((room) => room.id === requestedRoomId)
+      ? requestedRoomId
+      : undefined);
+  const activeRoom =
+    filteredRooms.find((room) => room.id === resolvedRoomId) ??
+    connections.chatRooms.find((room) => room.id === resolvedRoomId) ??
+    filteredRooms[0];
 
   function getMessageKey(roomId: string, messageId: string) {
     return `${roomId}:${messageId}`;
@@ -83,15 +95,24 @@ export function MessagesScreen() {
         hour12: false,
       });
 
-      await sendPersistedMessage(activeRoom.id, {
+      const sent = await sendPersistedMessage(activeRoom.id, {
         id: `msg-local-${Date.now()}`,
         senderName: profile.name,
         senderAvatar: profile.avatar,
+        senderId: currentUserId,
         kind: "text",
-        content: truncate(content.replace(/\s+/g, " "), 80),
+        content: content.replace(/\s+/g, " "),
         sentAt,
         inbound: false,
       });
+
+      if (!sent) {
+        throw new Error(
+          language === "zh-HK"
+            ? "暫時無法發送訊息。"
+            : "Unable to send the message right now.",
+        );
+      }
 
       setDraft("");
       toast.success(t(language, "toast.messageSent"));
@@ -105,8 +126,8 @@ export function MessagesScreen() {
   return (
     <div className="relative flex h-full w-full">
       <FeatureShell
-        description={t(language, "messages.pageDesc")}
-        title="Messages"
+        description=""
+        title=""
         toolbar={
           <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px]">
             <label className="app-input flex items-center gap-3 rounded-full px-4 py-3 text-sm">
@@ -129,7 +150,7 @@ export function MessagesScreen() {
           </div>
         }
       >
-        <div className="grid h-full gap-4 xl:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
+        <div className="grid h-full gap-4 xl:grid-cols-[minmax(0,0.62fr)_minmax(0,1.38fr)]">
           <div className="min-h-0 overflow-y-auto pr-1">
             <div className="space-y-3">
               {filteredRooms.map((room) => (
@@ -167,20 +188,28 @@ export function MessagesScreen() {
             </div>
             <div className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
               {activeRoom?.messages.map((message) => (
-                <div key={message.id} className={message.inbound ? "flex justify-start" : "flex justify-end"}>
+                <div
+                  key={message.id}
+                  className={
+                    (message.senderId ? message.senderId !== currentUserId : message.inbound)
+                      ? "flex justify-start"
+                      : "flex justify-end"
+                  }
+                >
                   {(() => {
                     const translationKey = getMessageKey(activeRoom.id, message.id);
                     const translated = translatedMessages[translationKey];
                     const showTranslated = shownTranslations[translationKey] && Boolean(translated);
                     const isTranslating = Boolean(translatingMessages[translationKey]);
+                    const isInbound = message.senderId ? message.senderId !== currentUserId : message.inbound;
 
                     return (
-                  <div className={message.accentLabel ? "max-w-[80%] rounded-[24px] border border-accent/30 bg-accent-soft px-4 py-3 text-sm text-foreground" : message.inbound ? "max-w-[80%] rounded-[24px] border border-border bg-panel px-4 py-3 text-sm text-foreground" : "max-w-[80%] rounded-[24px] bg-accent px-4 py-3 text-sm text-white"}>
+                  <div className={message.accentLabel ? "max-w-[80%] rounded-[24px] border border-accent/30 bg-accent-soft px-4 py-3 text-sm text-foreground" : isInbound ? "max-w-[80%] rounded-[24px] border border-border bg-panel px-4 py-3 text-sm text-foreground" : "max-w-[80%] rounded-[24px] bg-accent px-4 py-3 text-sm text-white"}>
                     {message.accentLabel ? <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-strong">{message.accentLabel}</p> : null}
                     <p className="leading-7">{showTranslated ? translated : message.content}</p>
                     <div className="mt-2 flex items-center justify-between gap-2">
                       <button
-                        className={message.inbound ? "inline-flex items-center gap-1 rounded-full border border-border/70 px-2.5 py-1 text-[11px] font-semibold text-muted transition hover:border-accent/40 hover:text-accent" : "inline-flex items-center gap-1 rounded-full border border-white/35 bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white/90 transition hover:bg-white/20"}
+                        className={isInbound ? "inline-flex items-center gap-1 rounded-full border border-border/70 px-2.5 py-1 text-[11px] font-semibold text-muted transition hover:border-accent/40 hover:text-accent" : "inline-flex items-center gap-1 rounded-full border border-white/35 bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white/90 transition hover:bg-white/20"}
                         disabled={isTranslating}
                         onClick={() => handleToggleTranslation(activeRoom.id, message.id, message.content)}
                         type="button"
@@ -188,7 +217,7 @@ export function MessagesScreen() {
                         <Languages className="h-3 w-3" />
                         {isTranslating ? t(language, "messages.translating") : showTranslated ? t(language, "messages.original") : t(language, "messages.translate")}
                       </button>
-                      <p className={message.inbound ? "text-xs text-muted" : "text-xs text-white/80"}>{message.sentAt}</p>
+                      <p className={isInbound ? "text-xs text-muted" : "text-xs text-white/80"}>{message.sentAt}</p>
                     </div>
                   </div>
                     );
@@ -219,12 +248,14 @@ export function MessagesScreen() {
       <Modal onClose={() => setComposerOpen(false)} open={composerOpen} title={t(language, "messages.createGroup")}>
         <div className="space-y-4">
           <p className="text-sm leading-7 text-muted">
-            Add at least 3 people including the current user. Suggestions are pulled from the friends list for now.
+            {language === "zh-HK"
+              ? "請至少加入 3 人（包括自己）。目前成員名單會先從好友列表提供。"
+              : "Add at least 3 people including the current user. Suggestions are pulled from the friends list for now."}
           </p>
           <input
             className="app-input w-full rounded-[20px] px-4 py-3"
             onChange={(event) => setGroupName(event.target.value)}
-            placeholder="Group name"
+            placeholder={language === "zh-HK" ? "群組名稱" : "Group name"}
             value={groupName}
           />
           <div className="space-y-3">
@@ -270,19 +301,23 @@ export function MessagesScreen() {
                 const selectedFriends = connections.friendList.filter((friend) =>
                   selectedFriendIds.includes(friend.id),
                 );
-                const nextRoom = {
-                  id: `room-${Date.now()}`,
-                  title: groupName.trim() || selectedFriends.map((friend) => friend.name.split(" ")[0]).join(", "),
-                  members: [profile.name, ...selectedFriends.map((friend) => friend.name)],
-                  preview: language === "zh-HK" ? "群組已建立。" : "Group created.",
-                  unreadCount: 0,
-                  online: true,
-                  group: true,
-                  messages: [],
-                };
+                const roomId = await createPersistedGroupChat({
+                  groupName: groupName.trim(),
+                  members: selectedFriends.map((friend) => ({
+                      avatar: friend.avatar,
+                      id: friend.id,
+                      name: friend.name,
+                      status: friend.status,
+                      username: friend.username,
+                    })),
+                });
 
-                await createPersistedGroupChat(nextRoom);
-                setActiveRoomId(nextRoom.id);
+                if (!roomId) {
+                  toast.error(language === "zh-HK" ? "暫時無法建立群組對話。" : "Unable to create the group chat right now.");
+                  return;
+                }
+
+                setActiveRoomId(roomId);
                 setGroupName("");
                 setSelectedFriendIds([]);
                 toast.success(language === "zh-HK" ? "群組對話已建立。" : "Group chat created.");

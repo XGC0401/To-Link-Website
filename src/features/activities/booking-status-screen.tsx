@@ -1,19 +1,42 @@
 "use client";
 
 import { MessageSquareMore } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
-import { updatePersistedBookingStatus, usePersistedBookings } from "@/hooks/use-persisted-app-data";
+import {
+  openPersistedDirectChat,
+  updatePersistedBookingStatus,
+  usePersistedBookings,
+  usePersistedCurrentUserProfile,
+} from "@/hooks/use-persisted-app-data";
 import { t } from "@/lib/translations";
 
 export function BookingStatusScreen() {
   const { language } = useToLink();
+  const router = useRouter();
   const bookings = usePersistedBookings();
+  const { profile } = usePersistedCurrentUserProfile();
+
+  async function handleOpenBookingConversation(organizer: string) {
+    const roomId = await openPersistedDirectChat({
+      members: [profile.name, organizer],
+      title: organizer,
+    });
+
+    if (!roomId) {
+      toast.error(language === "zh-HK" ? "暫時無法開啟預約對話。" : "Unable to open the booking conversation right now.");
+      return;
+    }
+
+    router.push(`/connections/messages?room=${encodeURIComponent(roomId)}`);
+  }
+
   return (
     <FeatureShell
       description={t(language, "booking.pageDesc")}
-      title="Booking Status"
+      title={t(language, "nav.activities.booking")}
     >
       <div className="grid h-full gap-4 overflow-y-auto pr-1 xl:grid-cols-2">
         {bookings.items.map((booking) => (
@@ -42,7 +65,9 @@ export function BookingStatusScreen() {
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 className="inline-flex items-center gap-2 rounded-full border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground"
-                onClick={() => toast.success(t(language, "toast.bookingConversation"))}
+                onClick={() => {
+                  void handleOpenBookingConversation(booking.organizer);
+                }}
                 type="button"
               >
                 <MessageSquareMore className="h-4 w-4" />
@@ -63,7 +88,11 @@ export function BookingStatusScreen() {
                   <button
                     className="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
                     onClick={async () => {
-                      await updatePersistedBookingStatus(booking.id, "denied", "Manual review required.");
+                      await updatePersistedBookingStatus(
+                        booking.id,
+                        "denied",
+                        language === "zh-HK" ? "需要人工審核。" : "Manual review required.",
+                      );
                       toast.success(t(language, "toast.denyFlow"));
                     }}
                     type="button"

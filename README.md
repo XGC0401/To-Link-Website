@@ -59,6 +59,23 @@ npm run dev
 npm run build
 ```
 
+## Firestore Rules
+
+This repo now includes a deployable Firestore rules file for the current client-side schema:
+
+- [firestore.rules](/workspaces/To-Link-Recreate-/firestore.rules)
+- [firebase.json](/workspaces/To-Link-Recreate-/firebase.json)
+
+Deploy it to your Firebase project with:
+
+```bash
+npx firebase-tools login
+npx firebase-tools use <your-firebase-project-id>
+npx firebase-tools deploy --only firestore:rules
+```
+
+Important limitation: the current app stores shared posts and shared chat rooms as single aggregate documents under `appData/posts` and `appData/chatRooms`. Because of that schema, the rules can only safely allow authenticated writes to those whole shared docs, not fine-grained per-post or per-room ownership. If you want stricter security later, the next step is to refactor posts and chat rooms into one document per post/chat room or move writes behind server/API endpoints.
+
 ## Notes
 
 - Theme, language, and font-size preferences use cookies instead of browser local storage.

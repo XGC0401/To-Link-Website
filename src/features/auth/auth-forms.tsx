@@ -275,6 +275,15 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
     return trimmed.replace(/[\s()-]/g, "");
   }
 
+  function createAvatarLabel(value: string) {
+    const parts = value
+      .split(/\s+/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    return parts.slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("") || "U";
+  }
+
   async function resolveEmailFromIdentifier(identifier: string) {
     const normalized = normalizeIdentifier(identifier);
 
@@ -326,7 +335,7 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
     const email = state.email.trim().toLowerCase();
 
     if (!email || !email.includes("@")) {
-      toast.error("Enter a valid email address first.");
+      toast.error(language === "zh-HK" ? "請先輸入有效的電郵地址。" : "Enter a valid email address first.");
       return;
     }
 
@@ -344,18 +353,31 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
         }),
       });
 
-      const payload = (await response.json()) as { error?: string };
+      const payload = (await response.json()) as { developmentCode?: string; error?: string };
 
       if (!response.ok) {
-        toast.error(payload.error ?? "Unable to send verification code.");
+        toast.error(
+          payload.error ? translateEmailCodeError(payload.error) : language === "zh-HK" ? "無法發送驗證碼。" : "Unable to send verification code.",
+        );
         return;
       }
 
       setCodeSentToEmail(email);
       setEmailCodeVerified(false);
-      toast.success("Verification code sent. Please check your email.");
+
+      if (payload.developmentCode) {
+        setEmailVerificationCode(payload.developmentCode);
+        toast.success(
+          language === "zh-HK"
+            ? `開發測試驗證碼：${payload.developmentCode}`
+            : `Development code ready: ${payload.developmentCode}`,
+        );
+        return;
+      }
+
+      toast.success(language === "zh-HK" ? "驗證碼已發送，請檢查你的電郵。" : "Verification code sent. Please check your email.");
     } catch {
-      toast.error("Unable to send verification code.");
+      toast.error(language === "zh-HK" ? "無法發送驗證碼。" : "Unable to send verification code.");
     } finally {
       setSendingEmailCode(false);
     }
@@ -366,12 +388,12 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
     const code = emailVerificationCode.trim();
 
     if (!email || !email.includes("@")) {
-      toast.error("Enter a valid email address first.");
+      toast.error(language === "zh-HK" ? "請先輸入有效的電郵地址。" : "Enter a valid email address first.");
       return;
     }
 
     if (!code || code.length !== 6) {
-      toast.error("Enter the 6-digit code from your email.");
+      toast.error(language === "zh-HK" ? "請輸入電郵中的 6 位驗證碼。" : "Enter the 6-digit code from your email.");
       return;
     }
 
@@ -394,17 +416,34 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
 
       if (!response.ok) {
         setEmailCodeVerified(false);
-        toast.error(payload.error ?? "Verification failed.");
+        toast.error(payload.error ? translateEmailCodeError(payload.error) : t(language, "auth.verificationFailed"));
         return;
       }
 
       setEmailCodeVerified(true);
-      toast.success("Email verified successfully.");
+      toast.success(t(language, "auth.emailVerifiedSuccess"));
     } catch {
       setEmailCodeVerified(false);
-      toast.error("Verification failed.");
+      toast.error(t(language, "auth.verificationFailed"));
     } finally {
       setVerifyingEmailCode(false);
+    }
+  }
+
+  function translateEmailCodeError(message: string) {
+    switch (message) {
+      case "No verification code found. Please send a new code.":
+        return t(language, "auth.emailCodeNotFound");
+      case "Verification code has expired. Please send a new code.":
+        return t(language, "auth.emailCodeExpired");
+      case "Too many incorrect attempts. Please send a new code.":
+        return t(language, "auth.emailCodeAttemptsExceeded");
+      case "Incorrect verification code.":
+        return t(language, "auth.emailCodeIncorrect");
+      case "Verification code must be 6 digits.":
+        return t(language, "auth.emailCodeDigits");
+      default:
+        return message;
     }
   }
 
@@ -449,7 +488,14 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
       <div className="relative grid w-full flex-1 overflow-hidden rounded-[30px] border border-white/40 bg-white/30 shadow-[0_30px_80px_rgba(146,72,8,0.16)] backdrop-blur-xl lg:grid-cols-[1.1fr_0.9fr]">
         <section className="relative hidden overflow-hidden px-10 py-12 lg:flex lg:flex-col lg:justify-between">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,205,161,0.95),transparent_34%),linear-gradient(135deg,#fff7f0_0%,#ffe8d6_58%,#ffd3b2_100%)]" />
-          <div className="absolute inset-0 opacity-70 [background-image:radial-gradient(circle,rgba(243,107,33,0.12)_1px,transparent_1px)] [background-size:22px_22px]" />
+          <div
+            className={cn(
+              "absolute inset-0 opacity-70 [background-size:22px_22px]",
+              theme === "light"
+                ? "[background-image:radial-gradient(circle,rgba(243,107,33,0.12)_1px,transparent_1px)]"
+                : "[background-image:radial-gradient(circle,rgba(255,244,235,0.16)_1px,transparent_1px)]",
+            )}
+          />
           <div className="relative z-10 max-w-xl space-y-7">
             <div className="inline-flex items-center gap-3 rounded-full border border-white/70 bg-white/80 px-5 py-2.5 text-sm font-semibold text-accent-strong shadow-[0_10px_24px_rgba(243,107,33,0.18)]">
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-base font-black tracking-wide text-white ring-4 ring-accent/20">
@@ -594,7 +640,7 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                   }
 
                   if (!emailCodeVerified || codeSentToEmail !== email) {
-                    toast.error("Please verify your email with the code first.");
+                    toast.error(t(language, "auth.verifyEmailFirst"));
                     return;
                   }
 
@@ -645,15 +691,22 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                     }
 
                     await setDoc(doc(services.db, "userProfiles", credential.user.uid), {
+                      id: credential.user.uid,
                       uid: credential.user.uid,
                       email,
                       firstName: state.firstName.trim(),
                       lastName: state.lastName.trim(),
+                      name: displayName,
                       username: state.username.trim(),
+                      avatar: createAvatarLabel(displayName || state.username.trim() || email),
+                      bio: "",
                       phone: (state.phoneCountryCode + state.phone).trim(),
                       country: state.country.trim(),
                       currentState: state.currentState,
                       jobTitle: state.jobTitle.trim(),
+                      role: "resident",
+                      status: "online",
+                      points: 0,
                       createdAt: new Date().toISOString(),
                     });
 
@@ -852,16 +905,16 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                         setEmailCodeVerified(false);
                       }
                     }}
-                    placeholder="resident@email.com"
+                    placeholder="name@example.com"
                     type="email"
                     value={state.email}
                   />
                   <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
                     <InputField
                       icon={<KeyRound className="h-4 w-4" />}
-                      label="Email Verification Code"
+                      label={t(language, "auth.verificationCode")}
                       onChange={(value) => setEmailVerificationCode(value.replace(/\D/g, "").slice(0, 6))}
-                      placeholder="Enter 6-digit email code"
+                      placeholder={t(language, "auth.verificationCode")}
                       value={emailVerificationCode}
                     />
                     <button
@@ -873,7 +926,7 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                       onClick={sendRegisterEmailCode}
                       type="button"
                     >
-                      {sendingEmailCode ? "Sending..." : "Send Verification Code"}
+                      {sendingEmailCode ? t(language, "auth.sending") : t(language, "auth.sendVerifyCode")}
                     </button>
                   </div>
                   <button
@@ -885,14 +938,14 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                     onClick={verifyRegisterEmailCode}
                     type="button"
                   >
-                    {verifyingEmailCode ? "Verifying..." : "Verify Code"}
+                    {verifyingEmailCode ? t(language, "auth.verifying") : t(language, "auth.verifyCode")}
                   </button>
                   <p className={cn("text-xs", emailCodeVerified ? "text-success" : "text-muted")}>
                     {emailCodeVerified
-                      ? "Email verified. You can now create your account."
+                      ? t(language, "auth.emailVerifiedReady")
                       : codeSentToEmail
-                        ? `Code sent to ${codeSentToEmail}.`
-                        : "Email not verified yet."}
+                        ? t(language, "auth.emailCodeSentTo").replace("{email}", codeSentToEmail)
+                        : t(language, "auth.emailNotVerified")}
                   </p>
                   <InputField
                     icon={<KeyRound className="h-4 w-4" />}
@@ -1087,6 +1140,7 @@ function CountryCodeCombobox({
   options: CountryCodeOption[];
   value: string;
 }) {
+  const { language } = useToLink();
   const [query, setQuery] = useState(value);
   const [open, setOpen] = useState(false);
 
@@ -1141,7 +1195,7 @@ function CountryCodeCombobox({
               commitCustomCode(query);
             }
           }}
-          placeholder="Search or enter +code"
+          placeholder={language === "zh-HK" ? "搜尋或輸入 +區號" : "Search or enter +code"}
           value={query}
         />
       </div>

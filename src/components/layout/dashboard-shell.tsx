@@ -155,6 +155,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                             ? t(language, "nav.info.faq")
                             : activeInfoPanel === "aboutUs"
                               ? t(language, "nav.info.about")
+                              : activeInfoPanel === "privacyPolicy"
+                                ? t(language, "nav.info.privacy")
+                                : activeInfoPanel === "termsOfService"
+                                  ? t(language, "nav.info.terms")
                               : activeInfoPanel === "appFeedback"
                                 ? t(language, "nav.info.feedback")
                                 : t(language, "nav.info.community")}
@@ -170,9 +174,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                     </div>
 
                     {activeInfoPanel === "faq" ? (
-                      <div className="max-h-[62vh] space-y-3 overflow-y-auto pr-2">
+                      <div className="max-h-[62vh] space-y-5 overflow-y-auto pr-2">
                         {faqItems.map((item) => (
-                          <div key={item.id} className="space-y-2">
+                          <div key={item.id} className="space-y-3">
                             <div className="rounded-3xl bg-rose-500/90 px-5 py-4 text-sm font-semibold text-white">
                               {item.question}
                             </div>
@@ -188,6 +192,74 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                       <div className="space-y-4 text-sm leading-7 text-muted">
                         <p>{t(language, "about.description")}</p>
                         <p>{t(language, "about.platformNote")}</p>
+                      </div>
+                    ) : null}
+
+                    {activeInfoPanel === "privacyPolicy" ? (
+                      <div className="max-h-[62vh] space-y-4 overflow-y-auto pr-2 text-sm leading-7 text-muted">
+                        <p>
+                          {language === "zh-HK"
+                            ? "此私隱政策為示範版本，說明平台如何收集、使用及保護住戶資料。"
+                            : "This Privacy Policy is a mock document describing how the platform collects, uses, and protects resident data."}
+                        </p>
+                        <div className="rounded-[24px] border border-border bg-panel-strong px-5 py-4">
+                          <p className="font-semibold text-foreground">{language === "zh-HK" ? "1. 收集資料" : "1. Data We Collect"}</p>
+                          <p className="mt-2">
+                            {language === "zh-HK"
+                              ? "我們可能收集註冊資料、聯絡方式、帖子互動、預約紀錄及你主動提交的回饋內容。"
+                              : "We may collect registration details, contact information, post interactions, booking records, and feedback you voluntarily submit."}
+                          </p>
+                        </div>
+                        <div className="rounded-[24px] border border-border bg-panel-strong px-5 py-4">
+                          <p className="font-semibold text-foreground">{language === "zh-HK" ? "2. 使用方式" : "2. How We Use It"}</p>
+                          <p className="mt-2">
+                            {language === "zh-HK"
+                              ? "資料會用於帳戶登入、社區互動、預約服務、通知推送及改善平台體驗。"
+                              : "Data is used for account access, community interactions, booking services, notifications, and improving the platform experience."}
+                          </p>
+                        </div>
+                        <div className="rounded-[24px] border border-border bg-panel-strong px-5 py-4">
+                          <p className="font-semibold text-foreground">{language === "zh-HK" ? "3. 保留與保護" : "3. Retention and Protection"}</p>
+                          <p className="mt-2">
+                            {language === "zh-HK"
+                              ? "平台會以合理安全措施保護資料，並只在營運、法規或稽核需要時保留必要紀錄。"
+                              : "The platform applies reasonable safeguards and retains only the records needed for operations, compliance, or audit purposes."}
+                          </p>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {activeInfoPanel === "termsOfService" ? (
+                      <div className="max-h-[62vh] space-y-4 overflow-y-auto pr-2 text-sm leading-7 text-muted">
+                        <p>
+                          {language === "zh-HK"
+                            ? "此服務條款為示範版本，用於展示日後正式條款的版面與內容結構。"
+                            : "This Terms of Service panel is a mock document showing the future layout and structure of the formal terms."}
+                        </p>
+                        <div className="rounded-[24px] border border-border bg-panel-strong px-5 py-4">
+                          <p className="font-semibold text-foreground">{language === "zh-HK" ? "1. 帳戶責任" : "1. Account Responsibility"}</p>
+                          <p className="mt-2">
+                            {language === "zh-HK"
+                              ? "你需要確保帳戶資料真實、密碼安全，並對帳戶中的活動負責。"
+                              : "You are responsible for providing accurate account information, keeping your password secure, and managing activity under your account."}
+                          </p>
+                        </div>
+                        <div className="rounded-[24px] border border-border bg-panel-strong px-5 py-4">
+                          <p className="font-semibold text-foreground">{language === "zh-HK" ? "2. 社區使用規則" : "2. Community Use Rules"}</p>
+                          <p className="mt-2">
+                            {language === "zh-HK"
+                              ? "用戶不得發布違規、騷擾、欺詐或危害他人的內容，平台可依情況限制相關功能。"
+                              : "Users must not post abusive, fraudulent, or harmful content, and the platform may restrict features when misuse is detected."}
+                          </p>
+                        </div>
+                        <div className="rounded-[24px] border border-border bg-panel-strong px-5 py-4">
+                          <p className="font-semibold text-foreground">{language === "zh-HK" ? "3. 服務調整" : "3. Service Changes"}</p>
+                          <p className="mt-2">
+                            {language === "zh-HK"
+                              ? "平台可因維護、更新或合規需要調整功能、內容或可用性。"
+                              : "The platform may adjust features, content, or availability for maintenance, updates, or compliance needs."}
+                          </p>
+                        </div>
                       </div>
                     ) : null}
 

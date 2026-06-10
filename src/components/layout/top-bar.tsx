@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, Menu, MoonStar, SunMedium } from "lucide-react";
+import { Bell, CircleHelp, Menu, MoonStar, SunMedium } from "lucide-react";
+import { AvatarBadge } from "@/components/ui/avatar-badge";
 import { usePersistedCurrentUserProfile, usePersistedDashboardData } from "@/hooks/use-persisted-app-data";
-import { getPageTitle } from "@/lib/navigation";
+import { getPageDescription, getPageTitle } from "@/lib/navigation";
 import { t } from "@/lib/translations";
 import { cn } from "@/lib/utils";
 import { useToLink } from "@/lib/app-state";
@@ -24,6 +25,7 @@ export function TopBar() {
   } = useToLink();
   const dashboardData = usePersistedDashboardData();
   const notificationCount = dashboardData.notificationsByLanguage[language]?.length ?? 0;
+  const pageDescriptionKey = getPageDescription(pathname);
 
   return (
     <header className="app-panel app-panel-strong flex items-center justify-between gap-4 rounded-[28px] border px-4 py-3 md:px-5">
@@ -41,9 +43,21 @@ export function TopBar() {
               {t(language, "page.welcome")}
             </p>
           ) : null}
-          <h1 className="truncate font-display text-2xl font-semibold text-foreground">
-            {t(language, getPageTitle(pathname))}
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="truncate font-display text-2xl font-semibold text-foreground">
+              {t(language, getPageTitle(pathname))}
+            </h1>
+            {pageDescriptionKey ? (
+              <div className="group relative hidden shrink-0 md:block">
+                <div className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-panel-strong text-muted transition group-hover:border-accent/40 group-hover:text-accent">
+                  <CircleHelp className="h-4 w-4" />
+                </div>
+                <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-80 max-w-[60vw] -translate-x-1/2 rounded-[18px] border border-border bg-panel-strong px-4 py-3 text-sm leading-6 text-muted opacity-0 shadow-xl transition group-hover:opacity-100">
+                  {t(language, pageDescriptionKey)}
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -81,9 +95,12 @@ export function TopBar() {
           className="group flex items-center gap-3 rounded-2xl border border-border bg-panel-strong px-3 py-2 transition hover:border-accent/40 hover:bg-accent-soft/70 hover:text-accent hover:shadow-[0_12px_30px_rgba(243,107,33,0.12)]"
           href="/settings/profile"
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-bold text-white transition group-hover:scale-105 group-hover:bg-accent-strong">
-            {profile.avatar}
-          </div>
+          <AvatarBadge
+            alt={profile.name}
+            className="h-9 w-9 bg-accent text-sm font-bold text-white transition group-hover:scale-105 group-hover:bg-accent-strong"
+            textClassName="text-white"
+            value={profile.avatar}
+          />
           <div className="hidden text-left md:block">
             <p className="text-sm font-semibold text-foreground transition group-hover:text-accent-strong">
               {profile.name}

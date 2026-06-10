@@ -12,6 +12,10 @@ interface EmailCodeRequestBody {
   code?: string;
 }
 
+interface SendCodeResult {
+  developmentCode?: string;
+}
+
 interface EmailCodeEntry {
   code: string;
   expiresAt: number;
@@ -57,10 +61,21 @@ function getSmtpConfig() {
   return { host, port, user, pass, from };
 }
 
-async function sendCodeEmail(email: string, code: string) {
+function canUseDevelopmentEmailFallback() {
+  return process.env.NODE_ENV !== "production";
+}
+
+async function sendCodeEmail(email: string, code: string): Promise<SendCodeResult> {
   const smtp = getSmtpConfig();
 
   if (!smtp) {
+    if (canUseDevelopmentEmailFallback()) {
+      console.info(`[email-code] SMTP not configured. Development code for ${email}: ${code}`);
+      return {
+        developmentCode: code,
+      };
+    }
+
     throw new Error("Email service is not configured. Please set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, and EMAIL_FROM.");
   }
 
@@ -81,6 +96,8 @@ async function sendCodeEmail(email: string, code: string) {
     text: `Your verification code is ${code}. It expires in 10 minutes.`,
     html: `<p>Your verification code is <strong>${code}</strong>.</p><p>This code expires in 10 minutes.</p>`,
   });
+
+  return {};
 }
 
 export async function POST(request: Request) {
@@ -114,8 +131,11 @@ export async function POST(request: Request) {
     });
 
     try {
-      await sendCodeEmail(email, code);
-      return NextResponse.json({ success: true });
+      const result = await sendCodeEmail(email, code);
+      return NextResponse.json({
+        developmentCode: result.developmentCode,
+        success: true,
+      });
     } catch (error) {
       store.delete(email);
       return NextResponse.json(

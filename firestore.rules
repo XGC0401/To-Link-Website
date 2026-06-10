@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownsUser(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    // This app currently stores shared posts and chat rooms in aggregate docs
+    // under appData/*. With that schema, Firestore rules cannot safely enforce
+    // per-post or per-room ownership. These rules therefore allow authenticated
+    // writes to the shared docs the current client updates.
+    match /appData/{docId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && docId in [
+        'sharedContent',
+        'friendSuggestions',
+        'posts',
+        'chatRooms',
+        'moderationReports'
+      ];
+      allow delete: if false;
+    }
+
+    // Login resolves email from username/phone before sign-in, so reads must
+    // stay public with the current client-side auth flow.
+    match /userHandles/{handleId} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    match /userProfiles/{userId} {
+      allow read: if signedIn();
+      allow create, update, delete: if ownsUser(userId);
+
+      match /appData/{docId} {
+        allow read, write: if ownsUser(userId);
+      }
+
+      match /calendarEvents/{eventId} {
+        allow read, write: if ownsUser(userId);
+      }
+    }
+  }
+}
