@@ -106,9 +106,6 @@ export function FriendsScreen() {
               <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
                 {language === "zh-HK" ? "好友建議" : "Friend suggestions"}
               </h3>
-              <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
-                {language === "zh-HK" ? "左側" : "Left panel"}
-              </span>
             </div>
             <div className="space-y-3">
               {suggestions.map((friend) => (
@@ -161,9 +158,6 @@ export function FriendsScreen() {
               <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
                 {language === "zh-HK" ? "已是好友" : "Your friends"}
               </h3>
-              <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
-                {language === "zh-HK" ? "右側" : "Right panel"}
-              </span>
             </div>
             <div className="space-y-3">
                 {connections.friendList.map((friend) => (

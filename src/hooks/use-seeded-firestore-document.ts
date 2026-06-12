@@ -28,13 +28,27 @@ interface SeededUserDocumentOptions<T> {
   seedData: T;
 }
 
+function stripUndefinedValues<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripUndefinedValues(item)) as T;
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).filter(([, entryValue]) => entryValue !== undefined),
+    ) as T;
+  }
+
+  return value;
+}
+
 export function useSeededFirestoreDocument<T extends object>({
   enabled = true,
   parse,
   path,
   seedData,
 }: SeededDocumentOptions<T>): FirestoreDocumentState<T> {
-  const services = getFirebaseServices();
+  const services = useMemo(() => getFirebaseServices(), []);
   const [state, setState] = useState<FirestoreDocumentState<T>>(() => ({
     data: seedData,
     error: null,
@@ -64,7 +78,8 @@ export function useSeededFirestoreDocument<T extends object>({
       reference,
       (snapshot) => {
         if (!snapshot.exists()) {
-          void setDoc(reference, seedData as Record<string, unknown>, { merge: true });
+          const sanitizedSeed = stripUndefinedValues(seedData) as Record<string, unknown>;
+          void setDoc(reference, sanitizedSeed, { merge: true });
           setState({
             data: seedData,
             error: null,
@@ -101,7 +116,7 @@ export function useSeededUserDocument<T extends object>({
   pathFactory,
   seedData,
 }: SeededUserDocumentOptions<T>): FirestoreDocumentState<T> {
-  const services = getFirebaseServices();
+  const services = useMemo(() => getFirebaseServices(), []);
   const [state, setState] = useState<FirestoreDocumentState<T>>(() => ({
     data: seedData,
     error: null,
@@ -146,7 +161,8 @@ export function useSeededUserDocument<T extends object>({
         reference,
         (snapshot) => {
           if (!snapshot.exists()) {
-            void setDoc(reference, seedData as Record<string, unknown>, { merge: true });
+            const sanitizedSeed = stripUndefinedValues(seedData) as Record<string, unknown>;
+            void setDoc(reference, sanitizedSeed, { merge: true });
             setState({
               data: seedData,
               error: null,
