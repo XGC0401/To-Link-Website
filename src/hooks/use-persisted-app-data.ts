@@ -1079,6 +1079,23 @@ export async function updatePersistedBookingStatus(
   });
 }
 
+export async function addPersistedFriend(friend: FriendCard) {
+  const currentConnections = await loadCurrentUserDocument(["appData", "connections"], CONNECTIONS_SEED, normalizeConnectionsDocument);
+
+  if (!currentConnections) {
+    return false;
+  }
+
+  if (currentConnections.friendList.some((entry) => entry.id === friend.id)) {
+    return true;
+  }
+
+  return saveCurrentUserDocument(["appData", "connections"], {
+    ...currentConnections,
+    friendList: [friend, ...currentConnections.friendList],
+  });
+}
+
 export async function removePersistedFriend(friendId: string) {
   const currentConnections = await loadCurrentUserDocument(["appData", "connections"], CONNECTIONS_SEED, normalizeConnectionsDocument);
 
@@ -1665,10 +1682,23 @@ function normalizeChatMessage(message: ChatMessage) {
   return {
     ...message,
     accentLabel: message.accentLabel?.trim() || undefined,
-    content: message.content,
-    senderAvatar: message.senderAvatar || getAvatarLabel(message.senderName),
-    senderId: message.senderId,
-    senderName: message.senderName,
+    attachments: Array.isArray(message.attachments)
+      ? message.attachments
+          .map((attachment) => ({
+            filename: typeof attachment.filename === "string" ? attachment.filename : "",
+            type: attachment.type === "image" || attachment.type === "video" || attachment.type === "file"
+              ? attachment.type
+              : "file",
+            url: typeof attachment.url === "string" ? attachment.url : "",
+          }))
+          .filter((attachment) => attachment.url || attachment.filename)
+      : undefined,
+    content: typeof message.content === "string" ? message.content : "",
+    senderAvatar: typeof message.senderAvatar === "string" && message.senderAvatar.trim()
+      ? message.senderAvatar
+      : getAvatarLabel(typeof message.senderName === "string" ? message.senderName : "Resident"),
+    senderId: typeof message.senderId === "string" ? message.senderId : undefined,
+    senderName: typeof message.senderName === "string" ? message.senderName : "Resident",
   } satisfies ChatMessage;
 }
 
@@ -1974,6 +2004,20 @@ function normalizeChatRoomView(room: ChatRoom): ChatRoom {
   } satisfies ChatRoom;
 }
 
+function stripUndefinedValues<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripUndefinedValues(item)) as T;
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).filter(([, entryValue]) => entryValue !== undefined),
+    ) as T;
+  }
+
+  return value;
+}
+
 function normalizeFriendSuggestionsDocument(value: unknown): FriendSuggestionsDocument {
   const record = asRecord(value);
 
@@ -2071,7 +2115,9 @@ async function saveSharedDocument<T extends object>(path: [string, ...string[]],
     return false;
   }
 
-  await setDoc(doc(services.db, ...path), value as Record<string, unknown>, { merge: true });
+  const sanitizedValue = stripUndefinedValues(value);
+
+  await setDoc(doc(services.db, ...path), sanitizedValue as Record<string, unknown>, { merge: true });
   return true;
 }
 
@@ -2083,7 +2129,9 @@ async function saveCurrentUserDocument<T extends object>(path: [string, ...strin
     return false;
   }
 
-  await setDoc(doc(services.db, "userProfiles", user.uid, ...path), value as Record<string, unknown>, { merge: true });
+  const sanitizedValue = stripUndefinedValues(value);
+
+  await setDoc(doc(services.db, "userProfiles", user.uid, ...path), sanitizedValue as Record<string, unknown>, { merge: true });
   return true;
 }
 
@@ -2098,7 +2146,8 @@ async function loadSharedDocument<T>(path: [string, ...string[]], seedData: T, n
   const snapshot = await getDoc(reference);
 
   if (!snapshot.exists()) {
-    await setDoc(reference, seedData as Record<string, unknown>, { merge: true });
+    const sanitizedSeed = stripUndefinedValues(seedData);
+    await setDoc(reference, sanitizedSeed as Record<string, unknown>, { merge: true });
     return seedData;
   }
 
@@ -2117,7 +2166,8 @@ async function loadCurrentUserDocument<T>(path: [string, ...string[]], seedData:
   const snapshot = await getDoc(reference);
 
   if (!snapshot.exists()) {
-    await setDoc(reference, seedData as Record<string, unknown>, { merge: true });
+    const sanitizedSeed = stripUndefinedValues(seedData);
+    await setDoc(reference, sanitizedSeed as Record<string, unknown>, { merge: true });
     return seedData;
   }
 
@@ -2135,7 +2185,8 @@ async function loadUserRootDocument<T>(uid: string, seedData: T, normalize: (val
   const snapshot = await getDoc(reference);
 
   if (!snapshot.exists()) {
-    await setDoc(reference, seedData as Record<string, unknown>, { merge: true });
+    const sanitizedSeed = stripUndefinedValues(seedData);
+    await setDoc(reference, sanitizedSeed as Record<string, unknown>, { merge: true });
     return seedData;
   }
 

@@ -9,6 +9,7 @@ import { FeatureShell } from "@/components/ui/feature-shell";
 import { useAdminUsersList } from "@/hooks/use-admin-users-list";
 import { Modal } from "@/components/ui/modal";
 import {
+  addPersistedFriend,
   openPersistedDirectChat,
   removePersistedFriend,
   usePersistedConnections,
@@ -39,18 +40,22 @@ export function FriendsScreen() {
     [users],
   );
 
+  const friendIds = useMemo(() => new Set(connections.friendList.map((friend) => friend.id)), [connections.friendList]);
+
   const suggestions = useMemo(() => {
     const searchTerm = query.trim().toLowerCase();
-    const combined = [...connections.friendSuggestions, ...connections.friendList, ...realAccounts];
+    const combined = [...connections.friendSuggestions, ...realAccounts];
 
-    return [...new Map(combined.map((friend) => [friend.id, friend])).values()].filter((friend) => {
-      if (!searchTerm) {
-        return true;
-      }
+    return [...new Map(combined.map((friend) => [friend.id, friend])).values()]
+      .filter((friend) => !friendIds.has(friend.id))
+      .filter((friend) => {
+        if (!searchTerm) {
+          return true;
+        }
 
-      return `${friend.name} ${friend.username}`.toLowerCase().includes(searchTerm);
-    });
-  }, [connections.friendList, connections.friendSuggestions, query, realAccounts]);
+        return `${friend.name} ${friend.username}`.toLowerCase().includes(searchTerm);
+      });
+  }, [connections.friendSuggestions, friendIds, query, realAccounts]);
 
   async function handleOpenChat(friend: FriendCard) {
     const roomId = await openPersistedDirectChat({
@@ -83,16 +88,28 @@ export function FriendsScreen() {
           <label className="app-input flex items-center gap-3 rounded-full px-4 py-3 text-sm">
             <Search className="h-4 w-4 text-muted" />
             <input
+              autoComplete="username"
               className="w-full bg-transparent outline-none"
+              id="friend-search-input"
+              name="friend-search"
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t(language, "friends.search")}
+              type="search"
               value={query}
             />
           </label>
         }
       >
         <div className="grid h-full gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-          <div className="min-h-0 overflow-y-auto pr-1">
+          <section className="min-h-0 overflow-y-auto pr-1">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
+                {language === "zh-HK" ? "好友建議" : "Friend suggestions"}
+              </h3>
+              <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
+                {language === "zh-HK" ? "左側" : "Left panel"}
+              </span>
+            </div>
             <div className="space-y-3">
               {suggestions.map((friend) => (
                 <article key={friend.id} className="rounded-[26px] border border-border bg-panel-strong p-4">
@@ -117,13 +134,37 @@ export function FriendsScreen() {
                     >
                       {t(language, "common.message")}
                     </button>
+                    <button
+                      className="rounded-full border border-accent/30 bg-panel px-4 py-2 text-sm font-semibold text-accent"
+                      onClick={async () => {
+                        const saved = await addPersistedFriend(friend);
+
+                        if (!saved) {
+                          toast.error(language === "zh-HK" ? "無法加為好友。" : "Unable to add this person as a friend.");
+                          return;
+                        }
+
+                        toast.success(language === "zh-HK" ? `${friend.name} 已加入好友名單。` : `${friend.name} added to your friends.`);
+                      }}
+                      type="button"
+                    >
+                      {language === "zh-HK" ? "加好友" : "Add friend"}
+                    </button>
                   </div>
                 </article>
               ))}
             </div>
-          </div>
+          </section>
 
-          <div className="min-h-0 overflow-y-auto pr-1">
+          <section className="min-h-0 overflow-y-auto pr-1">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
+                {language === "zh-HK" ? "已是好友" : "Your friends"}
+              </h3>
+              <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
+                {language === "zh-HK" ? "右側" : "Right panel"}
+              </span>
+            </div>
             <div className="space-y-3">
                 {connections.friendList.map((friend) => (
                 <article key={friend.id} className="rounded-[26px] border border-border bg-panel-strong p-4">
@@ -160,7 +201,7 @@ export function FriendsScreen() {
                 </article>
               ))}
             </div>
-          </div>
+          </section>
         </div>
       </FeatureShell>
 

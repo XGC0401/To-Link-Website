@@ -32,7 +32,6 @@ import { cn } from "@/lib/utils";
 import { useToLink } from "@/lib/app-state";
 import { Modal } from "@/components/ui/modal";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import type { FriendCard } from "@/lib/types";
 
 const COUNTRY_CODES = [
   { code: "+93", label: "Afghanistan (+93)" },
@@ -750,28 +749,6 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                       });
                     }
 
-                    // If not admin account, auto-add admin as a friend
-                    if (!isAdminAccount) {
-                      const adminFriend: FriendCard = {
-                        id: "admin-user",
-                        name: "System Admin",
-                        username: "admin",
-                        avatar: "SA",
-                        bio: "System administrator account. Contact for support and issues.",
-                        status: "online",
-                      };
-
-                      const userConnections = {
-                        chatRooms: [],
-                        friendList: [adminFriend],
-                      };
-
-                      await setDoc(
-                        doc(services.db, "userProfiles", credential.user.uid, "appData", "connections"),
-                        userConnections,
-                        { merge: true }
-                      );
-                    }
 
                     toast.success(t(language, "auth.accountCreated"));
                     router.push("/home");
