@@ -650,10 +650,7 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                     return;
                   }
 
-                  if (!emailCodeVerified || codeSentToEmail !== email) {
-                    toast.error(t(language, "auth.verifyEmailFirst"));
-                    return;
-                  }
+                  // Email verification is optional for free public registration
 
                   if (!phone) {
                     toast.error(t(language, "auth.error.verifyPhone"));
@@ -918,55 +915,12 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                     icon={<Mail className="h-4 w-4" />}
                     label={t(language, "auth.emailLabel")}
                     onChange={(value) => {
-                      const normalizedEmail = value.trim().toLowerCase();
                       setState((current) => ({ ...current, email: value }));
-
-                      if (codeSentToEmail && codeSentToEmail !== normalizedEmail) {
-                        setEmailCodeVerified(false);
-                      }
                     }}
                     placeholder="name@example.com"
                     type="email"
                     value={state.email}
                   />
-                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
-                    <InputField
-                      icon={<KeyRound className="h-4 w-4" />}
-                      label={t(language, "auth.verificationCode")}
-                      onChange={(value) => setEmailVerificationCode(value.replace(/\D/g, "").slice(0, 6))}
-                      placeholder={t(language, "auth.verificationCode")}
-                      value={emailVerificationCode}
-                    />
-                    <button
-                      className={cn(
-                        "self-end rounded-full border border-border bg-panel px-4 py-3 text-sm font-semibold text-foreground transition hover:border-accent/40 hover:text-accent",
-                        sendingEmailCode && "cursor-not-allowed opacity-60",
-                      )}
-                      disabled={sendingEmailCode}
-                      onClick={sendRegisterEmailCode}
-                      type="button"
-                    >
-                      {sendingEmailCode ? t(language, "auth.sending") : t(language, "auth.sendVerifyCode")}
-                    </button>
-                  </div>
-                  <button
-                    className={cn(
-                      "rounded-full border border-border bg-panel px-4 py-3 text-sm font-semibold text-foreground transition hover:border-accent/40 hover:text-accent",
-                      verifyingEmailCode && "cursor-not-allowed opacity-60",
-                    )}
-                    disabled={verifyingEmailCode}
-                    onClick={verifyRegisterEmailCode}
-                    type="button"
-                  >
-                    {verifyingEmailCode ? t(language, "auth.verifying") : t(language, "auth.verifyCode")}
-                  </button>
-                  <p className={cn("text-xs", emailCodeVerified ? "text-success" : "text-muted")}>
-                    {emailCodeVerified
-                      ? t(language, "auth.emailVerifiedReady")
-                      : codeSentToEmail
-                        ? t(language, "auth.emailCodeSentTo").replace("{email}", codeSentToEmail)
-                        : t(language, "auth.emailNotVerified")}
-                  </p>
                   <InputField
                     icon={<KeyRound className="h-4 w-4" />}
                     label={t(language, "auth.passwordLabel")}
