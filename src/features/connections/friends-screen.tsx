@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
+import { useAdminUsersList } from "@/hooks/use-admin-users-list";
 import { Modal } from "@/components/ui/modal";
 import {
   openPersistedDirectChat,
@@ -19,18 +20,37 @@ export function FriendsScreen() {
   const { language } = useToLink();
   const router = useRouter();
   const connections = usePersistedConnections();
+  const { users } = useAdminUsersList();
   const [query, setQuery] = useState("");
   const [candidate, setCandidate] = useState<FriendCard | null>(null);
 
-  const suggestions = useMemo(() => {
-    if (!query) {
-      return connections.friendSuggestions;
-    }
+  const realAccounts = useMemo(
+    () =>
+      users
+        .map((user) => ({
+          avatar: user.avatar || "U",
+          bio: user.bio || user.jobTitle || "",
+          id: user.id,
+          name: user.name || `${user.firstName} ${user.lastName}`.trim(),
+          status: user.status,
+          username: user.username,
+        }))
+        .filter((user) => Boolean(user.name || user.username)),
+    [users],
+  );
 
-    return [...connections.friendSuggestions, ...connections.friendList].filter((friend) =>
-      `${friend.name} ${friend.username}`.toLowerCase().includes(query.toLowerCase()),
-    );
-  }, [connections.friendList, connections.friendSuggestions, query]);
+  const suggestions = useMemo(() => {
+    const searchTerm = query.trim().toLowerCase();
+    const combined = [...connections.friendSuggestions, ...connections.friendList, ...realAccounts];
+
+    return [...new Map(combined.map((friend) => [friend.id, friend])).values()].filter((friend) => {
+      if (!searchTerm) {
+        return true;
+      }
+
+      return `${friend.name} ${friend.username}`.toLowerCase().includes(searchTerm);
+    });
+  }, [connections.friendList, connections.friendSuggestions, query, realAccounts]);
 
   async function handleOpenChat(friend: FriendCard) {
     const roomId = await openPersistedDirectChat({
@@ -86,6 +106,17 @@ export function FriendsScreen() {
                       <p className="text-sm text-muted">@{friend.username}</p>
                       <p className="mt-2 text-sm leading-6 text-muted">{friend.bio}</p>
                     </div>
+                  </div>
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white"
+                      onClick={() => {
+                        void handleOpenChat(friend);
+                      }}
+                      type="button"
+                    >
+                      {t(language, "common.message")}
+                    </button>
                   </div>
                 </article>
               ))}

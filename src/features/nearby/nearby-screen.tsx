@@ -85,12 +85,8 @@ export function NearbyScreen({ mode }: { mode: NearbyMode }) {
       });
   }, [livePlaces.items, location.lat, location.lng, query, sortBy]);
 
-  useEffect(() => {
-    setVisibleCount(10);
-  }, [mode, query, sortBy]);
-
   const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null;
-  const visibleItems = items;
+  const visibleItems = items.slice(0, visibleCount);
   const isLoadingPlaces = livePlaces.status === "idle" || livePlaces.status === "loading";
 
   function handleShowCurrentLocation() {

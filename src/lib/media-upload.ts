@@ -16,11 +16,27 @@ interface CloudinarySignaturePayload {
 }
 
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const VIDEO_TYPES = new Set(["video/mp4"]);
+const VIDEO_TYPES = new Set(["video/mp4", "video/quicktime", "video/x-msvideo"]);
+const DOCUMENT_TYPES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "text/plain",
+  "text/csv",
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/vnd.rar",
+]);
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024;
+const MAX_DOCUMENT_SIZE_BYTES = 25 * 1024 * 1024;
 const MAX_IMAGE_COUNT = 5;
 const MAX_VIDEO_COUNT = 3;
+const MAX_DOCUMENT_COUNT = 10;
 
 export const cloudinarySetupHint =
   "Add Cloudinary credentials to .env.local to enable image and video uploads.";
@@ -29,8 +45,9 @@ export function validateMediaSelection(source: FileList | File[]) {
   const files = Array.from(source);
   const images = files.filter((file) => IMAGE_TYPES.has(file.type));
   const videos = files.filter((file) => VIDEO_TYPES.has(file.type));
+  const documents = files.filter((file) => DOCUMENT_TYPES.has(file.type));
   const unsupported = files.filter(
-    (file) => !IMAGE_TYPES.has(file.type) && !VIDEO_TYPES.has(file.type),
+    (file) => !IMAGE_TYPES.has(file.type) && !VIDEO_TYPES.has(file.type) && !DOCUMENT_TYPES.has(file.type),
   );
   const errors: string[] = [];
 
@@ -42,8 +59,12 @@ export function validateMediaSelection(source: FileList | File[]) {
     errors.push(`You can upload at most ${MAX_VIDEO_COUNT} videos.`);
   }
 
+  if (documents.length > MAX_DOCUMENT_COUNT) {
+    errors.push(`You can upload at most ${MAX_DOCUMENT_COUNT} document files.`);
+  }
+
   if (unsupported.length > 0) {
-    errors.push("Only JPG, JPEG, PNG, WEBP, and MP4 files are supported.");
+    errors.push("Only images, MP4/QuickTime/AVI videos, PDF, Word, Excel, PowerPoint, text, CSV, and ZIP files are supported.");
   }
 
   if (images.some((file) => file.size > MAX_IMAGE_SIZE_BYTES)) {
@@ -54,10 +75,15 @@ export function validateMediaSelection(source: FileList | File[]) {
     errors.push("Each video must be 50MB or smaller.");
   }
 
+  if (documents.some((file) => file.size > MAX_DOCUMENT_SIZE_BYTES)) {
+    errors.push("Each document must be 25MB or smaller.");
+  }
+
   return {
     files,
     images,
     videos,
+    documents,
     errors,
     valid: errors.length === 0,
   };

@@ -149,7 +149,7 @@ export interface BlockedUserItem {
 
 export interface MediaAttachment {
   url: string;
-  type: "image" | "video";
+  type: "image" | "video" | "file";
   filename: string;
 }
 

@@ -100,7 +100,7 @@ export function MessagesScreen() {
       const uploadedAssets = await uploadFilesToCloudinary(Array.from(files));
       const newAttachments: MediaAttachment[] = uploadedAssets.map((asset) => ({
         url: asset.secureUrl,
-        type: asset.resourceType === "video" ? "video" : "image",
+        type: asset.resourceType === "video" ? "video" : asset.resourceType === "image" ? "image" : "file",
         filename: asset.originalFilename,
       }));
       setAttachments((prev) => [...prev, ...newAttachments]);
@@ -257,12 +257,22 @@ export function MessagesScreen() {
                                 className="max-w-full rounded-lg"
                                 src={attachment.url}
                               />
-                            ) : (
+                            ) : attachment.type === "video" ? (
                               <video
                                 className="max-w-full rounded-lg"
                                 controls
                                 src={attachment.url}
                               />
+                            ) : (
+                              <a
+                                className="flex items-center gap-3 rounded-xl border border-border bg-panel-soft px-3 py-2 text-sm text-foreground hover:border-accent/40 hover:bg-accent-soft"
+                                href={attachment.url}
+                                rel="noreferrer"
+                                target="_blank"
+                              >
+                                <span className="rounded-full bg-accent/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">FILE</span>
+                                <span className="truncate">{attachment.filename}</span>
+                              </a>
                             )}
                           </div>
                         ))}
@@ -299,9 +309,13 @@ export function MessagesScreen() {
                             className="h-16 w-16 rounded object-cover"
                             src={attachment.url}
                           />
-                        ) : (
+                        ) : attachment.type === "video" ? (
                           <div className="flex h-16 w-16 items-center justify-center rounded bg-muted/30">
                             <span className="text-xs font-semibold text-muted">Video</span>
+                          </div>
+                        ) : (
+                          <div className="flex h-16 w-16 items-center justify-center rounded bg-accent/10">
+                            <span className="text-[10px] font-semibold text-accent">DOC</span>
                           </div>
                         )}
                         <button
@@ -318,7 +332,7 @@ export function MessagesScreen() {
               )}
               <div className="flex gap-3">
                 <input
-                  accept="image/*,video/mp4"
+                  accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar"
                   hidden
                   id="message-file-upload"
                   name="message-media"
@@ -340,7 +354,7 @@ export function MessagesScreen() {
                     className="rounded-full bg-muted p-3 text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                     disabled={uploadingMedia}
                     onClick={() => fileInputRef.current?.click()}
-                    title="Attach media (images/videos)"
+                    title="Attach media or documents"
                     type="button"
                   >
                     <Paperclip className="h-4 w-4" />
