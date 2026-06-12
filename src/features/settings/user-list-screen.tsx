@@ -27,12 +27,20 @@ export function UserListScreen() {
   }, [ready, profile.role, router]);
 
   const filteredUsers = useMemo(
-    () =>
-      users.filter((user) =>
-        user.name.toLowerCase().includes(query.toLowerCase()) ||
-        user.username.toLowerCase().includes(query.toLowerCase()) ||
-        user.email.toLowerCase().includes(query.toLowerCase())
-      ),
+    () => {
+      if (!query.trim()) {
+        return users; // Show all users if search is empty
+      }
+
+      const queryLower = query.toLowerCase();
+      return users.filter((user) => {
+        const matchesName = user.name?.toLowerCase().includes(queryLower) ?? false;
+        const matchesUsername = user.username?.toLowerCase().includes(queryLower) ?? false;
+        const matchesEmail = user.email?.toLowerCase().includes(queryLower) ?? false;
+        
+        return matchesName || matchesUsername || matchesEmail;
+      });
+    },
     [users, query],
   );
 

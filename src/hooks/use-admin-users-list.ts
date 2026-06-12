@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { getFirebaseServices } from "@/lib/firebase";
+import { friendList as seededFriendList, friendSuggestions as seededFriendSuggestions } from "@/lib/demo-data";
 import type { UserProfile } from "@/lib/types";
 
 export function useAdminUsersList() {
@@ -47,7 +48,33 @@ export function useAdminUsersList() {
             } as UserProfile;
           });
 
-          setUsers(usersList);
+          // Include demo accounts for testing/search functionality
+          const demoUsers = [...seededFriendList, ...seededFriendSuggestions].map((friend) => ({
+            id: friend.id,
+            firstName: friend.name.split(" ")[0],
+            lastName: friend.name.split(" ").slice(1).join(" "),
+            name: friend.name,
+            username: friend.username,
+            email: `${friend.username}@example.com`,
+            phone: "",
+            country: "Hong Kong",
+            currentState: "employee" as const,
+            jobTitle: "",
+            avatar: friend.avatar,
+            bio: friend.bio,
+            role: "resident" as const,
+            status: friend.status,
+            points: 0,
+          }));
+
+          // Combine real users with demo users (avoiding duplicates)
+          const realUserIds = new Set(usersList.map((u) => u.id));
+          const combinedUsers = [
+            ...usersList,
+            ...demoUsers.filter((demo) => !realUserIds.has(demo.id)),
+          ];
+
+          setUsers(combinedUsers);
           setError(null);
         },
         (err) => {
