@@ -30,6 +30,7 @@ To-Link is a modular community lifestyle web app built with Next.js, TypeScript,
 - Firebase setup is prepared but requires your real project credentials before live auth and Firestore persistence can be enabled.
 - Cloudinary media upload support is prepared and needs your Cloudinary cloud name, API key, and API secret before uploads can go live.
 - AI Chat can call an n8n workflow when `AI_ASSISTANT_WEBHOOK_URL` is set in your local environment.
+- Email verification can use `RESEND_API_KEY` plus `EMAIL_FROM` for HTTPS delivery on free hosts like Render, or SMTP variables on hosts that allow outbound SMTP.
 
 ## Setup
 

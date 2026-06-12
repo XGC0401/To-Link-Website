@@ -61,11 +61,70 @@ function getSmtpConfig() {
   return { host, port, user, pass, from };
 }
 
+function getResendConfig() {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const from = process.env.EMAIL_FROM?.trim();
+
+  if (!apiKey || !from) {
+    return null;
+  }
+
+  return { apiKey, from };
+}
+
+function isRenderFreeSmtpPortBlocked(port: number) {
+  return process.env.RENDER === "true" && [25, 465, 587].includes(port);
+}
+
 function canUseDevelopmentEmailFallback() {
   return process.env.NODE_ENV !== "production";
 }
 
+async function sendCodeEmailWithResend(email: string, code: string, apiKey: string, from: string) {
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: [email],
+      subject: "Your To-Link verification code",
+      text: `Your verification code is ${code}. It expires in 10 minutes.`,
+      html: `<p>Your verification code is <strong>${code}</strong>.</p><p>This code expires in 10 minutes.</p>`,
+    }),
+    cache: "no-store",
+  });
+
+  if (response.ok) {
+    return;
+  }
+
+  let message = "Failed to send verification email.";
+
+  try {
+    const payload = (await response.json()) as { error?: string; message?: string; name?: string };
+    message = payload.message ?? payload.error ?? payload.name ?? message;
+  } catch {
+    const text = await response.text().catch(() => "");
+
+    if (text.trim()) {
+      message = text.trim();
+    }
+  }
+
+  throw new Error(`Resend error: ${message}`);
+}
+
 async function sendCodeEmail(email: string, code: string): Promise<SendCodeResult> {
+  const resend = getResendConfig();
+
+  if (resend) {
+    await sendCodeEmailWithResend(email, code, resend.apiKey, resend.from);
+    return {};
+  }
+
   const smtp = getSmtpConfig();
 
   if (!smtp) {
@@ -77,6 +136,12 @@ async function sendCodeEmail(email: string, code: string): Promise<SendCodeResul
     }
 
     throw new Error("Email service is not configured. Please set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, and EMAIL_FROM.");
+  }
+
+  if (isRenderFreeSmtpPortBlocked(smtp.port)) {
+    throw new Error(
+      "Render free web services cannot send SMTP traffic on ports 25, 465, or 587. Set RESEND_API_KEY and keep EMAIL_FROM as a verified sender address to send verification codes over HTTPS instead.",
+    );
   }
 
   const transporter = nodemailer.createTransport({
