@@ -28,7 +28,7 @@ export function TopBar() {
   const pageDescriptionKey = getPageDescription(pathname);
 
   return (
-    <header className="app-panel app-panel-strong flex items-center justify-between gap-4 rounded-[28px] border px-4 py-3 md:px-5">
+    <header className="app-panel app-panel-strong relative z-40 flex items-center justify-between gap-4 rounded-[28px] border px-4 py-3 md:px-5">
       <div className="flex min-w-0 items-center gap-3">
         <button
           className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-panel-strong text-foreground transition hover:border-accent/40 hover:text-accent"
@@ -48,11 +48,11 @@ export function TopBar() {
               {t(language, getPageTitle(pathname))}
             </h1>
             {pageDescriptionKey ? (
-              <div className="group relative hidden shrink-0 md:block">
+              <div className="group relative z-50 hidden shrink-0 md:block">
                 <div className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-panel-strong text-muted transition group-hover:border-accent/40 group-hover:text-accent">
                   <CircleHelp className="h-4 w-4" />
                 </div>
-                <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-80 max-w-[60vw] -translate-x-1/2 rounded-[18px] border border-border bg-panel-strong px-4 py-3 text-sm leading-6 text-muted opacity-0 shadow-xl transition group-hover:opacity-100">
+                <div className="pointer-events-none absolute left-1/2 top-full z-[90] mt-2 w-80 max-w-[60vw] -translate-x-1/2 rounded-[18px] border border-border bg-panel-strong px-4 py-3 text-sm leading-6 text-muted opacity-0 shadow-xl transition group-hover:opacity-100">
                   {t(language, pageDescriptionKey)}
                 </div>
               </div>
@@ -93,7 +93,7 @@ export function TopBar() {
 
         <Link
           className="group flex items-center gap-3 rounded-2xl border border-border bg-panel-strong px-3 py-2 transition hover:border-accent/40 hover:bg-accent-soft/70 hover:text-accent hover:shadow-[0_12px_30px_rgba(243,107,33,0.12)]"
-          href="/settings/profile"
+          href="/settings/profile#profile-photo"
         >
           <AvatarBadge
             alt={profile.name}

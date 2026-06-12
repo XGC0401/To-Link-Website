@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { PlaceItem } from "@/lib/types";
+import type { Language, PlaceItem } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -40,7 +40,10 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const mode = searchParams.get("mode");
   const lat = Number(searchParams.get("lat"));
+  const language = searchParams.get("language") === "zh-HK" ? "zh-HK" : "en";
+  const limitParam = Number(searchParams.get("limit"));
   const lng = Number(searchParams.get("lng"));
+  const limit = Number.isFinite(limitParam) ? Math.min(Math.max(Math.trunc(limitParam), 1), 60) : 10;
 
   if (mode !== "shops" && mode !== "communities") {
     return NextResponse.json(
@@ -65,7 +68,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const items = await fetchNearbyPlaces(mode, lat, lng);
+    const items = await fetchNearbyPlaces(mode, lat, lng, limit, language);
 
     return NextResponse.json({ items });
   } catch (error) {
@@ -82,7 +85,7 @@ export async function GET(request: Request) {
   }
 }
 
-async function fetchNearbyPlaces(mode: NearbyMode, lat: number, lng: number) {
+async function fetchNearbyPlaces(mode: NearbyMode, lat: number, lng: number, limit: number, language: Language) {
   const config = MODE_CONFIG[mode];
   const selectorLines = config.selectors
     .map((selector) => `  nwr(around:${config.radius},${lat},${lng})${selector};`)
@@ -104,7 +107,7 @@ async function fetchNearbyPlaces(mode: NearbyMode, lat: number, lng: number) {
   const deduped = new Map<string, PlaceItem>();
 
   for (const element of payload.elements ?? []) {
-    const item = toPlaceItem(element, mode);
+    const item = toPlaceItem(element, mode, language);
 
     if (!item) {
       continue;
@@ -117,10 +120,10 @@ async function fetchNearbyPlaces(mode: NearbyMode, lat: number, lng: number) {
     }
   }
 
-  return [...deduped.values()];
+  return [...deduped.values()].slice(0, limit);
 }
 
-function toPlaceItem(element: OverpassElement, mode: NearbyMode): PlaceItem | null {
+function toPlaceItem(element: OverpassElement, mode: NearbyMode, language: Language): PlaceItem | null {
   const tags = element.tags ?? {};
   const lat = element.lat ?? element.center?.lat;
   const lng = element.lon ?? element.center?.lon;
@@ -133,9 +136,9 @@ function toPlaceItem(element: OverpassElement, mode: NearbyMode): PlaceItem | nu
   return {
     id: `${element.type}-${element.id}`,
     name,
-    description: buildDescription(tags, mode),
-    details: buildDetails(tags, lat, lng, mode),
-    phone: normalizeValue(tags.phone ?? tags["contact:phone"]),
+    description: buildDescription(tags, mode, language),
+    details: buildDetails(tags, lat, lng, mode, language),
+    phone: normalizeValue(tags.phone ?? tags["contact:phone"], language),
     website: normalizeWebsite(tags.website ?? tags["contact:website"] ?? tags.url),
     lat,
     lng,
@@ -143,38 +146,56 @@ function toPlaceItem(element: OverpassElement, mode: NearbyMode): PlaceItem | nu
   };
 }
 
-function buildDescription(tags: Record<string, string>, mode: NearbyMode) {
+function buildDescription(tags: Record<string, string>, mode: NearbyMode, language: Language) {
   const typeLabel = humanizeTag(
     tags.shop ?? tags.amenity ?? tags.office ?? tags.club ?? (mode === "shops" ? "shop" : "community"),
   );
   const address = buildAddress(tags);
-  const openingHours = tags.opening_hours ? `Hours: ${tags.opening_hours}` : null;
+  const openingHours = tags.opening_hours
+    ? language === "zh-HK"
+      ? `營業時間：${tags.opening_hours}`
+      : `Hours: ${tags.opening_hours}`
+    : null;
 
   return [typeLabel, address, openingHours]
     .filter(Boolean)
     .join(". ") ||
     (mode === "shops"
-      ? "Live place data from OpenStreetMap nearby search."
-      : "Live community place data from OpenStreetMap nearby search.");
+      ? language === "zh-HK"
+        ? "來自 OpenStreetMap 附近搜尋的即時商店資料。"
+        : "Live place data from OpenStreetMap nearby search."
+      : language === "zh-HK"
+        ? "來自 OpenStreetMap 附近搜尋的即時社區地點資料。"
+        : "Live community place data from OpenStreetMap nearby search.");
 }
 
-function buildDetails(tags: Record<string, string>, lat: number, lng: number, mode: NearbyMode) {
+function buildDetails(tags: Record<string, string>, lat: number, lng: number, mode: NearbyMode, language: Language) {
   const details = [
-    `Category: ${humanizeTag(tags.shop ?? tags.amenity ?? tags.office ?? tags.club ?? (mode === "shops" ? "shop" : "community"))}`,
-    buildAddress(tags) ? `Address: ${buildAddress(tags)}` : null,
-    tags.cuisine ? `Cuisine: ${tags.cuisine}` : null,
-    tags.operator ? `Operator: ${tags.operator}` : null,
-    tags.brand ? `Brand: ${tags.brand}` : null,
-    tags.opening_hours ? `Opening hours: ${tags.opening_hours}` : null,
-    tags["addr:street"] || tags["addr:housenumber"] ? null : `Coordinates: ${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+    `${language === "zh-HK" ? "類別" : "Category"}: ${humanizeTag(tags.shop ?? tags.amenity ?? tags.office ?? tags.club ?? (mode === "shops" ? "shop" : "community"))}`,
+    buildAddress(tags)
+      ? `${language === "zh-HK" ? "地址" : "Address"}: ${buildAddress(tags)}`
+      : null,
+    tags.cuisine ? `${language === "zh-HK" ? "菜式" : "Cuisine"}: ${tags.cuisine}` : null,
+    tags.operator ? `${language === "zh-HK" ? "營運者" : "Operator"}: ${tags.operator}` : null,
+    tags.brand ? `${language === "zh-HK" ? "品牌" : "Brand"}: ${tags.brand}` : null,
+    tags.opening_hours
+      ? `${language === "zh-HK" ? "營業時間" : "Opening hours"}: ${tags.opening_hours}`
+      : null,
+    tags["addr:street"] || tags["addr:housenumber"]
+      ? null
+      : `${language === "zh-HK" ? "座標" : "Coordinates"}: ${lat.toFixed(5)}, ${lng.toFixed(5)}`,
   ].filter((detail): detail is string => Boolean(detail));
 
   return details.length
     ? details
     : [
         mode === "shops"
-          ? "Live result from OpenStreetMap nearby search."
-          : "Live community result from OpenStreetMap nearby search.",
+          ? language === "zh-HK"
+            ? "來自 OpenStreetMap 附近搜尋的即時結果。"
+            : "Live result from OpenStreetMap nearby search."
+          : language === "zh-HK"
+            ? "來自 OpenStreetMap 附近搜尋的即時社區結果。"
+            : "Live community result from OpenStreetMap nearby search.",
       ];
 }
 
@@ -197,10 +218,10 @@ function humanizeTag(value: string) {
     .join(" ");
 }
 
-function normalizeValue(value: string | undefined) {
+function normalizeValue(value: string | undefined, language: Language) {
   const normalized = value?.trim();
 
-  return normalized?.length ? normalized : "N/A";
+  return normalized?.length ? normalized : language === "zh-HK" ? "不適用" : "N/A";
 }
 
 function normalizeWebsite(value: string | undefined) {

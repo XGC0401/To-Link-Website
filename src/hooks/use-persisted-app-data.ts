@@ -1,7 +1,7 @@
 "use client";
 
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, onSnapshot, setDoc, writeBatch } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
 import {
   adminMessage,
@@ -473,13 +473,75 @@ export async function savePersistedCurrentUserProfile(profilePatch: Partial<User
   }
 
   const currentProfile = await loadUserRootDocument(user.uid, currentUser, normalizeUserProfile);
+  const nextFirstName = profilePatch.firstName ?? currentProfile.firstName;
+  const nextLastName = profilePatch.lastName ?? currentProfile.lastName;
+  const nextName =
+    typeof profilePatch.name === "string"
+      ? profilePatch.name
+      : "firstName" in profilePatch || "lastName" in profilePatch
+        ? [nextFirstName, nextLastName].filter(Boolean).join(" ") || currentProfile.name
+        : currentProfile.name;
   const nextProfile = normalizeUserProfile({
     ...currentProfile,
     ...profilePatch,
+    firstName: nextFirstName,
+    lastName: nextLastName,
+    name: nextName,
     uid: user.uid,
   });
 
   await setDoc(doc(services.db, "userProfiles", user.uid), nextProfile, { merge: true });
+  return true;
+}
+
+function normalizeUserHandleLookup(value: string) {
+  return value.trim().toLowerCase().replace(/[\s()-]/g, "");
+}
+
+export async function deletePersistedCurrentUserAccountData({
+  phone,
+  uid,
+  username,
+}: {
+  phone: string;
+  uid: string;
+  username: string;
+}) {
+  const services = getFirebaseServices();
+
+  if (!services) {
+    return false;
+  }
+
+  const batch = writeBatch(services.db);
+  const references = [
+    doc(services.db, "userProfiles", uid),
+    doc(services.db, "userProfiles", uid, "appData", "aiConversations"),
+    doc(services.db, "userProfiles", uid, "appData", "blockedUsers"),
+    doc(services.db, "userProfiles", uid, "appData", "bookings"),
+    doc(services.db, "userProfiles", uid, "appData", "chatRoomOverrides"),
+    doc(services.db, "userProfiles", uid, "appData", "connections"),
+    doc(services.db, "userProfiles", uid, "appData", "dashboard"),
+    doc(services.db, "userProfiles", uid, "appData", "postOverrides"),
+  ];
+
+  for (const reference of references) {
+    batch.delete(reference);
+  }
+
+  const handleKeys = [normalizeUserHandleLookup(username), normalizeUserHandleLookup(phone)].filter(Boolean);
+
+  for (const handleKey of handleKeys) {
+    batch.delete(doc(services.db, "userHandles", handleKey));
+  }
+
+  const calendarEventsSnapshot = await getDocs(collection(services.db, "userProfiles", uid, "calendarEvents"));
+
+  for (const calendarEvent of calendarEventsSnapshot.docs) {
+    batch.delete(calendarEvent.ref);
+  }
+
+  await batch.commit();
   return true;
 }
 
@@ -931,38 +993,40 @@ export async function removePersistedBlockedUser(blockedUserId: string) {
   });
 }
 
-export async function likePersistedPost(postId: string) {
+export async function likePersistedPost(postId: string): Promise<FeedItem | null> {
   const services = getFirebaseServices();
-  const currentUserId = services?.auth.currentUser?.uid;
+  const currentUserId = services?.auth.currentUser?.uid ?? currentUser.id;
 
   if (!currentUserId) {
-    return false;
+    return null;
   }
 
   const currentPosts = await loadEditablePostsDocument();
-  let updated = false;
+  let updatedPost: FeedItem | null = null;
 
-  return persistEditablePostsDocument({
+  const saved = await persistEditablePostsDocument({
     items: currentPosts.items.map((item) => {
       if (item.id !== postId) {
         return item;
       }
 
       const likedByUserIds = item.likedByUserIds ?? [];
+      const alreadyLiked = likedByUserIds.includes(currentUserId);
+      const nextLikedByUserIds = alreadyLiked
+        ? likedByUserIds.filter((userId) => userId !== currentUserId)
+        : [...likedByUserIds, currentUserId];
 
-      if (likedByUserIds.includes(currentUserId)) {
-        return item;
-      }
-
-      updated = true;
-
-      return preparePersistedPostItem({
+      updatedPost = preparePersistedPostItem({
         ...item,
-        likedByUserIds: [...likedByUserIds, currentUserId],
-        likes: item.likes + 1,
+        likedByUserIds: nextLikedByUserIds,
+        likes: Math.max(item.likes + (alreadyLiked ? -1 : 1), 0),
       });
+
+      return updatedPost;
     }),
-  }).then((saved) => (updated ? saved : false));
+  });
+
+  return saved ? updatedPost : null;
 }
 
 export async function acceptPersistedQuest(postId: string): Promise<FeedItem | null> {

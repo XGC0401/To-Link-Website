@@ -18,9 +18,11 @@ import {
   SunMedium,
   Wind,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Panel, PanelHeader } from "@/components/ui/panel";
-import { usePersistedPosts, usePersistedSharedContent } from "@/hooks/use-persisted-app-data";
+import { openPersistedDirectChat, usePersistedCurrentUserProfile, usePersistedPosts, usePersistedSharedContent } from "@/hooks/use-persisted-app-data";
 import { formatAppDateTime, formatAppDayLabel } from "@/lib/date";
 import { t } from "@/lib/translations";
 import type { FeedItem, Language } from "@/lib/types";
@@ -92,10 +94,12 @@ function getWeatherVisual(code: number) {
 }
 
 export function HomeScreen() {
+  const router = useRouter();
   const { language } = useToLink();
   const weather = useWeather(language);
   const sharedContent = usePersistedSharedContent();
   const posts = usePersistedPosts();
+  const { profile } = usePersistedCurrentUserProfile();
   const [activeAd, setActiveAd] = useState(0);
   const [currentTimeLabel, setCurrentTimeLabel] = useState("");
   const advertisements = sharedContent.advertisementsByLanguage[language] ?? [];
@@ -138,6 +142,25 @@ export function HomeScreen() {
       : t(language, "weather.loading");
 
   const currentWeatherCode = weather.current?.weatherCode ?? -1;
+
+  function openPostFromHome(item: FeedItem) {
+    const targetRoute = item.category === "quest" ? "/posts/quests" : "/posts/sharing";
+    router.push(`${targetRoute}?item=${encodeURIComponent(item.id)}`);
+  }
+
+  async function openRequesterConversation(item: FeedItem) {
+    const roomId = await openPersistedDirectChat({
+      members: [profile.name, item.authorName],
+      title: item.authorName,
+    });
+
+    if (!roomId) {
+      toast.error(language === "zh-HK" ? "暫時無法開啟對話。" : "Unable to open the conversation right now.");
+      return;
+    }
+
+    router.push(`/connections/messages?room=${encodeURIComponent(roomId)}`);
+  }
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col gap-4 overflow-y-auto pr-1">
@@ -281,13 +304,15 @@ export function HomeScreen() {
         <HomeFeedColumn
           items={recentSharing}
           language={language}
+          onAction={openPostFromHome}
           title={t(language, "page.recentSharing")}
           viewMoreHref="/posts/sharing"
         />
-        <HomeFeedColumn items={ownQuests} language={language} title={t(language, "page.yourQuests")} viewMoreHref="/posts/quests" />
+        <HomeFeedColumn items={ownQuests} language={language} onAction={openPostFromHome} title={t(language, "page.yourQuests")} viewMoreHref="/posts/quests" />
         <HomeFeedColumn
           items={acceptedQuests}
           language={language}
+          onAction={openRequesterConversation}
           title={t(language, "page.acceptedQuests")}
           viewMoreHref="/connections/messages"
           highlightAction
@@ -361,12 +386,14 @@ function HomeFeedColumn({
   highlightAction,
   items,
   language,
+  onAction,
   title,
   viewMoreHref,
 }: {
   highlightAction?: boolean;
   items: FeedItem[];
   language: Language;
+  onAction: (item: FeedItem) => void | Promise<void>;
   title: string;
   viewMoreHref: string;
 }) {
@@ -392,7 +419,7 @@ function HomeFeedColumn({
                 <span>{item.likes} {t(language, "home.likes")}</span>
                 <span>{item.comments} {t(language, "home.comments")}</span>
               </div>
-              <button className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-panel px-3 py-2 font-semibold text-foreground transition hover:border-accent/40 hover:text-accent">
+              <button className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-panel px-3 py-2 font-semibold text-foreground transition hover:border-accent/40 hover:text-accent" onClick={() => { void onAction(item); }} type="button">
                 {highlightAction ? t(language, "home.contactRequester") : t(language, "common.view")}
                 {highlightAction ? <MessagesSquare className="h-3.5 w-3.5" /> : null}
               </button>

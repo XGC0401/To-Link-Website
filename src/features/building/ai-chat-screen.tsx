@@ -1,7 +1,7 @@
 "use client";
 
 import { Edit3, Plus, Send, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
@@ -47,8 +47,21 @@ export function AIChatScreen() {
   const [isSending, setIsSending] = useState(false);
   const [renameConversationId, setRenameConversationId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const conversations = aiData.conversations;
   const remainingQuestions = aiData.remainingQuestions ?? DAILY_QUESTION_LIMIT;
+  const suggestionPrompts =
+    language === "zh-HK"
+      ? [
+          "今個月大廈有什麼重要通知？",
+          "可否幫我整理會所預約規則？",
+          "管理處的聯絡方式是什麼？",
+        ]
+      : [
+          "What are the important building notices this month?",
+          "Can you summarize the facility booking rules?",
+          "What are the management office contact details?",
+        ];
 
   const activeConversation = useMemo(
     () => conversations.find((conversation) => conversation.id === activeId) ?? conversations[0],
@@ -275,16 +288,34 @@ export function AIChatScreen() {
                 </div>
               ))
             ) : (
-              <div className="rounded-[24px] border border-dashed border-border bg-panel px-6 py-8 text-sm leading-7 text-muted whitespace-pre-line">
-                {language === "zh-HK"
-                  ? "向 AI 提問吧！\n你可以這樣問：\npoint xxx\npoint yyy\n等等"
-                  : "Ask AI any questions !\nYou may ask the following:\npoint xxx\npoint yyy\netc"}
+              <div className="rounded-[24px] border border-dashed border-border bg-panel px-6 py-8 text-sm text-muted">
+                <p className="leading-7">
+                  {language === "zh-HK"
+                    ? "向 AI 提問吧。你可以先點選以下其中一條示例問題，再直接發送。"
+                    : "Ask AI anything. Start with one of these example prompts, then send it directly."}
+                </p>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  {suggestionPrompts.map((prompt) => (
+                    <button
+                      key={prompt}
+                      className="rounded-full border border-border bg-panel-strong px-4 py-2 text-left text-sm font-medium text-foreground transition hover:border-accent/40 hover:text-accent"
+                      onClick={() => {
+                        setDraft(prompt);
+                        textareaRef.current?.focus();
+                      }}
+                      type="button"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
 
           <div className="mt-4 flex gap-3">
             <textarea
+              ref={textareaRef}
               className="app-input min-h-16 flex-1 rounded-[24px] px-4 py-3 text-sm"
               onChange={(event) => setDraft(event.target.value)}
               placeholder={t(language, "ai.inputPlaceholder")}

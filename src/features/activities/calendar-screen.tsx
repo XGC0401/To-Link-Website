@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  addDays,
+  addMonths,
   eachDayOfInterval,
   endOfMonth,
   endOfWeek,
@@ -36,6 +36,8 @@ export function CalendarScreen() {
     title: "",
   }));
   const monthStart = startOfMonth(selectedDay);
+  const previousMonthLabel = format(addMonths(monthStart, -1), "MMMM", { locale: dateLocale });
+  const nextMonthLabel = format(addMonths(monthStart, 1), "MMMM", { locale: dateLocale });
   const calendarDays = useMemo(
     () =>
       eachDayOfInterval({
@@ -98,12 +100,12 @@ export function CalendarScreen() {
         <div className={detailsOpen ? "grid h-full gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]" : "flex h-full justify-center"}>
           <div className={detailsOpen ? "rounded-[28px] border border-border bg-panel-strong p-4" : "w-full max-w-5xl rounded-[28px] border border-border bg-panel-strong p-4"}>
             <div className="mb-4 grid grid-cols-[auto_1fr_auto] items-center gap-3">
-              <button className="rounded-full border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground" onClick={() => setSelectedDay(addDays(selectedDay, -30))} type="button">
-                {`< ${t(language, "common.prev")}`}
+              <button className="rounded-full border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground" onClick={() => setSelectedDay(addMonths(selectedDay, -1))} type="button">
+                {`< ${previousMonthLabel}`}
               </button>
               <h3 className="text-center font-display text-xl font-semibold text-foreground">{format(selectedDay, "MMMM yyyy", { locale: dateLocale })}</h3>
-              <button className="rounded-full border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground" onClick={() => setSelectedDay(addDays(selectedDay, 30))} type="button">
-                {`${t(language, "common.next")} >`}
+              <button className="rounded-full border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground" onClick={() => setSelectedDay(addMonths(selectedDay, 1))} type="button">
+                {`${nextMonthLabel} >`}
               </button>
             </div>
             <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-[0.18em] text-muted">

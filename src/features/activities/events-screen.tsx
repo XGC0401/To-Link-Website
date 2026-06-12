@@ -61,7 +61,7 @@ export function EventsScreen() {
               }}
               type="button"
             >
-              {joined ? (language === "zh-HK" ? "已加入！" : "Joined !") : t(language, "common.join")}
+              {joined ? (language === "zh-HK" ? "已加入日曆" : "Added to Calendar") : t(language, "common.join")}
             </button>
           </article>
         );})}

@@ -1,7 +1,7 @@
 "use client";
 
 import { Ban, Flag, Heart, MessageCircle, MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AvatarBadge } from "@/components/ui/avatar-badge";
@@ -106,6 +106,8 @@ const sortOptions: Record<PostsMode, Array<{ label: SortOptionLabel; value: stri
 export function PostsScreen({ mode }: { mode: PostsMode }) {
   const { language } = useToLink();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const posts = usePersistedPosts();
   const blockedUsers = usePersistedBlockedUsers();
   const { profile } = usePersistedCurrentUserProfile();
@@ -166,6 +168,24 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
   const selectedViewerQuestApplication = selected ? getViewerQuestApplication(selected, profile.id) : undefined;
   const selectedQuestApplications = selected ? getSortedQuestApplications(selected) : [];
   const selectedLostFoundLeads = selected ? getSortedLostFoundLeads(selected) : [];
+
+  useEffect(() => {
+    const highlightedItemId = searchParams.get("item");
+
+    if (!highlightedItemId) {
+      return;
+    }
+
+    const highlightedItem = posts.items.find(
+      (item) => item.id === highlightedItemId && (mode === "all" ? true : item.category === mode),
+    );
+
+    if (!highlightedItem || selected?.id === highlightedItem.id) {
+      return;
+    }
+
+    openSelectedDialog(highlightedItem);
+  }, [mode, posts.items, searchParams, selected?.id]);
 
   useEffect(() => {
     if (!deleteCandidate) {
@@ -265,6 +285,12 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
   }
 
   function closeSelectedDialog() {
+    if (searchParams.has("item")) {
+      const nextSearchParams = new URLSearchParams(searchParams.toString());
+      nextSearchParams.delete("item");
+      router.replace(nextSearchParams.size ? `${pathname}?${nextSearchParams.toString()}` : pathname);
+    }
+
     setSelected(null);
     setCommentDraft("");
     setQuestReasonDraft("");
@@ -1048,9 +1074,6 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
               ))}
             </select>
             <div className="flex flex-wrap items-center gap-2 xl:ml-auto">
-              <span className="rounded-full border border-border bg-panel px-4 py-3 text-xs font-semibold text-muted">
-                {includeOwnPosts ? t(language, "posts.currentShowingMine") : t(language, "posts.currentHidingMine")}
-              </span>
               <button
                 className={cn(
                   "rounded-full border px-4 py-3 text-sm font-medium transition",
@@ -1061,7 +1084,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
                 onClick={() => setIncludeOwnPosts((current) => !current)}
                 type="button"
               >
-                {includeOwnPosts ? t(language, "posts.toggleIncludingMine") : t(language, "posts.toggleExcludingMine")}
+                {includeOwnPosts ? t(language, "posts.hideYourPosts") : t(language, "posts.showYourPosts")}
               </button>
               <button
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-accent/30 transition hover:bg-accent-strong"
@@ -1188,25 +1211,16 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
                   {(item.category === "sharing" || mode === "all") && item.category === "sharing" ? (
                     <button
                       className={cn(
-                        "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition",
+                        "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition hover:border-rose-300 hover:text-rose-600",
                         likedByCurrentUser
                           ? "border-rose-200 bg-rose-50 text-rose-600"
                           : "border-border bg-panel text-foreground",
                       )}
-                      disabled={likedByCurrentUser}
                       onClick={async () => {
-                        const liked = await likePersistedPost(item.id);
+                        const updated = await likePersistedPost(item.id);
 
-                        if (liked && selected?.id === item.id) {
-                          setSelected((current) =>
-                            current
-                              ? {
-                                  ...current,
-                                  likedByUserIds: [...(current.likedByUserIds ?? []), profile.id],
-                                  likes: current.likes + 1,
-                                }
-                              : current,
-                          );
+                        if (updated && selected?.id === item.id) {
+                          setSelected(updated);
                         }
                       }}
                       type="button"

@@ -30,6 +30,7 @@ import { firebaseSetupHint, getFirebaseServices, isFirebaseConfigured } from "@/
 import { t } from "@/lib/translations";
 import { cn } from "@/lib/utils";
 import { useToLink } from "@/lib/app-state";
+import { Modal } from "@/components/ui/modal";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
 const COUNTRY_CODES = [
@@ -223,6 +224,7 @@ interface AuthFormState {
   country: string;
   currentState: "worker" | "employee" | "jobless" | "student";
   jobTitle: string;
+  acceptPolicies: boolean;
 }
 
 interface CountryCodeOption {
@@ -250,6 +252,7 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
     country: "Hong Kong",
     currentState: "employee",
     jobTitle: "",
+    acceptPolicies: false,
   });
   const [loading, setLoading] = useState(false);
   const [emailVerificationCode, setEmailVerificationCode] = useState("");
@@ -257,6 +260,7 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
   const [emailCodeVerified, setEmailCodeVerified] = useState(false);
   const [sendingEmailCode, setSendingEmailCode] = useState(false);
   const [verifyingEmailCode, setVerifyingEmailCode] = useState(false);
+  const [legalModal, setLegalModal] = useState<"privacy" | "terms" | null>(null);
 
   const formModeTitle = {
     login: t(language, "auth.login"),
@@ -487,13 +491,20 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
     <div className="flex min-h-dvh w-full overflow-y-auto bg-background px-3 py-3 md:px-5 md:py-5">
       <div className="relative grid w-full flex-1 overflow-hidden rounded-[30px] border border-white/40 bg-white/30 shadow-[0_30px_80px_rgba(146,72,8,0.16)] backdrop-blur-xl lg:grid-cols-[1.1fr_0.9fr]">
         <section className="relative hidden overflow-hidden px-10 py-12 lg:flex lg:flex-col lg:justify-between">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,205,161,0.95),transparent_34%),linear-gradient(135deg,#fff7f0_0%,#ffe8d6_58%,#ffd3b2_100%)]" />
+          <div
+            className={cn(
+              "absolute inset-0",
+              theme === "light"
+                ? "bg-[radial-gradient(circle_at_top_left,rgba(255,205,161,0.95),transparent_34%),linear-gradient(135deg,#fff7f0_0%,#ffe8d6_58%,#ffd3b2_100%)]"
+                : "bg-[radial-gradient(circle_at_top_left,rgba(255,185,132,0.22),transparent_34%),linear-gradient(135deg,#1f140c_0%,#362115_56%,#55311e_100%)]",
+            )}
+          />
           <div
             className={cn(
               "absolute inset-0 opacity-70 [background-size:22px_22px]",
               theme === "light"
                 ? "[background-image:radial-gradient(circle,rgba(243,107,33,0.12)_1px,transparent_1px)]"
-                : "[background-image:radial-gradient(circle,rgba(255,244,235,0.16)_1px,transparent_1px)]",
+                : "[background-image:radial-gradient(circle,rgba(255,222,196,0.22)_1px,transparent_1px)]",
             )}
           />
           <div className="relative z-10 max-w-xl space-y-7">
@@ -661,6 +672,15 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
 
                   if (password !== confirmPassword) {
                     toast.error(t(language, "auth.passwordMismatch"));
+                    return;
+                  }
+
+                  if (!state.acceptPolicies) {
+                    toast.error(
+                      language === "zh-HK"
+                        ? "請先同意私隱政策及服務條款。"
+                        : "Please accept the Privacy Policy and Terms of Service first.",
+                    );
                     return;
                   }
 
@@ -1026,6 +1046,37 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                       />
                     </div>
                   ) : null}
+                  <div className="rounded-[24px] border border-border bg-panel px-4 py-4">
+                    <div className="flex items-start gap-3 text-sm leading-6 text-muted">
+                      <input
+                        checked={state.acceptPolicies}
+                        className="mt-1 h-4 w-4 rounded border-border text-accent"
+                        onChange={(event) =>
+                          setState((current) => ({ ...current, acceptPolicies: event.target.checked }))
+                        }
+                        type="checkbox"
+                      />
+                      <span>
+                        {language === "zh-HK" ? "我已閱讀並接受" : "I accept the "}
+                        <button
+                          className="font-semibold text-accent underline underline-offset-4"
+                          onClick={() => setLegalModal("privacy")}
+                          type="button"
+                        >
+                          {language === "zh-HK" ? "私隱政策" : "Privacy Policy"}
+                        </button>
+                        {language === "zh-HK" ? "及" : " and the "}
+                        <button
+                          className="font-semibold text-accent underline underline-offset-4"
+                          onClick={() => setLegalModal("terms")}
+                          type="button"
+                        >
+                          {language === "zh-HK" ? "服務條款" : "Terms of Service"}
+                        </button>
+                        {language === "zh-HK" ? "。" : "."}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               ) : null}
 
@@ -1111,6 +1162,50 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
           </div>
         </section>
       </div>
+
+      <Modal
+        onClose={() => setLegalModal(null)}
+        open={legalModal !== null}
+        title={
+          legalModal === "privacy"
+            ? language === "zh-HK"
+              ? "私隱政策"
+              : "Privacy Policy"
+            : language === "zh-HK"
+              ? "服務條款"
+              : "Terms of Service"
+        }
+      >
+        <div className="space-y-4 text-sm leading-7 text-muted">
+          {legalModal === "privacy" ? (
+            <>
+              <p>
+                {language === "zh-HK"
+                  ? "此私隱政策為示範版本，說明平台如何收集、使用及保護住戶的註冊資料、聯絡資訊及互動紀錄。"
+                  : "This Privacy Policy is a mock document describing how the platform collects, uses, and protects resident registration data, contact details, and interaction records."}
+              </p>
+              <p>
+                {language === "zh-HK"
+                  ? "資料主要用於帳戶登入、社區互動、預約服務及通知推送，平台只會保留營運所需的必要資料。"
+                  : "Data is used primarily for account access, community interactions, booking services, and notifications, and the platform keeps only the records required for operations."}
+              </p>
+            </>
+          ) : (
+            <>
+              <p>
+                {language === "zh-HK"
+                  ? "此服務條款為示範版本，要求使用者遵守社區守則、尊重其他住戶，並真實填寫帳戶資料。"
+                  : "These Terms of Service are a mock version requiring users to follow community rules, respect other residents, and provide accurate account information."}
+              </p>
+              <p>
+                {language === "zh-HK"
+                  ? "如出現濫用、垃圾訊息或不當內容，平台可根據管理及審核流程限制功能、發出警告或暫停帳戶。"
+                  : "If abuse, spam, or inappropriate content is detected, the platform may restrict features, issue warnings, or suspend the account according to moderation processes."}
+              </p>
+            </>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

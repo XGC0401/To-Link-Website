@@ -1,17 +1,22 @@
 "use client";
 
+import { deleteUser } from "firebase/auth";
+import { useRouter } from "next/navigation";
 import { ImagePlus, Plus, X } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useToLink } from "@/lib/app-state";
 import { AvatarBadge } from "@/components/ui/avatar-badge";
 import { FeatureShell } from "@/components/ui/feature-shell";
+import { Modal } from "@/components/ui/modal";
 import {
+  deletePersistedCurrentUserAccountData,
   savePersistedDashboardData,
   savePersistedCurrentUserProfile,
   usePersistedCurrentUserProfile,
   usePersistedDashboardData,
 } from "@/hooks/use-persisted-app-data";
+import { firebaseSetupHint, getFirebaseServices } from "@/lib/firebase";
 import { cloudinarySetupHint, uploadFilesToCloudinary, validateMediaSelection } from "@/lib/media-upload";
 import { formatCurrentState, formatPostCategory, formatUserStatus } from "@/lib/seeded-content-localization";
 import { formatAppDateTime } from "@/lib/date";
@@ -22,6 +27,7 @@ const currentStateOptions: UserProfile["currentState"][] = ["employee", "worker"
 const statusOptions: UserProfile["status"][] = ["online", "busy", "offline"];
 
 export function ProfileSettingsScreen() {
+  const router = useRouter();
   const { language } = useToLink();
   const { profile } = usePersistedCurrentUserProfile();
   const dashboard = usePersistedDashboardData();
@@ -31,6 +37,9 @@ export function ProfileSettingsScreen() {
   const [saving, setSaving] = useState(false);
   const [savingSlots, setSavingSlots] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const effectiveDraft = draft ?? createProfileDraft(profile);
   const effectiveSlots = slotDraft ?? dashboard.rawAvailableSlots;
 
@@ -44,7 +53,9 @@ export function ProfileSettingsScreen() {
         country: effectiveDraft.country,
         currentState: effectiveDraft.currentState,
         email: effectiveDraft.email,
+        firstName: effectiveDraft.firstName,
         jobTitle: effectiveDraft.jobTitle,
+        lastName: effectiveDraft.lastName,
         phone: effectiveDraft.phone,
         status: effectiveDraft.status,
         username: effectiveDraft.username,
@@ -129,6 +140,69 @@ export function ProfileSettingsScreen() {
     }
   }
 
+  function openAvatarPicker() {
+    if (uploadingAvatar) {
+      return;
+    }
+
+    avatarInputRef.current?.click();
+  }
+
+  async function handleDeleteAccount() {
+    const services = getFirebaseServices();
+    const user = services?.auth.currentUser;
+
+    if (!services || !user) {
+      toast.error(firebaseSetupHint);
+      return;
+    }
+
+    setDeletingAccount(true);
+
+    try {
+      const accountSnapshot = {
+        phone: profile.phone,
+        uid: user.uid,
+        username: profile.username,
+      };
+
+      await deleteUser(user);
+
+      try {
+        await deletePersistedCurrentUserAccountData(accountSnapshot);
+      } catch {
+        // Best-effort cleanup after the auth account has already been removed.
+      }
+
+      toast.success(language === "zh-HK" ? "帳戶已永久刪除。" : "Your account has been permanently deleted.");
+      router.push("/");
+    } catch (error) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        error.code === "auth/requires-recent-login"
+      ) {
+        toast.error(
+          language === "zh-HK"
+            ? "基於安全原因，請重新登入後再刪除帳戶。"
+            : "For security reasons, please sign in again before deleting your account.",
+        );
+      } else {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : language === "zh-HK"
+              ? "暫時無法刪除帳戶。"
+              : "Unable to delete the account right now.",
+        );
+      }
+    } finally {
+      setDeletingAccount(false);
+      setDeleteAccountOpen(false);
+    }
+  }
+
   return (
     <FeatureShell
       description={t(language, "profile.description")}
@@ -137,25 +211,29 @@ export function ProfileSettingsScreen() {
       <div className="grid h-full gap-4 overflow-y-auto pr-1 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <div className="space-y-4">
           <form className="rounded-[28px] border border-border bg-panel-strong p-5" onSubmit={handleSaveProfile}>
-            <div className="flex items-center gap-4">
-              <AvatarBadge
-                alt={profile.name}
-                className="h-16 w-16 bg-accent text-lg font-bold text-white"
-                textClassName="text-white"
-                value={profile.avatar}
-              />
+            <div className="flex items-center gap-4" id="profile-photo">
+              <button className="rounded-full transition hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-accent/50" onClick={openAvatarPicker} type="button">
+                <AvatarBadge
+                  alt={profile.name}
+                  className="h-16 w-16 bg-accent text-lg font-bold text-white"
+                  textClassName="text-white"
+                  value={profile.avatar}
+                />
+              </button>
               <div>
                 <h3 className="text-xl font-semibold text-foreground">{profile.name}</h3>
                 <p className="text-sm text-muted">@{profile.username}</p>
               </div>
-              <label className="ml-auto inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground">
+              <button className="ml-auto inline-flex items-center gap-2 rounded-full border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground" onClick={openAvatarPicker} type="button">
                 <ImagePlus className="h-4 w-4" />
                 {uploadingAvatar ? (language === "zh-HK" ? "上傳中..." : "Uploading...") : language === "zh-HK" ? "更換頭像" : "Change Photo"}
-                <input accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleAvatarChange} type="file" />
-              </label>
+              </button>
+              <input accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleAvatarChange} ref={avatarInputRef} type="file" />
             </div>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               {[
+                [t(language, "auth.firstName"), "firstName", effectiveDraft.firstName],
+                [t(language, "auth.lastName"), "lastName", effectiveDraft.lastName],
                 [t(language, "profile.username"), "username", effectiveDraft.username],
                 [t(language, "profile.phone"), "phone", effectiveDraft.phone],
                 [t(language, "profile.loginEmail"), "email", effectiveDraft.email],
@@ -301,8 +379,69 @@ export function ProfileSettingsScreen() {
               ))}
             </div>
           </section>
+
+          <section className="rounded-[28px] border border-rose-300 bg-rose-50/70 p-5 dark:border-rose-500/40 dark:bg-rose-500/10">
+            <h3 className="text-lg font-semibold text-rose-700 dark:text-rose-200">
+              {language === "zh-HK" ? "危險操作" : "Danger zone"}
+            </h3>
+            <p className="mt-2 text-sm leading-7 text-rose-700/85 dark:text-rose-100/85">
+              {language === "zh-HK"
+                ? "刪除帳戶後將無法復原，請只在你確定永久離開 To-Link 時使用。"
+                : "Deleting the account cannot be undone. Only use this when you are certain you want to leave To-Link permanently."}
+            </p>
+            <button
+              className="mt-4 rounded-full border border-rose-500 bg-rose-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={deletingAccount}
+              onClick={() => setDeleteAccountOpen(true)}
+              type="button"
+            >
+              {language === "zh-HK" ? "永久刪除帳戶" : "Delete account"}
+            </button>
+          </section>
         </div>
       </div>
+
+      <Modal
+        onClose={() => {
+          if (!deletingAccount) {
+            setDeleteAccountOpen(false);
+          }
+        }}
+        open={deleteAccountOpen}
+        title={language === "zh-HK" ? "永久刪除帳戶" : "Delete account permanently"}
+        width="max-w-xl"
+      >
+        <div className="space-y-5">
+          <div className="rounded-[24px] border border-rose-300 bg-rose-50 px-5 py-4 text-sm leading-7 text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-100">
+            {language === "zh-HK"
+              ? "你確定要永久刪除帳戶嗎？此操作會移除登入帳戶，而且不能復原。"
+              : "Are you sure you want to delete your account PERMANENTLY? This will remove your sign-in account and cannot be undone."}
+          </div>
+          <div className="flex justify-end gap-3">
+            <button
+              className="rounded-full border border-border bg-panel px-4 py-3 text-sm font-semibold text-foreground"
+              onClick={() => setDeleteAccountOpen(false)}
+              type="button"
+            >
+              {t(language, "common.cancel")}
+            </button>
+            <button
+              className="rounded-full bg-rose-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={deletingAccount}
+              onClick={() => {
+                void handleDeleteAccount();
+              }}
+              type="button"
+            >
+              {deletingAccount
+                ? t(language, "common.working")
+                : language === "zh-HK"
+                  ? "永久刪除"
+                  : "Delete permanently"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </FeatureShell>
   );
 }
@@ -312,7 +451,9 @@ function createProfileDraft(profile: {
   country: string;
   currentState: UserProfile["currentState"];
   email: string;
+  firstName: string;
   jobTitle?: string;
+  lastName: string;
   phone: string;
   status: UserProfile["status"];
   username: string;
@@ -322,7 +463,9 @@ function createProfileDraft(profile: {
     country: profile.country,
     currentState: profile.currentState,
     email: profile.email,
+    firstName: profile.firstName,
     jobTitle: profile.jobTitle ?? "",
+    lastName: profile.lastName,
     phone: profile.phone,
     status: profile.status,
     username: profile.username,

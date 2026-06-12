@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { PlaceItem } from "@/lib/types";
+import type { Language, PlaceItem } from "@/lib/types";
 
 type NearbyMode = "shops" | "communities";
 
@@ -14,11 +14,15 @@ interface NearbyPlacesState {
 export function useNearbyPlaces({
   enabled,
   lat,
+  language,
+  limit,
   lng,
   mode,
 }: {
   enabled: boolean;
   lat: number;
+  language: Language;
+  limit: number;
   lng: number;
   mode: NearbyMode;
 }) {
@@ -44,7 +48,7 @@ export function useNearbyPlaces({
 
       try {
         const response = await fetch(
-          `/api/places?mode=${mode}&lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
+          `/api/places?mode=${mode}&lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}&limit=${encodeURIComponent(String(limit))}&language=${encodeURIComponent(language)}`,
           {
             cache: "no-store",
             signal: controller.signal,
@@ -80,7 +84,7 @@ export function useNearbyPlaces({
     void loadNearbyPlaces();
 
     return () => controller.abort();
-  }, [enabled, lat, lng, mode]);
+  }, [enabled, language, lat, limit, lng, mode]);
 
   if (!enabled || !Number.isFinite(lat) || !Number.isFinite(lng)) {
     return {

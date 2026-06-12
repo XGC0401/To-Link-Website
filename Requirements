@@ -165,21 +165,7 @@ Overall, the system must be modular, scalable, and built using real APIs and ser
 
 
 Current implementation issues to revisit later (not part of the product requirements):
-1. Messages page: sent messages are currently rendering on the wrong side, and sending a message currently fails with the error "Missing or insufficient permissions."
-2. Posts page: clicking the Like button currently fails with the error "Missing or insufficient permissions." even after refreshing the page.
-3. Posts page: submitting comments may also currently fail with the error "Missing or insufficient permissions." because comments write to the same shared posts data path.
-4. Posts page: the comment button error reported during the latest UI pass has not been isolated and fixed yet, so this still needs direct reproduction and debugging.
-5. Translation audit: a full app-wide untranslated-text sweep has not been completed yet; only the known register/auth and related copy gaps were fixed.
-6. Register/Profile Settings sync: the main registration fields are now written into the persisted user profile, but the full end-to-end UI verification for every profile field is still pending.
-7. Profile picture propagation: avatar upload is implemented, but full verification that updated profile pictures appear correctly across all other-user and historical surfaces is still pending.
-8. Login page: the left-side dotted background overlay color still does not switch correctly in dark mode.
-9. Posts page: the Show/Hide Your Posts button should use the shorter labels "隱藏你的帖子" and "顯示你的帖子" instead of the longer explanatory sentences.
-10. Posts page: the heart icon still does not turn red as expected, and clicking it again should support unliking the post.
-11. Nearby page: the Show More behavior should not pre-load all nearby shops or communities. It should request only the first 10 items initially, then fetch 10 more each time Show More is pressed, to reduce API workload.
-12. Activities page: change the status label from "Joined !" to "Added to Calendar".
-13. Calendar page: the Prev and Next buttons should show the exact adjacent month names, for example "< May" and "July >" when the current month is June.
-14. AI Chat page: replace the plain example suggestion text with clickable suggestion buttons that paste a sample question into the input box for quick sending.
-15. Profile Settings page: the 線上狀態/Online status control still needs to clearly let the user choose whether they are busy or not.
-16. Profile picture entry point: clicking the avatar in the top bar/profile badge should also open the profile picture change flow.
-17. FAQ: prefix each question and answer with numbering such as Q1./A1., Q2./A2., and so on.
-18. Register page: users should be required to check an "Accept Privacy Policy & Terms of Service" checkbox before account creation, and the Privacy Policy and Terms of Service text should be clickable and visually differentiated.
+1. Messages page: the current code path looks corrected, but live end-to-end verification is still needed to confirm sent messages render on the correct side and no Firestore permission error remains.
+2. Posts page: the previously reported comment-button issue still needs direct reproduction and debugging, because it was not isolated during this pass.
+3. Translation audit: a full app-wide untranslated-text sweep has still not been completed; this pass only fixed the targeted copy issues.
+4. Profile picture propagation: avatar upload and the profile-photo entry points are wired, but full verification that updated profile pictures appear correctly across all other-user and historical surfaces is still pending.

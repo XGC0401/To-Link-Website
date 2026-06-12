@@ -29,7 +29,7 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
-import { FONT_SCALE_LABELS } from "@/lib/app-config";
+import { FONT_SCALE_BUTTON_CLASSES, FONT_SCALE_BUTTON_SIZE_CLASSES, FONT_SCALE_LABELS } from "@/lib/app-config";
 import { usePersistedCurrentUserProfile } from "@/hooks/use-persisted-app-data";
 import { getFirebaseServices } from "@/lib/firebase";
 import { infoNavigation, sidebarNavigation, type NavigationIcon } from "@/lib/navigation";
@@ -234,12 +234,14 @@ export function Sidebar() {
                         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                           {t(language, "control.fontSize")}
                         </p>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap items-end gap-2">
                           {(Object.keys(FONT_SCALE_LABELS) as FontScale[]).map((value) => (
                             <button
                               key={value}
                               className={cn(
-                                "flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold transition",
+                                "flex items-center justify-center rounded-full border font-semibold transition",
+                                FONT_SCALE_BUTTON_CLASSES[value],
+                                FONT_SCALE_BUTTON_SIZE_CLASSES[value],
                                 fontScale === value
                                   ? "border-accent bg-accent text-white"
                                   : "border-border bg-panel-strong text-muted hover:border-accent/40 hover:text-foreground",

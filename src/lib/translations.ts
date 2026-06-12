@@ -225,8 +225,6 @@ export type CopyKey =
   | "posts.foundIt"
   | "posts.toggleIncludingMine"
   | "posts.toggleExcludingMine"
-  | "posts.currentShowingMine"
-  | "posts.currentHidingMine"
   | "posts.createPost"
   | "posts.createQuest"
   | "posts.createSharing"
@@ -608,13 +606,11 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "posts.mostExpensive": "Most Expensive",
     "posts.highestReward": "Highest Reward",
     "posts.lowestReward": "Least Reward",
-    "posts.hideYourPosts": "Hide Your Posts",
-    "posts.showYourPosts": "Show Your Posts",
+    "posts.hideYourPosts": "Current: Show Your Posts",
+    "posts.showYourPosts": "Current: Hide Your Posts",
     "posts.foundIt": "Found It!",
     "posts.toggleIncludingMine": "Showing all users posts including myself",
     "posts.toggleExcludingMine": "Showing all users posts excluding myself",
-    "posts.currentShowingMine": "Current: Showing Your Posts",
-    "posts.currentHidingMine": "Current: Hiding Your Posts",
     "posts.createPost": "Create Post",
     "posts.createQuest": "Create Quest",
     "posts.createSharing": "Create Sharing Post",
@@ -995,13 +991,11 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "posts.mostExpensive": "最貴",
     "posts.highestReward": "最高賞金",
     "posts.lowestReward": "最低賞金",
-    "posts.hideYourPosts": "隱藏你的帖子",
-    "posts.showYourPosts": "顯示你的帖子",
+    "posts.hideYourPosts": "目前：顯示你的帖子",
+    "posts.showYourPosts": "目前：隱藏你的帖子",
     "posts.foundIt": "我找到了！",
     "posts.toggleIncludingMine": "顯示所有用戶帖子，包括自己",
     "posts.toggleExcludingMine": "顯示所有用戶帖子，不包括自己",
-    "posts.currentShowingMine": "目前：顯示你的帖子",
-    "posts.currentHidingMine": "目前：隱藏你的帖子",
     "posts.createPost": "發布帖子",
     "posts.createQuest": "發布任務",
     "posts.createSharing": "發布分享帖子",

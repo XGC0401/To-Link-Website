@@ -12,6 +12,20 @@ export const FONT_SCALE_LABELS: Record<FontScale, string> = {
   l: "L",
 };
 
+export const FONT_SCALE_BUTTON_CLASSES: Record<FontScale, string> = {
+  s: "text-xs",
+  m: "text-sm",
+  b: "text-lg",
+  l: "text-2xl",
+};
+
+export const FONT_SCALE_BUTTON_SIZE_CLASSES: Record<FontScale, string> = {
+  s: "h-9 w-9",
+  m: "h-10 w-10",
+  b: "h-12 w-12",
+  l: "h-14 w-14",
+};
+
 export const THEME_SEQUENCE: ThemeMode[] = ["light", "dark"];
 
 export const UI_COOKIE_NAMES = {

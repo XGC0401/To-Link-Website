@@ -80,9 +80,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="relative flex w-full overflow-hidden rounded-[36px] border border-white/40 bg-white/25 shadow-[0_30px_80px_rgba(146,72,8,0.16)] backdrop-blur-xl">
         <Sidebar />
 
-        <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden p-3 md:p-4">
+        <div className="relative flex min-w-0 flex-1 flex-col p-3 md:p-4">
           <TopBar />
-          <main className="mt-4 flex min-h-0 flex-1 overflow-hidden">{children}</main>
+          <main className="relative z-10 mt-4 flex min-h-0 flex-1 overflow-hidden">{children}</main>
 
           <AnimatePresence>
             {notificationsOpen ? (
@@ -175,13 +175,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
                     {activeInfoPanel === "faq" ? (
                       <div className="max-h-[62vh] space-y-5 overflow-y-auto pr-2">
-                        {faqItems.map((item) => (
+                        {faqItems.map((item, index) => (
                           <div key={item.id} className="space-y-3">
                             <div className="rounded-3xl bg-rose-500/90 px-5 py-4 text-sm font-semibold text-white">
-                              {item.question}
+                              {`Q${index + 1}. ${item.question}`}
                             </div>
                             <div className="rounded-3xl bg-emerald-500/16 px-5 py-4 text-sm leading-6 text-foreground">
-                              {item.answer}
+                              {`A${index + 1}. ${item.answer}`}
                             </div>
                           </div>
                         ))}

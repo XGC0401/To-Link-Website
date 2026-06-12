@@ -39,16 +39,18 @@ interface CommunityJoinDraft {
 export function NearbyScreen({ mode }: { mode: NearbyMode }) {
   const { language } = useToLink();
   const location = useUserLocation();
+  const [visibleCount, setVisibleCount] = useState(10);
   const livePlaces = useNearbyPlaces({
     enabled: true,
     lat: location.lat,
+    language,
+    limit: visibleCount,
     lng: location.lng,
     mode,
   });
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("nearest");
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
-  const [visibleCount, setVisibleCount] = useState(10);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [shopBookingDraft, setShopBookingDraft] = useState<ShopBookingDraft>(() => createShopBookingDraft());
@@ -88,7 +90,7 @@ export function NearbyScreen({ mode }: { mode: NearbyMode }) {
   }, [mode, query, sortBy]);
 
   const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null;
-  const visibleItems = items.slice(0, visibleCount);
+  const visibleItems = items;
   const isLoadingPlaces = livePlaces.status === "idle" || livePlaces.status === "loading";
 
   function handleShowCurrentLocation() {
@@ -330,15 +332,15 @@ export function NearbyScreen({ mode }: { mode: NearbyMode }) {
                       <p className="mt-3 text-xs text-muted">{formatDistanceKm(item.distance)}</p>
                     </button>
                   ))}
-                  {visibleItems.length < items.length ? (
+                  {livePlaces.items.length >= visibleCount ? (
                     <button
                       className="w-full rounded-[26px] border border-border bg-panel px-4 py-4 text-sm font-semibold text-foreground transition hover:border-accent hover:text-accent-strong"
-                      onClick={() => setVisibleCount((current) => Math.min(current + 10, items.length))}
+                      onClick={() => setVisibleCount((current) => current + 10)}
                       type="button"
                     >
                       {language === "zh-HK"
-                        ? `顯示更多（再多 ${Math.min(10, items.length - visibleItems.length)} 項）`
-                        : `Show More (${Math.min(10, items.length - visibleItems.length)} more)`}
+                        ? "顯示更多（再多 10 項）"
+                        : "Show More (10 more)"}
                     </button>
                   ) : null}
                 </div>

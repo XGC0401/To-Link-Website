@@ -54,7 +54,7 @@ html[data-theme="dark"] {
 }
 
 html[data-font-scale="s"] {
-  --app-font-scale: 0.84;
+  --app-font-scale: 0.72;
 }
 
 html[data-font-scale="m"] {
@@ -62,11 +62,11 @@ html[data-font-scale="m"] {
 }
 
 html[data-font-scale="b"] {
-  --app-font-scale: 1.18;
+  --app-font-scale: 1.34;
 }
 
 html[data-font-scale="l"] {
-  --app-font-scale: 1.32;
+  --app-font-scale: 1.62;
 }
 
 * {

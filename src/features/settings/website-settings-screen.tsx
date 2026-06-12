@@ -5,9 +5,11 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { FeatureShell } from "@/components/ui/feature-shell";
 import { removePersistedBlockedUser, usePersistedBlockedUsers } from "@/hooks/use-persisted-app-data";
+import { FONT_SCALE_BUTTON_CLASSES, FONT_SCALE_BUTTON_SIZE_CLASSES } from "@/lib/app-config";
 import { useToLink } from "@/lib/app-state";
 import { t } from "@/lib/translations";
 import type { FontScale } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 const tabs = ["appearance", "notifications", "language", "privacy"] as const;
 type SettingsTab = (typeof tabs)[number];
@@ -87,11 +89,18 @@ export function WebsiteSettingsScreen() {
               </section>
               <section className="rounded-[28px] border border-border bg-panel-strong p-5">
                 <h3 className="text-lg font-semibold text-foreground">{t(language, "settings.fontScale")}</h3>
-                <div className="mt-4 flex gap-2">
+                <div className="mt-4 flex flex-wrap items-end gap-2">
                   {(["s", "m", "b", "l"] as FontScale[]).map((value) => (
                     <button
                       key={value}
-                      className={fontScale === value ? "flex h-10 w-10 items-center justify-center rounded-full bg-accent text-sm font-semibold text-white" : "flex h-10 w-10 items-center justify-center rounded-full border border-border bg-panel text-sm font-semibold text-foreground"}
+                      className={cn(
+                        "flex items-center justify-center rounded-full font-semibold transition",
+                        FONT_SCALE_BUTTON_CLASSES[value],
+                        FONT_SCALE_BUTTON_SIZE_CLASSES[value],
+                        fontScale === value
+                          ? "bg-accent text-white"
+                          : "border border-border bg-panel text-foreground",
+                      )}
                       onClick={() => setFontScale(value)}
                       type="button"
                     >
