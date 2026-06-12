@@ -1,7 +1,7 @@
 "use client";
 
-import { Languages, Search, Send, Users } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Languages, Search, Send, Users, Paperclip, X } from "lucide-react";
+import { useMemo, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { useToLink } from "@/lib/app-state";
@@ -16,6 +16,8 @@ import {
 import { getFirebaseServices } from "@/lib/firebase";
 import { autoTranslateText } from "@/lib/translation";
 import { t } from "@/lib/translations";
+import { validateMediaSelection, uploadFilesToCloudinary } from "@/lib/media-upload";
+import type { MediaAttachment } from "@/lib/types";
 
 export function MessagesScreen() {
   const { language } = useToLink();
@@ -28,6 +30,9 @@ export function MessagesScreen() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [attachments, setAttachments] = useState<MediaAttachment[]>([]);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [groupName, setGroupName] = useState("");
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
   const [translatedMessages, setTranslatedMessages] = useState<Record<string, string>>({});
@@ -80,8 +85,41 @@ export function MessagesScreen() {
     }
   }
 
+  async function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = event.currentTarget.files;
+    if (!files) return;
+
+    const validation = validateMediaSelection(files);
+    if (!validation.valid) {
+      validation.errors.forEach((error) => toast.error(error));
+      return;
+    }
+
+    setUploadingMedia(true);
+    try {
+      const uploadedAssets = await uploadFilesToCloudinary(Array.from(files));
+      const newAttachments: MediaAttachment[] = uploadedAssets.map((asset) => ({
+        url: asset.secureUrl,
+        type: asset.resourceType === "video" ? "video" : "image",
+        filename: asset.originalFilename,
+      }));
+      setAttachments((prev) => [...prev, ...newAttachments]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to upload media");
+    } finally {
+      setUploadingMedia(false);
+    }
+  }
+
+  function removeAttachment(index: number) {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  }
+
   async function handleSendMessage() {
-    if (!activeRoom || !draft.trim()) {
+    if (!activeRoom || (!draft.trim() && attachments.length === 0)) {
       return;
     }
 
@@ -101,9 +139,10 @@ export function MessagesScreen() {
         senderAvatar: profile.avatar,
         senderId: currentUserId,
         kind: "text",
-        content: content.replace(/\s+/g, " "),
+        content: content ? content.replace(/\s+/g, " ") : "(Sent media)",
         sentAt,
         inbound: false,
+        attachments: attachments.length > 0 ? attachments : undefined,
       });
 
       if (!sent) {
@@ -115,6 +154,7 @@ export function MessagesScreen() {
       }
 
       setDraft("");
+      setAttachments([]);
       toast.success(t(language, "toast.messageSent"));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to send message.");
@@ -207,6 +247,27 @@ export function MessagesScreen() {
                   <div className={message.accentLabel ? "max-w-[80%] rounded-[24px] border border-accent/30 bg-accent-soft px-4 py-3 text-sm text-foreground" : isInbound ? "max-w-[80%] rounded-[24px] border border-border bg-panel px-4 py-3 text-sm text-foreground" : "max-w-[80%] rounded-[24px] bg-accent px-4 py-3 text-sm text-white"}>
                     {message.accentLabel ? <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-strong">{message.accentLabel}</p> : null}
                     <p className="leading-7">{showTranslated ? translated : message.content}</p>
+                    {message.attachments && message.attachments.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {message.attachments.map((attachment, idx) => (
+                          <div key={idx}>
+                            {attachment.type === "image" ? (
+                              <img
+                                alt={attachment.filename}
+                                className="max-w-full rounded-lg"
+                                src={attachment.url}
+                              />
+                            ) : (
+                              <video
+                                className="max-w-full rounded-lg"
+                                controls
+                                src={attachment.url}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     <div className="mt-2 flex items-center justify-between gap-2">
                       <button
                         className={isInbound ? "inline-flex items-center gap-1 rounded-full border border-border/70 px-2.5 py-1 text-[11px] font-semibold text-muted transition hover:border-accent/40 hover:text-accent" : "inline-flex items-center gap-1 rounded-full border border-white/35 bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white/90 transition hover:bg-white/20"}
@@ -225,21 +286,75 @@ export function MessagesScreen() {
                 </div>
               ))}
             </div>
-            <div className="mt-4 flex gap-3">
-              <textarea
-                className="app-input min-h-16 flex-1 rounded-[24px] px-4 py-3 text-sm"
-                onChange={(event) => setDraft(event.target.value)}
-                placeholder={t(language, "messages.write")}
-                value={draft}
-              />
-              <button
-                className="self-end rounded-full bg-accent p-3 text-white disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={sending || !draft.trim()}
-                onClick={handleSendMessage}
-                type="button"
-              >
-                <Send className="h-4 w-4" />
-              </button>
+            <div className="mt-4 space-y-3">
+              {attachments.length > 0 && (
+                <div className="space-y-2 rounded-lg border border-border bg-panel-soft p-3">
+                  <p className="text-xs font-semibold text-muted">Attachments ({attachments.length})</p>
+                  <div className="flex flex-wrap gap-2">
+                    {attachments.map((attachment, idx) => (
+                      <div key={idx} className="relative inline-block">
+                        {attachment.type === "image" ? (
+                          <img
+                            alt={attachment.filename}
+                            className="h-16 w-16 rounded object-cover"
+                            src={attachment.url}
+                          />
+                        ) : (
+                          <div className="flex h-16 w-16 items-center justify-center rounded bg-muted/30">
+                            <span className="text-xs font-semibold text-muted">Video</span>
+                          </div>
+                        )}
+                        <button
+                          className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white"
+                          onClick={() => removeAttachment(idx)}
+                          type="button"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-3">
+                <input
+                  accept="image/*,video/mp4"
+                  hidden
+                  id="message-file-upload"
+                  name="message-media"
+                  multiple
+                  onChange={handleFileSelect}
+                  ref={fileInputRef}
+                  type="file"
+                />
+                <textarea
+                  className="app-input min-h-16 flex-1 rounded-[24px] px-4 py-3 text-sm"
+                  id="message-input"
+                  name="message-content"
+                  onChange={(event) => setDraft(event.target.value)}
+                  placeholder={t(language, "messages.write")}
+                  value={draft}
+                />
+                <div className="flex flex-col gap-2 self-end">
+                  <button
+                    className="rounded-full bg-muted p-3 text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={uploadingMedia}
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Attach media (images/videos)"
+                    type="button"
+                  >
+                    <Paperclip className="h-4 w-4" />
+                  </button>
+                  <button
+                    className="rounded-full bg-accent p-3 text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={sending || (!draft.trim() && attachments.length === 0)}
+                    onClick={handleSendMessage}
+                    type="button"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

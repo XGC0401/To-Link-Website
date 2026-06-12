@@ -217,16 +217,23 @@ export function Sidebar() {
 
               {shouldExpand ? (
                 <div className="space-y-1 pl-4">
-                  {item.children.map((child) => (
-                    <SidebarRouteLink
-                      key={child.href}
-                      href={child.href}
-                      icon={child.icon}
-                      active={pathname === child.href}
-                      collapsed={!sidebarOpen}
-                      label={t(language, child.labelKey)}
-                    />
-                  ))}
+                  {item.children.map((child) => {
+                    // Only show user-list route for admins
+                    if (child.href === "/settings/user-list" && profile.role !== "admin") {
+                      return null;
+                    }
+                    
+                    return (
+                      <SidebarRouteLink
+                        key={child.href}
+                        href={child.href}
+                        icon={child.icon}
+                        active={pathname === child.href}
+                        collapsed={!sidebarOpen}
+                        label={t(language, child.labelKey)}
+                      />
+                    );
+                  })}
 
                   {isSettingsGroup ? (
                     <div className="space-y-3 px-3 py-2">

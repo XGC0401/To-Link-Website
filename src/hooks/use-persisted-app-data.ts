@@ -303,37 +303,23 @@ export function usePersistedSharedContent() {
 
 export function usePersistedPosts() {
   const { language } = useToLink();
-  const state = useSeededFirestoreDocument<PostsDocument>({
-    parse: normalizePostsDocument,
-    path: ["appData", "posts"],
-    seedData: POSTS_SEED,
-  });
-  const overridesState = useSeededUserDocument<PostsDocument>({
+  // SECURITY: Only load user-specific posts from their own profile.
+  // Posts are now stored per-user in userProfiles/{uid}/appData/postOverrides
+  // to prevent unauthorized access to other users' posts.
+  const state = useSeededUserDocument<PostsDocument>({
     pathFactory: (uid) => ["userProfiles", uid, "appData", "postOverrides"],
     parse: normalizePostsDocument,
     seedData: POSTS_OVERRIDES_SEED,
   });
-  const mergedItems = useMemo(
-    () => mergePersistedPosts(state.data.items, overridesState.data.items),
-    [overridesState.data.items, state.data.items],
-  );
   const localizedData = {
     ...state.data,
-    items: localizeFeedItems(language, mergedItems),
+    items: localizeFeedItems(language, state.data.items),
   };
 
   return {
     ...state,
     data: localizedData,
-    error: state.error ?? overridesState.error,
     items: localizedData.items,
-    ready: state.ready && overridesState.ready,
-    status:
-      state.status === "error" || overridesState.status === "error"
-        ? "error"
-        : state.status === "loading" || overridesState.status === "loading"
-          ? "loading"
-          : "ready",
   };
 }
 
@@ -1772,33 +1758,27 @@ async function saveSharedChatRoomsDocument(documentValue: SharedChatRoomsDocumen
 }
 
 async function loadEditablePostsDocument() {
-  const [sharedPosts, overridePosts] = await Promise.all([
-    loadSharedDocument(["appData", "posts"], POSTS_SEED, normalizePostsDocument),
-    loadCurrentUserDocument(["appData", "postOverrides"], POSTS_OVERRIDES_SEED, normalizePostsDocument),
-  ]);
+  // SECURITY: Only load user-specific posts from their own profile
+  // All posts are now stored in userProfiles/{uid}/appData/postOverrides
+  const overridePosts = await loadCurrentUserDocument(
+    ["appData", "postOverrides"],
+    POSTS_OVERRIDES_SEED,
+    normalizePostsDocument
+  );
 
   return {
-    items: mergePersistedPosts(sharedPosts.items, overridePosts?.items ?? []),
+    items: overridePosts?.items ?? [],
   } satisfies PostsDocument;
 }
 
 async function persistEditablePostsDocument(documentValue: PostsDocument) {
+  // SECURITY: Save only to user-specific posts location
+  // This ensures posts are private and only accessible to the post owner
   const normalizedDocument = {
     items: documentValue.items.map((item) => preparePersistedPostItem(item)),
   } satisfies PostsDocument;
 
-  try {
-    const saved = await saveSharedDocument(["appData", "posts"], normalizedDocument);
-
-    if (!saved) {
-      return saveCurrentUserDocument(["appData", "postOverrides"], normalizedDocument);
-    }
-
-    await saveCurrentUserDocument(["appData", "postOverrides"], POSTS_OVERRIDES_SEED);
-    return true;
-  } catch {
-    return saveCurrentUserDocument(["appData", "postOverrides"], normalizedDocument);
-  }
+  return saveCurrentUserDocument(["appData", "postOverrides"], normalizedDocument);
 }
 
 async function loadCurrentUserChatRoomOverride(roomId: string) {

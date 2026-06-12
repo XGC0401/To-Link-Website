@@ -199,6 +199,12 @@ export const sidebarNavigation: SidebarNavItem[] = [
         href: "/settings/profile",
         icon: "friends",
       },
+      {
+        kind: "route",
+        labelKey: "nav.settings.userList",
+        href: "/settings/user-list",
+        icon: "friends",
+      },
     ],
   },
 ];

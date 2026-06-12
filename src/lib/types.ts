@@ -147,6 +147,12 @@ export interface BlockedUserItem {
   blockedAt: string;
 }
 
+export interface MediaAttachment {
+  url: string;
+  type: "image" | "video";
+  filename: string;
+}
+
 export interface ChatMessage {
   id: string;
   senderId?: string;
@@ -157,6 +163,7 @@ export interface ChatMessage {
   sentAt: string;
   inbound: boolean;
   accentLabel?: string;
+  attachments?: MediaAttachment[];
 }
 
 export interface ChatRoom {

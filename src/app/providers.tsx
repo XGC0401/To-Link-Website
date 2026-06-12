@@ -3,6 +3,12 @@
 import { Toaster } from "sonner";
 import type { StoredPreferences } from "@/lib/preferences";
 import { ToLinkProvider } from "@/lib/app-state";
+import { useOnlineStatusTracker } from "@/hooks/use-online-status-tracker";
+
+function OnlineStatusTracker() {
+  useOnlineStatusTracker();
+  return null;
+}
 
 export function Providers({
   children,
@@ -13,6 +19,7 @@ export function Providers({
 }) {
   return (
     <ToLinkProvider initialPreferences={initialPreferences}>
+      <OnlineStatusTracker />
       {children}
       <Toaster
         closeButton

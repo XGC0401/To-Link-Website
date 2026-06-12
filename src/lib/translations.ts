@@ -107,6 +107,7 @@ export type CopyKey =
   | "nav.building.documents"
   | "nav.settings.website"
   | "nav.settings.profile"
+  | "nav.settings.userList"
   | "nav.info.feedback"
   | "nav.info.community"
   | "nav.info.faq"
@@ -493,6 +494,7 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "nav.building.documents": "Documents",
     "nav.settings.website": "Website Settings",
     "nav.settings.profile": "Profile Settings",
+    "nav.settings.userList": "User List",
     "nav.info.feedback": "App Feedback",
     "nav.info.community": "Community Feedback",
     "nav.info.faq": "FAQ",
@@ -878,6 +880,7 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "nav.building.documents": "文件",
     "nav.settings.website": "網站設定",
     "nav.settings.profile": "個人設定",
+    "nav.settings.userList": "用戶列表",
     "nav.info.feedback": "應用程式回饋",
     "nav.info.community": "社區回饋",
     "nav.info.faq": "常見問題",

@@ -34,6 +34,8 @@ export function ToolbarSearch({
       <Search className="h-4 w-4 text-muted" />
       <input
         className="w-full bg-transparent text-sm outline-none"
+        id="toolbar-search"
+        name="toolbar-search"
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         value={value}
@@ -54,6 +56,8 @@ export function ToolbarSelect({
   return (
     <select
       className="app-input rounded-full px-4 py-3 text-sm"
+      id="toolbar-select"
+      name="toolbar-select"
       onChange={(event) => onChange(event.target.value)}
       value={value}
     >

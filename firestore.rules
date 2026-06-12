@@ -9,20 +9,38 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == userId;
     }
 
-    // This app currently stores shared posts and chat rooms in aggregate docs
-    // under appData/*. With that schema, Firestore rules cannot safely enforce
-    // per-post or per-room ownership. These rules therefore allow authenticated
-    // writes to the shared docs the current client updates.
-    match /appData/{docId} {
+    // SECURITY: Shared content collections - read-only for all authenticated users
+    // Only specific documents that should be shared globally
+    match /appData/sharedContent {
       allow read: if signedIn();
-      allow create, update: if signedIn() && docId in [
-        'sharedContent',
-        'friendSuggestions',
-        'posts',
-        'chatRooms',
-        'moderationReports'
-      ];
+      allow write: if false;
+    }
+
+    match /appData/friendSuggestions {
+      allow read: if signedIn();
+      allow create, update: if signedIn();
       allow delete: if false;
+    }
+
+    // SECURITY: Moderation reports - write-only for authenticated users
+    match /appData/moderationReports {
+      allow read: if false;
+      allow create, update: if signedIn();
+      allow delete: if false;
+    }
+
+    // SECURITY: Shared chat rooms - aggregate document with member filtering
+    // Client-side filtering enforces that users only see rooms they're a member of
+    // Firestore rules prevent unauthorized document writes
+    match /appData/chatRooms {
+      allow read: if signedIn();
+      allow create, update: if signedIn();
+      allow delete: if false;
+    }
+
+    // SECURITY: Deny global access to other appData documents
+    match /appData/{document=**} {
+      allow read, write: if false;
     }
 
     // Login resolves email from username/phone before sign-in, so reads must

@@ -270,6 +270,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                       >
                         <textarea
                           className="app-input min-h-36 w-full rounded-[28px] px-4 py-4 text-sm"
+                          id="feedback-textarea"
+                          name="feedback-message"
                           maxLength={2000}
                           placeholder={t(language, "feedback.placeholder")}
                         />
@@ -281,6 +283,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                           <span className="text-xs">{t(language, "feedback.fileTypes")}</span>
                           <input
                             className="sr-only"
+                            id="feedback-file-upload"
+                            name="feedback-files"
                             multiple
                             onChange={(event) => handleFeedbackFileSelection(event.target.files)}
                             type="file"

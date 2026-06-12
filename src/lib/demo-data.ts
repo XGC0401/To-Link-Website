@@ -35,6 +35,25 @@ export const currentUser: UserProfile = {
   points: 186,
 };
 
+// Admin account - automatically created and synced to new users
+export const adminUser: UserProfile = {
+  id: "admin-user",
+  firstName: "Admin",
+  lastName: "System",
+  name: "System Admin",
+  username: "admin",
+  email: "admin@admin.com",
+  phone: "+852 0000 0000",
+  country: "Hong Kong",
+  currentState: "employee",
+  jobTitle: "System Administrator",
+  avatar: "SA",
+  bio: "System administrator account. Contact for support and issues.",
+  role: "admin",
+  status: "online",
+  points: 0,
+};
+
 export const notifications: NotificationItem[] = [
   {
     id: "notif-1",

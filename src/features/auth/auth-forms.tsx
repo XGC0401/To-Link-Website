@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { useToLink } from "@/lib/app-state";
 import { Modal } from "@/components/ui/modal";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import type { FriendCard } from "@/lib/types";
 
 const COUNTRY_CODES = [
   { code: "+93", label: "Afghanistan (+93)" },
@@ -707,7 +708,11 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                       await updateProfile(credential.user, { displayName });
                     }
 
-                    await setDoc(doc(services.db, "userProfiles", credential.user.uid), {
+                    // Determine if this is the admin account
+                    const isAdminAccount = email.toLowerCase() === "admin@admin.com";
+                    const userRole = isAdminAccount ? "admin" : "resident";
+
+                    const newUserProfile = {
                       id: credential.user.uid,
                       uid: credential.user.uid,
                       email,
@@ -721,11 +726,13 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                       country: state.country.trim(),
                       currentState: state.currentState,
                       jobTitle: state.jobTitle.trim(),
-                      role: "resident",
+                      role: userRole,
                       status: "online",
                       points: 0,
                       createdAt: new Date().toISOString(),
-                    });
+                    };
+
+                    await setDoc(doc(services.db, "userProfiles", credential.user.uid), newUserProfile);
 
                     if (normalizedUsername) {
                       await setDoc(doc(services.db, "userHandles", normalizedUsername), {
@@ -741,6 +748,29 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                         type: "phone",
                         uid: credential.user.uid,
                       });
+                    }
+
+                    // If not admin account, auto-add admin as a friend
+                    if (!isAdminAccount) {
+                      const adminFriend: FriendCard = {
+                        id: "admin-user",
+                        name: "System Admin",
+                        username: "admin",
+                        avatar: "SA",
+                        bio: "System administrator account. Contact for support and issues.",
+                        status: "online",
+                      };
+
+                      const userConnections = {
+                        chatRooms: [],
+                        friendList: [adminFriend],
+                      };
+
+                      await setDoc(
+                        doc(services.db, "userProfiles", credential.user.uid, "appData", "connections"),
+                        userConnections,
+                        { merge: true }
+                      );
                     }
 
                     toast.success(t(language, "auth.accountCreated"));
@@ -956,7 +986,9 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                       <div className="app-input flex flex-1 items-center gap-3 rounded-[22px] px-4 py-3.5">
                         <input
                           className="w-full bg-transparent text-sm outline-none placeholder:text-[11px] placeholder:leading-5 placeholder:text-muted"
+                          id="register-phone"
                           inputMode="tel"
+                          name="phone"
                           onChange={(event) =>
                             setState((current) => ({ ...current, phone: event.target.value }))
                           }
@@ -1005,6 +1037,8 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                       <input
                         checked={state.acceptPolicies}
                         className="mt-1 h-4 w-4 rounded border-border text-accent"
+                        id="accept-policies-checkbox"
+                        name="acceptPolicies"
                         onChange={(event) =>
                           setState((current) => ({ ...current, acceptPolicies: event.target.checked }))
                         }
