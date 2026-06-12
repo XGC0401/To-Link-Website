@@ -4,12 +4,10 @@ services:
     runtime: node
     plan: free
     autoDeploy: true
-    buildCommand: npm install && npm run build
-    startCommand: npm run start
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: NODE_ENV=production npm run start
     healthCheckPath: /
     envVars:
-      - key: NODE_ENV
-        value: production
       - key: NEXT_PUBLIC_FIREBASE_API_KEY
         sync: false
       - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
