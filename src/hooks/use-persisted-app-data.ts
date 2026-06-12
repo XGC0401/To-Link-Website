@@ -258,11 +258,14 @@ export function usePersistedDashboardData() {
     parse: normalizeDashboardDocument,
     seedData: DASHBOARD_SEED,
   });
-  const localizedData = {
-    ...state.data,
-    availableSlots: localizeAvailableSlots(language, state.data.availableSlots),
-    profileHistory: localizeProfileHistory(language, state.data.profileHistory),
-  };
+  const localizedData = useMemo(
+    () => ({
+      ...state.data,
+      availableSlots: localizeAvailableSlots(language, state.data.availableSlots),
+      profileHistory: localizeProfileHistory(language, state.data.profileHistory),
+    }),
+    [language, state.data],
+  );
 
   return {
     ...state,
@@ -281,13 +284,16 @@ export function usePersistedSharedContent() {
     path: ["appData", "sharedContent"],
     seedData: SHARED_CONTENT_SEED,
   });
-  const localizedData = {
-    ...state.data,
-    adminMessage: localizeAdminMessage(language, state.data.adminMessage),
-    communityEvents: localizeCommunityItems(language, state.data.communityEvents),
-    documents: localizeDocuments(language, state.data.documents),
-    facilities: localizeFacilities(language, state.data.facilities),
-  };
+  const localizedData = useMemo(
+    () => ({
+      ...state.data,
+      adminMessage: localizeAdminMessage(language, state.data.adminMessage),
+      communityEvents: localizeCommunityItems(language, state.data.communityEvents),
+      documents: localizeDocuments(language, state.data.documents),
+      facilities: localizeFacilities(language, state.data.facilities),
+    }),
+    [language, state.data],
+  );
 
   return {
     ...state,
@@ -311,10 +317,13 @@ export function usePersistedPosts() {
     parse: normalizePostsDocument,
     seedData: POSTS_OVERRIDES_SEED,
   });
-  const localizedData = {
-    ...state.data,
-    items: localizeFeedItems(language, state.data.items),
-  };
+  const localizedData = useMemo(
+    () => ({
+      ...state.data,
+      items: localizeFeedItems(language, state.data.items),
+    }),
+    [language, state.data],
+  );
 
   return {
     ...state,
@@ -322,7 +331,6 @@ export function usePersistedPosts() {
     items: localizedData.items,
   };
 }
-
 export function usePersistedBlockedUsers() {
   const state = useSeededUserDocument<BlockedUsersDocument>({
     pathFactory: (uid) => ["userProfiles", uid, "appData", "blockedUsers"],
@@ -343,10 +351,13 @@ export function usePersistedBookings() {
     parse: normalizeBookingsDocument,
     seedData: BOOKINGS_SEED,
   });
-  const localizedData = {
-    ...state.data,
-    items: localizeBookings(language, state.data.items),
-  };
+  const localizedData = useMemo(
+    () => ({
+      ...state.data,
+      items: localizeBookings(language, state.data.items),
+    }),
+    [language, state.data],
+  );
 
   return {
     ...state,
@@ -383,21 +394,35 @@ export function usePersistedConnections() {
       ),
     [connectionsState.data.friendList, suggestionsState.data.items],
   );
-  const chatRooms = localizeChatRooms(
-    language,
-    mergeChatRoomViews(
-      sharedChatRooms.rooms.map((room) =>
-        toChatRoomView(room, sharedChatRooms.currentUserId ?? currentUser.id, friendLookup),
+  const chatRooms = useMemo(
+    () =>
+      localizeChatRooms(
+        language,
+        mergeChatRoomViews(
+          sharedChatRooms.rooms.map((room) =>
+            toChatRoomView(room, sharedChatRooms.currentUserId ?? currentUser.id, friendLookup),
+          ),
+          chatRoomOverridesState.data.rooms,
+        ),
       ),
-      chatRoomOverridesState.data.rooms,
-    ),
+    [language, sharedChatRooms.rooms, sharedChatRooms.currentUserId, chatRoomOverridesState.data.rooms, friendLookup],
   );
-  const fallbackChatRooms = localizeChatRooms(
-    language,
-    mergeChatRoomViews(connectionsState.data.chatRooms, chatRoomOverridesState.data.rooms),
+  const fallbackChatRooms = useMemo(
+    () =>
+      localizeChatRooms(
+        language,
+        mergeChatRoomViews(connectionsState.data.chatRooms, chatRoomOverridesState.data.rooms),
+      ),
+    [language, connectionsState.data.chatRooms, chatRoomOverridesState.data.rooms],
   );
-  const friendList = localizeFriendCards(language, connectionsState.data.friendList);
-  const friendSuggestions = localizeFriendCards(language, suggestionsState.data.items);
+  const friendList = useMemo(
+    () => localizeFriendCards(language, connectionsState.data.friendList),
+    [language, connectionsState.data.friendList],
+  );
+  const friendSuggestions = useMemo(
+    () => localizeFriendCards(language, suggestionsState.data.items),
+    [language, suggestionsState.data.items],
+  );
 
   return {
     chatRooms: sharedChatRooms.ready
@@ -437,10 +462,13 @@ export function usePersistedAiConversations() {
     parse: normalizeAIConversationsDocument,
     seedData: AI_CONVERSATIONS_SEED,
   });
-  const localizedData = {
-    ...state.data,
-    conversations: localizeAiConversations(language, state.data.conversations),
-  };
+  const localizedData = useMemo(
+    () => ({
+      ...state.data,
+      conversations: localizeAiConversations(language, state.data.conversations),
+    }),
+    [language, state.data],
+  );
 
   return {
     ...state,
@@ -1090,9 +1118,18 @@ export async function addPersistedFriend(friend: FriendCard) {
     return true;
   }
 
+  const sanitizedFriend: FriendCard = {
+    id: friend.id || "",
+    name: friend.name || "",
+    username: friend.username || "",
+    avatar: friend.avatar || "U",
+    bio: friend.bio || "",
+    status: (friend.status === "online" || friend.status === "offline" || friend.status === "busy" ? friend.status : "offline") as "online" | "offline" | "busy",
+  };
+
   return saveCurrentUserDocument(["appData", "connections"], {
     ...currentConnections,
-    friendList: [friend, ...currentConnections.friendList],
+    friendList: [sanitizedFriend, ...currentConnections.friendList],
   });
 }
 

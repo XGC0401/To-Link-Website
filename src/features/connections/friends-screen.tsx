@@ -33,8 +33,8 @@ export function FriendsScreen() {
           bio: user.bio || user.jobTitle || "",
           id: user.id,
           name: user.name || `${user.firstName} ${user.lastName}`.trim(),
-          status: user.status,
-          username: user.username,
+          status: (user.status === "online" || user.status === "offline" || user.status === "busy" ? user.status : "offline") as "online" | "offline" | "busy",
+          username: user.username || user.email.split("@")[0] || user.id,
         }))
         .filter((user) => Boolean(user.name || user.username)),
     [users],

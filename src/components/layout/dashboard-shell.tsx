@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
 import { Panel, PanelHeader } from "@/components/ui/panel";
-import { usePersistedDashboardData, usePersistedSharedContent } from "@/hooks/use-persisted-app-data";
+import { useDashboardData } from "@/lib/dashboard-data-context";
 import {
   cloudinarySetupHint,
   uploadFilesToCloudinary,
@@ -25,8 +25,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     notificationsOpen,
     setNotificationsOpen,
   } = useToLink();
-  const dashboardData = usePersistedDashboardData();
-  const sharedContent = usePersistedSharedContent();
+  const { dashboardData, sharedContent } = useDashboardData();
   const [feedbackFiles, setFeedbackFiles] = useState<File[]>([]);
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
   const notifications = dashboardData.notificationsByLanguage[language] ?? [];
