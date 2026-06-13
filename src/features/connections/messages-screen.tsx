@@ -1,7 +1,7 @@
 "use client";
 
 import { Languages, Search, Send, Users, Paperclip, X } from "lucide-react";
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { useToLink } from "@/lib/app-state";
@@ -33,6 +33,7 @@ export function MessagesScreen() {
   const [attachments, setAttachments] = useState<MediaAttachment[]>([]);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [groupName, setGroupName] = useState("");
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
   const [translatedMessages, setTranslatedMessages] = useState<Record<string, string>>({});
@@ -53,6 +54,11 @@ export function MessagesScreen() {
     filteredRooms.find((room) => room.id === resolvedRoomId) ??
     connections.chatRooms.find((room) => room.id === resolvedRoomId) ??
     filteredRooms[0];
+
+  // Auto-scroll to latest message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [activeRoom?.messages]);
 
   function getMessageKey(roomId: string, messageId: string) {
     return `${roomId}:${messageId}`;
@@ -246,7 +252,7 @@ export function MessagesScreen() {
                     return (
                   <div className={message.accentLabel ? "max-w-[80%] rounded-[24px] border border-accent/30 bg-accent-soft px-4 py-3 text-sm text-foreground" : isInbound ? "max-w-[80%] rounded-[24px] border border-border bg-panel px-4 py-3 text-sm text-foreground" : "max-w-[80%] rounded-[24px] bg-accent px-4 py-3 text-sm text-white"}>
                     {message.accentLabel ? <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-strong">{message.accentLabel}</p> : null}
-                    <p className="leading-7">{showTranslated ? translated : message.content}</p>
+                    <p className="break-words leading-7">{showTranslated ? translated : message.content}</p>
                     {message.attachments && message.attachments.length > 0 && (
                       <div className="mt-3 space-y-2">
                         {message.attachments.map((attachment, idx) => (
@@ -295,6 +301,7 @@ export function MessagesScreen() {
                   })()}
                 </div>
               ))}
+              <div ref={messagesEndRef} />
             </div>
             <div className="mt-4 space-y-3">
               {attachments.length > 0 && (

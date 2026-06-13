@@ -17,15 +17,19 @@ import {
   type LucideIcon,
   SunMedium,
   Wind,
+  Edit2,
+  Trash2,
+  Plus,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Panel, PanelHeader } from "@/components/ui/panel";
-import { openPersistedDirectChat, usePersistedCurrentUserProfile, usePersistedPosts, usePersistedSharedContent } from "@/hooks/use-persisted-app-data";
+import { Modal } from "@/components/ui/modal";
+import { openPersistedDirectChat, usePersistedCurrentUserProfile, usePersistedPosts, usePersistedSharedContent, savePersistedAdminAnnouncement, savePersistedAdvertisements } from "@/hooks/use-persisted-app-data";
 import { formatAppDateTime, formatAppDayLabel } from "@/lib/date";
 import { t } from "@/lib/translations";
-import type { FeedItem, Language } from "@/lib/types";
+import type { FeedItem, Language, Advertisement } from "@/lib/types";
 import { cn, truncate } from "@/lib/utils";
 import { useToLink } from "@/lib/app-state";
 import { useWeather } from "@/hooks/use-weather";
@@ -102,8 +106,12 @@ export function HomeScreen() {
   const { profile } = usePersistedCurrentUserProfile();
   const [activeAd, setActiveAd] = useState(0);
   const [currentTimeLabel, setCurrentTimeLabel] = useState("");
+  const [editAnnouncementOpen, setEditAnnouncementOpen] = useState(false);
+  const [editAnnouncementText, setEditAnnouncementText] = useState("");
+  const [savingAnnouncement, setSavingAnnouncement] = useState(false);
   const advertisements = sharedContent.advertisementsByLanguage[language] ?? [];
   const activeAdvertisement = advertisements[activeAd] ?? advertisements[0];
+  const isAdmin = profile.role === "admin";
 
   useEffect(() => {
     const updateCurrentTimeLabel = () => {
@@ -160,6 +168,24 @@ export function HomeScreen() {
     }
 
     router.push(`/connections/messages?room=${encodeURIComponent(roomId)}`);
+  }
+
+  async function handleSaveAnnouncement() {
+    setSavingAnnouncement(true);
+    try {
+      await savePersistedAdminAnnouncement(editAnnouncementText);
+      setEditAnnouncementOpen(false);
+      toast.success(language === "zh-HK" ? "公告已更新" : "Announcement updated");
+    } catch (error) {
+      toast.error(language === "zh-HK" ? "無法保存公告" : "Unable to save announcement");
+    } finally {
+      setSavingAnnouncement(false);
+    }
+  }
+
+  function openEditAnnouncement() {
+    setEditAnnouncementText(sharedContent.adminMessage || "");
+    setEditAnnouncementOpen(true);
   }
 
   return (
@@ -293,6 +319,16 @@ export function HomeScreen() {
           <PanelHeader
             title={t(language, "page.adminMessage")}
             description={t(language, "home.adminBroadcast")}
+            action={isAdmin ? (
+              <button
+                className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-panel-strong px-3 py-2 text-foreground transition hover:border-accent/40 hover:text-accent"
+                onClick={openEditAnnouncement}
+                type="button"
+                title={language === "zh-HK" ? "編輯公告" : "Edit announcement"}
+              >
+                <Edit2 className="h-4 w-4" />
+              </button>
+            ) : undefined}
           />
           <div className="mt-4 flex-1 overflow-y-auto pr-2 text-sm leading-7 text-muted">
             {sharedContent.adminMessage}
@@ -318,6 +354,38 @@ export function HomeScreen() {
           highlightAction
         />
       </div>
+
+      <Modal
+        open={editAnnouncementOpen}
+        onClose={() => setEditAnnouncementOpen(false)}
+        title={language === "zh-HK" ? "編輯公告" : "Edit Announcement"}
+      >
+        <div className="space-y-4">
+          <textarea
+            className="app-input min-h-[200px] w-full rounded-lg px-4 py-3 text-sm"
+            onChange={(e) => setEditAnnouncementText(e.target.value)}
+            placeholder={language === "zh-HK" ? "輸入新公告" : "Enter announcement text"}
+            value={editAnnouncementText}
+          />
+          <div className="flex gap-3">
+            <button
+              className="flex-1 rounded-full bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:opacity-50"
+              disabled={savingAnnouncement}
+              onClick={handleSaveAnnouncement}
+              type="button"
+            >
+              {savingAnnouncement ? (language === "zh-HK" ? "保存中..." : "Saving...") : (language === "zh-HK" ? "保存" : "Save")}
+            </button>
+            <button
+              className="flex-1 rounded-full border border-border bg-panel-strong px-4 py-3 text-sm font-semibold text-foreground transition hover:border-accent/40"
+              onClick={() => setEditAnnouncementOpen(false)}
+              type="button"
+            >
+              {language === "zh-HK" ? "取消" : "Cancel"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

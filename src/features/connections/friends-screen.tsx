@@ -14,6 +14,7 @@ import {
   openPersistedDirectChat,
   removePersistedFriend,
   usePersistedConnections,
+  usePersistedCurrentUserProfile,
 } from "@/hooks/use-persisted-app-data";
 import { getFirebaseServices } from "@/lib/firebase";
 import { t } from "@/lib/translations";
@@ -24,6 +25,7 @@ export function FriendsScreen() {
   const router = useRouter();
   const connections = usePersistedConnections();
   const { users } = useAdminUsersList();
+  const { profile } = usePersistedCurrentUserProfile();
   const [query, setQuery] = useState("");
   const [candidate, setCandidate] = useState<FriendCard | null>(null);
   const services = getFirebaseServices();
@@ -48,22 +50,48 @@ export function FriendsScreen() {
   );
 
   const friendIds = useMemo(() => new Set(connections.friendList.map((friend) => friend.id)), [connections.friendList]);
+  
+  // Get admin IDs
+  const adminIds = useMemo(() => new Set(realAccounts.filter((user) => {
+    const userFromList = users.find(u => u.id === user.id);
+    return userFromList?.role === "admin";
+  }).map((admin) => admin.id)), [realAccounts, users]);
 
   const suggestions = useMemo(() => {
     const searchTerm = query.trim().toLowerCase();
-    const combined = [...connections.friendSuggestions, ...realAccounts];
+    let combined = [...connections.friendSuggestions, ...realAccounts];
 
-    return [...new Map(combined.map((friend) => [friend.id, friend])).values()]
-      .filter((friend) => !friendIds.has(friend.id))
-      .filter((friend) => currentUserId && friend.id !== currentUserId) // Exclude current user
-      .filter((friend) => {
-        if (!searchTerm) {
-          return true;
-        }
+    // If current user is admin, show all non-friend users
+    // If current user is not admin, show admins and regular suggestions
+    if (profile.role === "admin") {
+      // Show all non-friend users for admin
+      return [...new Map(combined.map((friend) => [friend.id, friend])).values()]
+        .filter((friend) => !friendIds.has(friend.id))
+        .filter((friend) => currentUserId && friend.id !== currentUserId) // Exclude current user
+        .filter((friend) => {
+          if (!searchTerm) {
+            return true;
+          }
 
-        return `${friend.name} ${friend.username}`.toLowerCase().includes(searchTerm);
-      });
-  }, [connections.friendSuggestions, friendIds, query, realAccounts, currentUserId]);
+          return `${friend.name} ${friend.username}`.toLowerCase().includes(searchTerm);
+        });
+    } else {
+      // For non-admin users, add admins to suggestions automatically
+      const adminFriends = realAccounts.filter(user => adminIds.has(user.id));
+      combined = [...combined, ...adminFriends];
+      
+      return [...new Map(combined.map((friend) => [friend.id, friend])).values()]
+        .filter((friend) => !friendIds.has(friend.id))
+        .filter((friend) => currentUserId && friend.id !== currentUserId) // Exclude current user
+        .filter((friend) => {
+          if (!searchTerm) {
+            return true;
+          }
+
+          return `${friend.name} ${friend.username}`.toLowerCase().includes(searchTerm);
+        });
+    }
+  }, [connections.friendSuggestions, friendIds, query, realAccounts, currentUserId, profile.role, adminIds, users]);
 
   async function handleOpenChat(friend: FriendCard) {
     const roomId = await openPersistedDirectChat({

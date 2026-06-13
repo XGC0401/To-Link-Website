@@ -1052,8 +1052,8 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
         description={t(language, "posts.pageDesc")}
         title={pageTitle}
         toolbar={
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-            <label className="app-input flex items-center gap-3 rounded-full px-4 py-3 text-sm">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:flex-wrap">
+            <label className="app-input flex items-center gap-3 rounded-full px-4 py-3 text-sm xl:min-w-[200px]">
               <Search className="h-4 w-4 text-muted" />
               <input
                 className="w-full bg-transparent outline-none"
@@ -1063,7 +1063,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
               />
             </label>
             <select
-              className="app-input rounded-full px-4 py-3 text-sm xl:w-[220px]"
+              className="app-input rounded-full px-4 py-3 text-sm xl:min-w-[220px]"
               onChange={(event) => setSort(event.target.value)}
               value={sort}
             >
@@ -1073,10 +1073,10 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
                 </option>
               ))}
             </select>
-            <div className="flex flex-wrap items-center gap-2 xl:ml-auto">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 className={cn(
-                  "rounded-full border px-4 py-3 text-sm font-medium transition",
+                  "rounded-full border px-4 py-3 text-sm font-medium transition shrink-0",
                   includeOwnPosts
                     ? "border-accent bg-accent text-white"
                     : "border-border bg-panel-strong text-foreground",
@@ -1087,7 +1087,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
                 {includeOwnPosts ? t(language, "posts.hideYourPosts") : t(language, "posts.showYourPosts")}
               </button>
               <button
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-accent/30 transition hover:bg-accent-strong"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-accent/30 transition hover:bg-accent-strong shrink-0"
                 onClick={() => setComposerOpen(true)}
                 type="button"
               >

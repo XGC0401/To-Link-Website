@@ -588,6 +588,51 @@ export async function savePersistedDashboardData(dashboardPatch: Partial<Dashboa
   });
 }
 
+export async function savePersistedAdminAnnouncement(announcement: string) {
+  const services = getFirebaseServices();
+  const firestore = services?.db;
+  
+  if (!firestore) {
+    throw new Error("Firebase services not available");
+  }
+
+  const sharedContentRef = doc(firestore, "appData", "sharedContent");
+  const current = await getDoc(sharedContentRef);
+  const currentData = current.data() ?? {};
+
+  await setDoc(sharedContentRef, {
+    ...currentData,
+    adminMessage: announcement,
+  }, { merge: true });
+
+  return true;
+}
+
+export async function savePersistedAdvertisements(advertisements: Advertisement[], language: string) {
+  const services = getFirebaseServices();
+  const firestore = services?.db;
+  
+  if (!firestore) {
+    throw new Error("Firebase services not available");
+  }
+
+  const sharedContentRef = doc(firestore, "appData", "sharedContent");
+  const current = await getDoc(sharedContentRef);
+  const currentData = current.data() ?? {};
+  
+  const advertisementsByLanguage = currentData.advertisementsByLanguage || {};
+  
+  await setDoc(sharedContentRef, {
+    ...currentData,
+    advertisementsByLanguage: {
+      ...advertisementsByLanguage,
+      [language]: advertisements,
+    },
+  }, { merge: true });
+
+  return true;
+}
+
 function preparePersistedPostItem(item: FeedItem): FeedItem {
   const authorName = item.authorName.trim() || "Resident";
   const nextItem: FeedItem = {
@@ -2156,6 +2201,20 @@ function normalizeUserProfile(value: unknown): UserProfile {
       ? record.name
       : [firstName, lastName].filter(Boolean).join(" ") || currentUser.name;
 
+  // Check if user is admin based on email
+  const services = getFirebaseServices();
+  const currentEmail = services?.auth.currentUser?.email;
+  let role: "admin" | "resident" = currentUser.role;
+  
+  if (record.role === "admin" || record.role === "resident") {
+    role = record.role;
+  }
+  
+  // Override role to admin if email is admin@admin.com
+  if (currentEmail === "admin@admin.com") {
+    role = "admin";
+  }
+
   return {
     ...currentUser,
     id:
@@ -2175,7 +2234,7 @@ function normalizeUserProfile(value: unknown): UserProfile {
     jobTitle: typeof record.jobTitle === "string" ? record.jobTitle : currentUser.jobTitle,
     avatar: typeof record.avatar === "string" ? record.avatar : getAvatarLabel(name),
     bio: typeof record.bio === "string" ? record.bio : currentUser.bio,
-    role: record.role === "admin" || record.role === "resident" ? record.role : currentUser.role,
+    role,
     status:
       record.status === "online" || record.status === "offline" || record.status === "busy"
         ? record.status
