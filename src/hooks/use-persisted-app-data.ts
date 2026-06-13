@@ -1823,7 +1823,7 @@ async function saveSharedChatRoomsDocument(documentValue: SharedChatRoomsDocumen
     return false;
   }
 
-  const sanitizedDocument = stripUndefinedValues(documentValue) as Record<string, unknown>;
+  const sanitizedDocument = stripUndefinedValues(documentValue) as unknown as Record<string, unknown>;
   await setDoc(doc(services.db, "appData", "chatRooms"), sanitizedDocument, { merge: true });
   return true;
 }
