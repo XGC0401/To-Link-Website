@@ -1091,10 +1091,10 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
                 </option>
               ))}
             </select>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
               <button
                 className={cn(
-                  "rounded-full border px-4 py-3 text-sm font-medium transition shrink-0",
+                  "rounded-full border px-4 py-3 text-sm font-medium transition whitespace-normal",
                   includeOwnPosts
                     ? "border-accent bg-accent text-white"
                     : "border-border bg-panel-strong text-foreground",
@@ -1105,7 +1105,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
                 {includeOwnPosts ? t(language, "posts.hideYourPosts") : t(language, "posts.showYourPosts")}
               </button>
               <button
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-accent/30 transition hover:bg-accent-strong shrink-0"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-accent/30 transition hover:bg-accent-strong whitespace-normal"
                 onClick={() => setComposerOpen(true)}
                 type="button"
               >
