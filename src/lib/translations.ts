@@ -261,6 +261,7 @@ export type CopyKey =
   | "messages.translate"
   | "messages.translating"
   | "messages.original"
+  | "messages.attachments"
   | "friends.search"
   | "friends.unfriend"
   | "friends.unfriendTitle"
