@@ -2043,12 +2043,16 @@ function normalizeChatRoomView(room: ChatRoom): ChatRoom {
 
 function stripUndefinedValues<T>(value: T): T {
   if (Array.isArray(value)) {
-    return value.map((item) => stripUndefinedValues(item)) as T;
+    return value
+      .map((item) => stripUndefinedValues(item))
+      .filter((item) => item !== undefined) as T;
   }
 
   if (value && typeof value === "object") {
     return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).filter(([, entryValue]) => entryValue !== undefined),
+      Object.entries(value as Record<string, unknown>)
+        .map(([key, entryValue]) => [key, stripUndefinedValues(entryValue)])
+        .filter(([, entryValue]) => entryValue !== undefined),
     ) as T;
   }
 

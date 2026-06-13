@@ -299,7 +299,9 @@ export function MessagesScreen() {
             <div className="mt-4 space-y-3">
               {attachments.length > 0 && (
                 <div className="space-y-2 rounded-lg border border-border bg-panel-soft p-3">
-                  <p className="text-xs font-semibold text-muted">Attachments ({attachments.length})</p>
+                  <p className="text-xs font-semibold text-muted">
+                    {t(language, "messages.attachments").replace("{n}", String(attachments.length))}
+                  </p>
                   <div className="flex flex-wrap gap-2">
                     {attachments.map((attachment, idx) => (
                       <div key={idx} className="relative inline-block">
