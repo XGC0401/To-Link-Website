@@ -239,13 +239,17 @@ export function usePersistedCurrentUserProfile() {
   const { language } = useToLink();
   const services = getFirebaseServices();
   const authUserId = services?.auth.currentUser?.uid;
+  const seedProfile = useMemo(
+    () => ({
+      ...currentUser,
+      id: authUserId ?? currentUser.id,
+    }),
+    [authUserId],
+  );
   const state = useSeededUserDocument<UserProfile>({
     pathFactory: (uid) => ["userProfiles", uid],
     parse: normalizeUserProfile,
-    seedData: {
-      ...currentUser,
-      id: authUserId ?? currentUser.id,
-    },
+    seedData: seedProfile,
   });
   const profile = localizeSeededUserProfile(language, state.data);
 
