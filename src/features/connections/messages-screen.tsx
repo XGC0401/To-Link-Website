@@ -132,7 +132,8 @@ export function MessagesScreen() {
     setSending(true);
 
     try {
-      const content = draft.trim();
+      const normalizedDraft = draft.replace(/\r\n?/g, "\n");
+      const content = normalizedDraft.trim();
       const sentAt = new Date().toLocaleTimeString("en-HK", {
         hour: "2-digit",
         minute: "2-digit",
@@ -145,7 +146,7 @@ export function MessagesScreen() {
         senderAvatar: profile.avatar,
         senderId: currentUserId,
         kind: "text",
-        content: content ? content.replace(/\s+/g, " ") : "(Sent media)",
+        content: content || "(Sent media)",
         sentAt,
         inbound: false,
         attachments: attachments.length > 0 ? attachments : undefined,
@@ -259,7 +260,7 @@ export function MessagesScreen() {
                     return (
                   <div className={message.accentLabel ? "max-w-[80%] rounded-[24px] border border-accent/30 bg-accent-soft px-4 py-3 text-sm text-foreground" : isInbound ? "max-w-[80%] rounded-[24px] border border-border bg-panel px-4 py-3 text-sm text-foreground" : "max-w-[80%] rounded-[24px] bg-accent px-4 py-3 text-sm text-white"}>
                     {message.accentLabel ? <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-strong">{message.accentLabel}</p> : null}
-                    <p className="break-words leading-7">{showTranslated ? translated : message.content}</p>
+                    <p className="whitespace-pre-wrap break-words leading-7">{showTranslated ? translated : message.content}</p>
                     {message.attachments && message.attachments.length > 0 && (
                       <div className="mt-3 space-y-2">
                         {message.attachments.map((attachment, idx) => (

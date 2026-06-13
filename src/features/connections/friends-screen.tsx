@@ -29,7 +29,7 @@ export function FriendsScreen() {
   const [query, setQuery] = useState("");
   const [candidate, setCandidate] = useState<FriendCard | null>(null);
   const services = getFirebaseServices();
-  const currentUserId = services?.auth.currentUser?.uid || null;
+  const currentUserId = services?.auth.currentUser?.uid ?? profile.id;
 
   const realAccounts = useMemo(
     () =>
@@ -67,7 +67,7 @@ export function FriendsScreen() {
       // Show all non-friend users for admin
       return [...new Map(combined.map((friend) => [friend.id, friend])).values()]
         .filter((friend) => !friendIds.has(friend.id))
-        .filter((friend) => currentUserId && friend.id !== currentUserId) // Exclude current user
+        .filter((friend) => (currentUserId ? friend.id !== currentUserId : true)) // Exclude current user when known
         .filter((friend) => {
           if (!searchTerm) {
             return true;
@@ -82,7 +82,7 @@ export function FriendsScreen() {
       
       return [...new Map(combined.map((friend) => [friend.id, friend])).values()]
         .filter((friend) => !friendIds.has(friend.id))
-        .filter((friend) => currentUserId && friend.id !== currentUserId) // Exclude current user
+        .filter((friend) => (currentUserId ? friend.id !== currentUserId : true)) // Exclude current user when known
         .filter((friend) => {
           if (!searchTerm) {
             return true;
