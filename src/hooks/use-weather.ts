@@ -30,12 +30,26 @@ const WEATHER_CODE_LOOKUP: Record<Language, Record<number, string>> = {
     48: "Frost fog",
     51: "Light drizzle",
     53: "Drizzle",
+    55: "Dense drizzle",
+    56: "Freezing drizzle",
+    57: "Freezing drizzle",
     61: "Light rain",
     63: "Rain",
     65: "Heavy rain",
+    66: "Freezing rain",
+    67: "Freezing rain",
     71: "Light snow",
+    73: "Snow",
+    75: "Heavy snow",
+    77: "Snow grains",
     80: "Showers",
+    81: "Showers",
+    82: "Showers",
+    85: "Snow showers",
+    86: "Snow showers",
     95: "Thunderstorm",
+    96: "Thunderstorm",
+    99: "Thunderstorm",
   },
   "zh-HK": {
     0: "天晴",
@@ -46,12 +60,26 @@ const WEATHER_CODE_LOOKUP: Record<Language, Record<number, string>> = {
     48: "霜霧",
     51: "微毛雨",
     53: "毛雨",
+    55: "密集毛雨",
+    56: "結冰毛雨",
+    57: "結冰毛雨",
     61: "微雨",
     63: "下雨",
     65: "大雨",
+    66: "結冰雨",
+    67: "結冰雨",
     71: "微雪",
+    73: "下雪",
+    75: "大雪",
+    77: "雪粒",
     80: "驟雨",
+    81: "驟雨",
+    82: "驟雨",
+    85: "雪陣",
+    86: "大雪陣",
     95: "雷暴",
+    96: "雷暴",
+    99: "雷暴",
   },
 };
 
@@ -176,7 +204,18 @@ export function useWeather(language: Language) {
   return {
     ...snapshot,
     describeWeather(code: number) {
-      return WEATHER_CODE_LOOKUP[language][code] ?? WEATHER_COPY[language].defaultLabel;
+      const raw = WEATHER_CODE_LOOKUP[language][code];
+      if (raw) {
+        const lower = raw.toLowerCase();
+        const formatted = lower.charAt(0).toUpperCase() + lower.slice(1);
+        // If it's a single word plural (eg. "Showers"), singularize simple trailing 's'
+        if (!formatted.includes(" ") && formatted.endsWith("s")) {
+          return formatted.slice(0, -1);
+        }
+        return formatted;
+      }
+
+      return language === "zh-HK" ? "未知" : "Unknown";
     },
   };
 }

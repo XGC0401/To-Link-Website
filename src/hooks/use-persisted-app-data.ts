@@ -1,8 +1,8 @@
 "use client";
 
 import { onAuthStateChanged } from "firebase/auth";
-import { collection, doc, getDoc, getDocs, onSnapshot, setDoc, writeBatch } from "firebase/firestore";
-import { useEffect, useMemo, useState } from "react";
+import { collection, doc, getDoc, getDocs, limit, query, setDoc, writeBatch } from "firebase/firestore";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   adminMessage,
   aiConversations as seededAiConversations,
@@ -325,7 +325,7 @@ export function usePersistedPosts() {
       ...state.data,
       items: localizeFeedItems(language, mergedPosts),
     }),
-    [language, mergedPosts],
+    [language, mergedPosts, state.data],
   );
 
   return {
@@ -552,13 +552,30 @@ export async function deletePersistedCurrentUserAccountData({
     batch.delete(doc(services.db, "userHandles", handleKey));
   }
 
-  const calendarEventsSnapshot = await getDocs(collection(services.db, "userProfiles", uid, "calendarEvents"));
+  await batch.commit();
 
-  for (const calendarEvent of calendarEventsSnapshot.docs) {
-    batch.delete(calendarEvent.ref);
+  // Delete calendar events in batches to avoid reading too many documents at once
+  const calendarEventsRef = collection(services.db, "userProfiles", uid, "calendarEvents");
+  const BATCH_SIZE = 100;
+  let hasMore = true;
+
+  while (hasMore) {
+    const calendarEventsSnapshot = await getDocs(query(calendarEventsRef, limit(BATCH_SIZE)));
+
+    if (calendarEventsSnapshot.empty) {
+      hasMore = false;
+      break;
+    }
+
+    const deleteBatch = writeBatch(services.db);
+
+    for (const calendarEvent of calendarEventsSnapshot.docs) {
+      deleteBatch.delete(calendarEvent.ref);
+    }
+
+    await deleteBatch.commit();
   }
 
-  await batch.commit();
   return true;
 }
 
@@ -1393,101 +1410,81 @@ export async function savePersistedAiConversations(documentValue: AIConversation
 function usePersistedSharedChatRooms(): SharedChatRoomsState {
   const services = useMemo(() => getFirebaseServices(), []);
   const fallbackRooms = useMemo(() => createSeedSharedChatRooms(currentUser.id), []);
-  const [state, setState] = useState<SharedChatRoomsState>({
-    currentUserId: services?.auth.currentUser?.uid ?? null,
-    error: null,
-    ready: !services,
-    rooms: fallbackRooms,
-    status: services ? "loading" : "ready",
+  const [currentUserId, setCurrentUserId] = useState<string | null>(services?.auth.currentUser?.uid ?? null);
+  const sharedChatRoomsDocumentState = useSeededFirestoreDocument<SharedChatRoomsDocument>({
+    parse: normalizeSharedChatRoomsDocument,
+    path: ["appData", "chatRooms"],
+    seedData: { rooms: [] },
   });
+  const seededFallback = useRef(false);
 
   useEffect(() => {
     if (!services) {
       return;
     }
 
-    let unsubscribeRooms: (() => void) | undefined;
-    let seededFallback = false;
-
     const unsubscribeAuth = onAuthStateChanged(services.auth, (user) => {
-      unsubscribeRooms?.();
-      unsubscribeRooms = undefined;
-
-      if (!user) {
-        setState({
-          currentUserId: null,
-          error: null,
-          ready: true,
-          rooms: fallbackRooms,
-          status: "ready",
-        });
-        return;
-      }
-
-      setState((current) => ({
-        ...current,
-        currentUserId: user.uid,
-        error: null,
-        ready: false,
-        status: "loading",
-      }));
-
-      const roomsReference = doc(services.db, "appData", "chatRooms");
-
-      unsubscribeRooms = onSnapshot(
-        roomsReference,
-        async (snapshot) => {
-          if (!snapshot.exists() && !seededFallback) {
-            seededFallback = true;
-            await seedSharedChatRoomsForUser(user.uid);
-            return;
-          }
-
-          const rooms = normalizeSharedChatRoomsDocument(snapshot.data()).rooms
-            .filter((room) => room.memberIds.includes(user.uid))
-            .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
-
-          if (!rooms.length && !seededFallback) {
-            seededFallback = true;
-            await seedSharedChatRoomsForUser(user.uid);
-            return;
-          }
-
-          setState({
-            currentUserId: user.uid,
-            error: null,
-            ready: true,
-            rooms: rooms.length ? rooms : fallbackRooms,
-            status: "ready",
-          });
-        },
-        (error) => {
-          setState({
-            currentUserId: user.uid,
-            error: error.message,
-            ready: true,
-            rooms: fallbackRooms,
-            status: "error",
-          });
-        },
-      );
+      seededFallback.current = false;
+      setCurrentUserId(user?.uid ?? null);
     });
 
-    return () => {
-      unsubscribeRooms?.();
-      unsubscribeAuth();
-    };
-  }, [fallbackRooms, services]);
+    return unsubscribeAuth;
+  }, [services]);
 
-  return services
-    ? state
-    : {
-        currentUserId: null,
-        error: null,
-        ready: true,
-        rooms: fallbackRooms,
-        status: "ready",
-      };
+  useEffect(() => {
+    if (!services || currentUserId === null || !sharedChatRoomsDocumentState.ready || seededFallback.current) {
+      return;
+    }
+
+    const rooms = sharedChatRoomsDocumentState.data.rooms
+      .filter((room) => room.memberIds.includes(currentUserId))
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+
+    if (!rooms.length) {
+      seededFallback.current = true;
+      void seedSharedChatRoomsForUser(currentUserId).catch(() => {
+        // Ignore seeding errors here; the caller will read the document state error if needed.
+      });
+    }
+  }, [services, currentUserId, sharedChatRoomsDocumentState]);
+
+  const sharedRooms = useMemo(() => {
+    if (!currentUserId) {
+      return fallbackRooms;
+    }
+
+    if (!sharedChatRoomsDocumentState.ready || sharedChatRoomsDocumentState.status === "error") {
+      return fallbackRooms;
+    }
+
+    return sharedChatRoomsDocumentState.data.rooms
+      .filter((room) => room.memberIds.includes(currentUserId))
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  }, [currentUserId, fallbackRooms, sharedChatRoomsDocumentState]);
+
+  const status = useMemo<"error" | "loading" | "ready">(() => {
+    if (!services) {
+      return "ready";
+    }
+
+    if (!currentUserId) {
+      return "ready";
+    }
+
+    if (sharedChatRoomsDocumentState.status === "error") {
+      return "error";
+    }
+
+    return sharedChatRoomsDocumentState.ready ? "ready" : "loading";
+  }, [services, currentUserId, sharedChatRoomsDocumentState]);
+
+  return {
+    currentUserId,
+    error: currentUserId ? sharedChatRoomsDocumentState.error : null,
+    ready: !services || !currentUserId || sharedChatRoomsDocumentState.ready,
+    rooms: sharedRooms,
+    status,
+  };
 }
 
 function createSeedSharedChatRooms(currentUserId: string) {

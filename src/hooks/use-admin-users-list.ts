@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore";
 import { getFirebaseServices } from "@/lib/firebase";
 import { friendList as seededFriendList, friendSuggestions as seededFriendSuggestions } from "@/lib/demo-data";
 import type { UserProfile } from "@/lib/types";
@@ -19,7 +19,8 @@ export function useAdminUsersList() {
 
     let isActive = true;
     const usersRef = collection(services.db, "userProfiles");
-    const usersQuery = query(usersRef);
+    // Limit admin listing to a manageable page size to avoid huge initial reads
+    const usersQuery = query(usersRef, orderBy("name"), limit(200));
 
     const unsubscribe = onSnapshot(
       usersQuery,

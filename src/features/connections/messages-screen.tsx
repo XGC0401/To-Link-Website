@@ -169,6 +169,13 @@ export function MessagesScreen() {
     }
   }
 
+  function handleInputKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      void handleSendMessage();
+    }
+  }
+
   return (
     <div className="relative flex h-full w-full">
       <FeatureShell
@@ -355,6 +362,7 @@ export function MessagesScreen() {
                   id="message-input"
                   name="message-content"
                   onChange={(event) => setDraft(event.target.value)}
+                  onKeyDown={handleInputKeyDown}
                   placeholder={t(language, "messages.write")}
                   value={draft}
                 />

@@ -119,7 +119,11 @@ function ensureInitialized() {
     void syncLocalEventsToFirestore(user.uid);
 
     disposeRemoteListener = onSnapshot(
-      query(collection(services.db, "userProfiles", user.uid, "calendarEvents"), orderBy("createdAt", "desc")),
+      query(
+        collection(services.db, "userProfiles", user.uid, "calendarEvents"),
+        orderBy("createdAt", "desc"),
+        limit(50),
+      ),
       (snapshot) => {
         cachedRemoteEvents = snapshot.docs
           .map((document) => toCalendarEventItem(document.id, document.data()))

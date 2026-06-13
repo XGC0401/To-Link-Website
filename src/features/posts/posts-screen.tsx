@@ -2,7 +2,7 @@
 
 import { Ban, Flag, Heart, MessageCircle, MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AvatarBadge } from "@/components/ui/avatar-badge";
 import { FeatureShell } from "@/components/ui/feature-shell";
@@ -115,6 +115,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
   const [sort, setSort] = useState(sortOptions[mode][0]?.value ?? "latest");
   const [includeOwnPosts, setIncludeOwnPosts] = useState(false);
   const [selected, setSelected] = useState<FeedItem | null>(null);
+  const justClosedItemIdRef = useRef<string | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerFiles, setComposerFiles] = useState<File[]>([]);
   const [composerTitle, setComposerTitle] = useState("");
@@ -173,6 +174,12 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
     const highlightedItemId = searchParams.get("item");
 
     if (!highlightedItemId) {
+      return;
+    }
+
+    // If the user just closed this item, don't reopen it immediately.
+    if (justClosedItemIdRef.current && justClosedItemIdRef.current === highlightedItemId) {
+      justClosedItemIdRef.current = null;
       return;
     }
 
@@ -271,13 +278,16 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
   }
 
   function closeDeleteDialog() {
-    setCountdown(3);
-    setDeleteCandidate(null);
-  }
+    // Remember which item was just closed to avoid immediately reopening it
+    justClosedItemIdRef.current = selected?.id ?? null;
 
-  function openSelectedDialog(item: FeedItem) {
-    const nextItem = posts.items.find((entry) => entry.id === item.id) ?? item;
-    setPostMenuId(null);
+    if (searchParams.has("item")) {
+      const nextSearchParams = new URLSearchParams(searchParams.toString());
+      nextSearchParams.delete("item");
+      router.replace(nextSearchParams.size ? `${pathname}?${nextSearchParams.toString()}` : pathname);
+    }
+
+    setSelected(null);
     setSelected(nextItem);
     setCommentDraft("");
     setQuestReasonDraft("");

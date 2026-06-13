@@ -109,6 +109,9 @@ export function HomeScreen() {
   const [editAnnouncementOpen, setEditAnnouncementOpen] = useState(false);
   const [editAnnouncementText, setEditAnnouncementText] = useState("");
   const [savingAnnouncement, setSavingAnnouncement] = useState(false);
+  const [editAdsOpen, setEditAdsOpen] = useState(false);
+  const [adsDraft, setAdsDraft] = useState<Advertisement[]>([]);
+  const [savingAds, setSavingAds] = useState(false);
   const advertisements = sharedContent.advertisementsByLanguage[language] ?? [];
   const activeAdvertisement = advertisements[activeAd] ?? advertisements[0];
   const isAdmin = profile.role === "admin";
@@ -308,7 +311,11 @@ export function HomeScreen() {
                 />
               ))}
             </div>
-            <button className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-panel-strong px-4 py-2 text-sm font-semibold text-foreground transition hover:border-accent/40 hover:text-accent">
+            <button
+              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-panel-strong px-4 py-2 text-sm font-semibold text-foreground transition hover:border-accent/40 hover:text-accent"
+              onClick={() => (isAdmin ? (setAdsDraft(advertisements), setEditAdsOpen(true)) : undefined)}
+              type="button"
+            >
               {t(language, "home.manageAds")}
               <ArrowRight className="h-4 w-4" />
             </button>
@@ -382,6 +389,87 @@ export function HomeScreen() {
               type="button"
             >
               {language === "zh-HK" ? "取消" : "Cancel"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={editAdsOpen}
+        onClose={() => setEditAdsOpen(false)}
+        title={language === "zh-HK" ? "管理廣告" : "Manage Advertisements"}
+      >
+        <div className="space-y-4">
+          {adsDraft.map((ad, idx) => (
+            <div key={ad.id} className="space-y-2">
+              <input
+                className="app-input w-full rounded-[20px] px-4 py-2"
+                value={ad.title}
+                onChange={(e) =>
+                  setAdsDraft((current) => current.map((item, i) => (i === idx ? { ...item, title: e.target.value } : item)))
+                }
+                placeholder={language === "zh-HK" ? "標題" : "Title"}
+              />
+              <input
+                className="app-input w-full rounded-[20px] px-4 py-2"
+                value={ad.badge ?? ""}
+                onChange={(e) =>
+                  setAdsDraft((current) => current.map((item, i) => (i === idx ? { ...item, badge: e.target.value } : item)))
+                }
+                placeholder={language === "zh-HK" ? "標籤" : "Badge"}
+              />
+              <textarea
+                className="app-input w-full rounded-[12px] px-4 py-2"
+                value={ad.description ?? ""}
+                onChange={(e) =>
+                  setAdsDraft((current) => current.map((item, i) => (i === idx ? { ...item, description: e.target.value } : item)))
+                }
+                placeholder={language === "zh-HK" ? "描述" : "Description"}
+              />
+              <div className="flex gap-2">
+                <button
+                  className="rounded-full bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600"
+                  type="button"
+                  onClick={() => setAdsDraft((current) => current.filter((_, i) => i !== idx))}
+                >
+                  {language === "zh-HK" ? "刪除" : "Delete"}
+                </button>
+              </div>
+              <hr />
+            </div>
+          ))}
+
+          <div className="flex gap-3">
+            <button
+              className="flex-1 rounded-full border border-border bg-panel-strong px-4 py-3 text-sm font-semibold text-foreground"
+              type="button"
+              onClick={() =>
+                setAdsDraft((current) => [
+                  ...current,
+                  { id: `ad-${Date.now()}`, title: "", description: "", badge: "" },
+                ])
+              }
+            >
+              {language === "zh-HK" ? "新增廣告" : "Add Advertisement"}
+            </button>
+            <button
+              className="flex-1 rounded-full bg-accent px-4 py-3 text-sm font-semibold text-white"
+              disabled={savingAds}
+              onClick={async () => {
+                setSavingAds(true);
+                try {
+                  await savePersistedAdvertisements(adsDraft, language);
+                  setEditAdsOpen(false);
+                  toast.success(language === "zh-HK" ? "廣告已更新" : "Advertisements updated");
+                } catch (error) {
+                  toast.error(language === "zh-HK" ? "無法保存廣告" : "Unable to save advertisements");
+                } finally {
+                  setSavingAds(false);
+                }
+              }}
+              type="button"
+            >
+              {savingAds ? (language === "zh-HK" ? "保存中..." : "Saving...") : (language === "zh-HK" ? "保存" : "Save")}
             </button>
           </div>
         </div>

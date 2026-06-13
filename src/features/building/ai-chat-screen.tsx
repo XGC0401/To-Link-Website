@@ -191,6 +191,13 @@ export function AIChatScreen() {
     }
   }
 
+  function handleInputKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      void handleSendMessage();
+    }
+  }
+
   return (
     <>
       <FeatureShell
@@ -318,6 +325,7 @@ export function AIChatScreen() {
               ref={textareaRef}
               className="app-input min-h-16 flex-1 rounded-[24px] px-4 py-3 text-sm"
               onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={handleInputKeyDown}
               placeholder={t(language, "ai.inputPlaceholder")}
               value={draft}
             />
