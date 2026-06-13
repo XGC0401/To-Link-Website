@@ -461,6 +461,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
             ? "帖子已建立並完成自動翻譯。"
             : "Post created with automatic translation.",
       );
+      setIncludeOwnPosts(true);
       closeComposer();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : cloudinarySetupHint);
