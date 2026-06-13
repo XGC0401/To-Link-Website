@@ -120,6 +120,10 @@ interface BlockedUsersDocument {
   items: BlockedUserItem[];
 }
 
+interface DeletedUsersDocument {
+  uids: string[];
+}
+
 interface ChatRoomMemberProfile {
   avatar: string;
   id: string;
@@ -233,6 +237,10 @@ const MODERATION_REPORTS_SEED: ModerationReportsDocument = {
 
 const BLOCKED_USERS_SEED: BlockedUsersDocument = {
   items: [],
+};
+
+const DELETED_USERS_SEED: DeletedUsersDocument = {
+  uids: [],
 };
 
 export function usePersistedCurrentUserProfile() {
@@ -396,6 +404,7 @@ export function usePersistedConnections() {
     seedData: FRIEND_SUGGESTIONS_SEED,
   });
   const sharedChatRooms = usePersistedSharedChatRooms();
+  const deletedUserIds = useDeletedUserIds();
   const friendLookup = useMemo(
     () =>
       new Map(
@@ -412,12 +421,12 @@ export function usePersistedConnections() {
         language,
         mergeChatRoomViews(
           sharedChatRooms.rooms.map((room) =>
-            toChatRoomView(room, sharedChatRooms.currentUserId ?? currentUser.id, friendLookup),
+            toChatRoomView(room, sharedChatRooms.currentUserId ?? currentUser.id, friendLookup, deletedUserIds),
           ),
           chatRoomOverridesState.data.rooms,
         ),
       ),
-    [language, sharedChatRooms.rooms, sharedChatRooms.currentUserId, chatRoomOverridesState.data.rooms, friendLookup],
+    [language, sharedChatRooms.rooms, sharedChatRooms.currentUserId, chatRoomOverridesState.data.rooms, friendLookup, deletedUserIds],
   );
   const fallbackChatRooms = useMemo(
     () =>
@@ -428,12 +437,24 @@ export function usePersistedConnections() {
     [language, connectionsState.data.chatRooms, chatRoomOverridesState.data.rooms],
   );
   const friendList = useMemo(
-    () => localizeFriendCards(language, connectionsState.data.friendList),
-    [language, connectionsState.data.friendList],
+    () =>
+      localizeFriendCards(
+        language,
+        connectionsState.data.friendList.map((friend) =>
+          deletedUserIds.has(friend.id)
+            ? { ...friend, name: `${friend.username} (Deleted User)`, status: "offline" as const }
+            : friend,
+        ),
+      ),
+    [language, connectionsState.data.friendList, deletedUserIds],
   );
   const friendSuggestions = useMemo(
-    () => localizeFriendCards(language, suggestionsState.data.items),
-    [language, suggestionsState.data.items],
+    () =>
+      localizeFriendCards(
+        language,
+        suggestionsState.data.items.filter((item) => !deletedUserIds.has(item.id)),
+      ),
+    [language, suggestionsState.data.items, deletedUserIds],
   );
 
   return {
@@ -537,6 +558,45 @@ export async function deletePersistedCurrentUserAccountData({
 
   if (!services) {
     return false;
+  }
+
+  // Mark user as deleted in the shared deleted-users registry so other users stop seeing them
+  const deletedUsersRef = doc(services.db, "appData", "deletedUsers");
+  const deletedUsersSnap = await getDoc(deletedUsersRef);
+  const currentDeletedUids: string[] = deletedUsersSnap.exists()
+    ? ((deletedUsersSnap.data() as Record<string, unknown>)?.uids as string[] ?? []).filter(Boolean)
+    : [];
+
+  if (!currentDeletedUids.includes(uid)) {
+    await setDoc(deletedUsersRef, { uids: [...currentDeletedUids, uid] }, { merge: true });
+  }
+
+  // Redact the deleted user's messages in all shared chat rooms and remove them from member lists
+  const currentChatRooms = await loadSharedChatRoomsDocument();
+
+  if (currentChatRooms) {
+    const roomsWithUser = currentChatRooms.rooms.filter((room) => room.memberIds.includes(uid));
+
+    if (roomsWithUser.length > 0) {
+      const updatedRooms = currentChatRooms.rooms.map((room) => {
+        if (!room.memberIds.includes(uid)) {
+          return room;
+        }
+
+        return {
+          ...room,
+          memberIds: room.memberIds.filter((id) => id !== uid),
+          memberProfiles: room.memberProfiles.filter((member) => member.id !== uid),
+          messages: room.messages.map((message) =>
+            message.senderId === uid
+              ? { ...message, senderName: "Deleted User", senderAvatar: "D" }
+              : message,
+          ),
+        };
+      });
+
+      await saveSharedChatRoomsDocument({ rooms: updatedRooms });
+    }
   }
 
   const batch = writeBatch(services.db);
@@ -1252,6 +1312,89 @@ export async function sendPersistedMessage(roomId: string, message: ChatMessage)
   );
 }
 
+export async function deletePersistedMessage(roomId: string, messageId: string) {
+  const services = getFirebaseServices();
+  const currentUserId = services?.auth.currentUser?.uid ?? currentUser.id;
+  const currentRoom = await loadSharedChatRoom(roomId);
+
+  if (!currentRoom) {
+    return false;
+  }
+
+  return persistSharedChatRoomWithFallback(
+    {
+      ...currentRoom,
+      messages: currentRoom.messages.map((msg) =>
+        msg.id === messageId ? { ...msg, deleted: true, content: "" } : msg,
+      ),
+      updatedAt: new Date().toISOString(),
+    },
+    currentUserId,
+  );
+}
+
+export async function editPersistedMessage(roomId: string, messageId: string, newContent: string) {
+  const services = getFirebaseServices();
+  const currentUserId = services?.auth.currentUser?.uid ?? currentUser.id;
+  const currentRoom = await loadSharedChatRoom(roomId);
+
+  if (!currentRoom) {
+    return false;
+  }
+
+  return persistSharedChatRoomWithFallback(
+    {
+      ...currentRoom,
+      messages: currentRoom.messages.map((msg) =>
+        msg.id === messageId
+          ? { ...msg, content: newContent.trim(), editedAt: new Date().toISOString() }
+          : msg,
+      ),
+      updatedAt: new Date().toISOString(),
+    },
+    currentUserId,
+  );
+}
+
+export async function renamePersistedChatRoom(roomId: string, newTitle: string) {
+  const services = getFirebaseServices();
+  const currentUserId = services?.auth.currentUser?.uid ?? currentUser.id;
+  const currentRoom = await loadSharedChatRoom(roomId);
+
+  if (!currentRoom) {
+    return false;
+  }
+
+  return persistSharedChatRoomWithFallback(
+    {
+      ...currentRoom,
+      groupName: newTitle.trim(),
+      updatedAt: new Date().toISOString(),
+    },
+    currentUserId,
+  );
+}
+
+export async function deletePersistedChatRoom(roomId: string) {
+  const services = getFirebaseServices();
+
+  if (!services) {
+    return false;
+  }
+
+  const currentUserId = services.auth.currentUser?.uid ?? currentUser.id;
+  const currentDocument = await loadSharedChatRoomsDocument();
+
+  if (currentDocument) {
+    await saveSharedChatRoomsDocument({
+      rooms: currentDocument.rooms.filter((room) => room.id !== roomId),
+    });
+  }
+
+  await clearCurrentUserChatRoomOverride(roomId);
+  return true;
+}
+
 export async function createPersistedGroupChat(request: GroupChatRequest) {
   const services = getFirebaseServices();
   const user = services?.auth.currentUser;
@@ -1544,6 +1687,7 @@ function toChatRoomView(
   room: SharedChatRoomDocument,
   currentUserId: string,
   friendLookup: Map<string, FriendCard>,
+  deletedUserIds: Set<string> = new Set(),
 ) {
   return {
     group: room.group,
@@ -1551,6 +1695,8 @@ function toChatRoomView(
     members: room.memberProfiles.map((member) => member.name),
     messages: room.messages.map((message) => ({
       ...message,
+      senderName: deletedUserIds.has(message.senderId ?? "") ? "Deleted User" : message.senderName,
+      senderAvatar: deletedUserIds.has(message.senderId ?? "") ? "D" : message.senderAvatar,
       inbound:
         typeof message.senderId === "string"
           ? message.senderId !== currentUserId
@@ -1610,9 +1756,12 @@ function mergePersistedPosts(primaryItems: FeedItem[], overrideItems: FeedItem[]
 }
 
 function resolveChatRoomTitle(room: SharedChatRoomDocument, currentUserId: string) {
+  if (room.groupName?.trim()) {
+    return room.groupName.trim();
+  }
+
   if (room.group) {
     return (
-      room.groupName?.trim() ||
       room.memberProfiles
         .filter((member) => member.id !== currentUserId)
         .map((member) => member.name)
@@ -1793,6 +1942,8 @@ function normalizeChatMessage(message: ChatMessage) {
           .filter((attachment) => attachment.url || attachment.filename)
       : undefined,
     content: typeof message.content === "string" ? message.content : "",
+    deleted: message.deleted === true ? true : undefined,
+    editedAt: typeof message.editedAt === "string" && message.editedAt ? message.editedAt : undefined,
     senderAvatar: typeof message.senderAvatar === "string" && message.senderAvatar.trim()
       ? message.senderAvatar
       : getAvatarLabel(typeof message.senderName === "string" ? message.senderName : "Resident"),
@@ -2196,6 +2347,24 @@ function normalizeBlockedUsersDocument(value: unknown): BlockedUsersDocument {
       ? (record.items as BlockedUserItem[]).map((item) => normalizeBlockedUserItem(item))
       : BLOCKED_USERS_SEED.items,
   };
+}
+
+function normalizeDeletedUsersDocument(value: unknown): DeletedUsersDocument {
+  const record = asRecord(value);
+
+  return {
+    uids: Array.isArray(record.uids) ? (record.uids as string[]).filter(Boolean) : [],
+  };
+}
+
+function useDeletedUserIds(): Set<string> {
+  const state = useSeededFirestoreDocument<DeletedUsersDocument>({
+    parse: normalizeDeletedUsersDocument,
+    path: ["appData", "deletedUsers"],
+    seedData: DELETED_USERS_SEED,
+  });
+
+  return useMemo(() => new Set(state.data.uids), [state.data.uids]);
 }
 
 function normalizeUserProfile(value: unknown): UserProfile {

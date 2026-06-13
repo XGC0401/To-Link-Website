@@ -38,6 +38,13 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // SECURITY: Registry of deleted user UIDs, readable by all authenticated users
+    match /appData/deletedUsers {
+      allow read: if signedIn();
+      allow create, update: if signedIn();
+      allow delete: if false;
+    }
+
     // SECURITY: Deny global access to other appData documents
     match /appData/{document=**} {
       allow read, write: if false;

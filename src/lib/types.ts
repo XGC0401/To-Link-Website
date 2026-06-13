@@ -164,6 +164,8 @@ export interface ChatMessage {
   inbound: boolean;
   accentLabel?: string;
   attachments?: MediaAttachment[];
+  deleted?: boolean;
+  editedAt?: string;
 }
 
 export interface ChatRoom {

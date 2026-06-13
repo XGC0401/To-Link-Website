@@ -1,6 +1,6 @@
 "use client";
 
-import { Languages, Search, Send, Users, Paperclip, X } from "lucide-react";
+import { Languages, MoreHorizontal, Pencil, Search, Send, Trash2, Users, Paperclip, X } from "lucide-react";
 import { useMemo, useState, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -9,6 +9,10 @@ import { FeatureShell } from "@/components/ui/feature-shell";
 import { Modal } from "@/components/ui/modal";
 import {
   createPersistedGroupChat,
+  deletePersistedChatRoom,
+  deletePersistedMessage,
+  editPersistedMessage,
+  renamePersistedChatRoom,
   sendPersistedMessage,
   usePersistedConnections,
   usePersistedCurrentUserProfile,
@@ -39,6 +43,12 @@ export function MessagesScreen() {
   const [translatedMessages, setTranslatedMessages] = useState<Record<string, string>>({});
   const [shownTranslations, setShownTranslations] = useState<Record<string, boolean>>({});
   const [translatingMessages, setTranslatingMessages] = useState<Record<string, boolean>>({});
+  const [roomMenuId, setRoomMenuId] = useState<string | null>(null);
+  const [renamingRoom, setRenamingRoom] = useState<{ id: string; title: string } | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
+  const [messageMenuId, setMessageMenuId] = useState<string | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
 
   const filteredRooms = useMemo(
     () => connections.chatRooms.filter((room) => room.title.toLowerCase().includes(query.toLowerCase())),
@@ -208,27 +218,57 @@ export function MessagesScreen() {
           <div className="min-h-0 overflow-y-auto pr-1">
             <div className="space-y-3">
               {filteredRooms.map((room) => (
-                <button
-                  key={room.id}
-                  className={room.id === activeRoom?.id ? "flex w-full items-center gap-3 rounded-[24px] border border-accent bg-accent-soft p-4 text-left" : "flex w-full items-center gap-3 rounded-[24px] border border-border bg-panel-strong p-4 text-left"}
-                  onClick={() => setActiveRoomId(room.id)}
-                  type="button"
-                >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">
-                    {room.title.slice(0, 2).toUpperCase()}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="truncate font-semibold text-foreground">{room.title}</p>
-                      {room.unreadCount > 0 ? (
-                        <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-white">
-                          {room.unreadCount}
-                        </span>
-                      ) : null}
+                <div key={room.id} className="relative flex items-stretch gap-1">
+                  <button
+                    className={room.id === activeRoom?.id ? "flex flex-1 items-center gap-3 rounded-[24px] border border-accent bg-accent-soft p-4 text-left" : "flex flex-1 items-center gap-3 rounded-[24px] border border-border bg-panel-strong p-4 text-left"}
+                    onClick={() => setActiveRoomId(room.id)}
+                    type="button"
+                  >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">
+                      {room.title.slice(0, 2).toUpperCase()}
                     </div>
-                    <p className="mt-1 truncate text-sm text-muted">{room.preview}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate font-semibold text-foreground">{room.title}</p>
+                        {room.unreadCount > 0 ? (
+                          <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-white">
+                            {room.unreadCount}
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 truncate text-sm text-muted">{room.preview}</p>
+                    </div>
+                  </button>
+                  <div className="relative flex items-center">
+                    <button
+                      className="flex items-center rounded-full p-2 text-muted transition hover:bg-accent/10 hover:text-foreground"
+                      onClick={(e) => { e.stopPropagation(); setRoomMenuId(roomMenuId === room.id ? null : room.id); }}
+                      type="button"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </button>
+                    {roomMenuId === room.id && (
+                      <div className="absolute right-0 top-full z-20 mt-1 min-w-36 rounded-2xl border border-border bg-panel shadow-lg">
+                        <button
+                          className="flex w-full items-center gap-2 rounded-t-2xl px-4 py-3 text-sm text-foreground hover:bg-accent-soft"
+                          onClick={() => { setRenamingRoom({ id: room.id, title: room.title }); setRenameDraft(room.title); setRoomMenuId(null); }}
+                          type="button"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          {t(language, "messages.renameRoom")}
+                        </button>
+                        <button
+                          className="flex w-full items-center gap-2 rounded-b-2xl px-4 py-3 text-sm text-red-500 hover:bg-red-500/10"
+                          onClick={async () => { setRoomMenuId(null); await deletePersistedChatRoom(room.id); if (activeRoom?.id === room.id) setActiveRoomId(undefined); }}
+                          type="button"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          {t(language, "messages.deleteRoom")}
+                        </button>
+                      </div>
+                    )}
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           </div>
@@ -260,38 +300,74 @@ export function MessagesScreen() {
                     return (
                   <div className={message.accentLabel ? "max-w-[80%] rounded-[24px] border border-accent/30 bg-accent-soft px-4 py-3 text-sm text-foreground" : isInbound ? "max-w-[80%] rounded-[24px] border border-border bg-panel px-4 py-3 text-sm text-foreground" : "max-w-[80%] rounded-[24px] bg-accent px-4 py-3 text-sm text-white"}>
                     {message.accentLabel ? <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-strong">{message.accentLabel}</p> : null}
-                    <p className="whitespace-pre-wrap break-words leading-7">{showTranslated ? translated : message.content}</p>
-                    {message.attachments && message.attachments.length > 0 && (
-                      <div className="mt-3 space-y-2">
-                        {message.attachments.map((attachment, idx) => (
-                          <div key={idx}>
-                            {attachment.type === "image" ? (
-                              <img
-                                alt={attachment.filename}
-                                className="max-w-full rounded-lg"
-                                src={attachment.url}
-                              />
-                            ) : attachment.type === "video" ? (
-                              <video
-                                className="max-w-full rounded-lg"
-                                controls
-                                src={attachment.url}
-                              />
-                            ) : (
-                              <a
-                                className="flex items-center gap-3 rounded-xl border border-border bg-panel-soft px-3 py-2 text-sm text-foreground hover:border-accent/40 hover:bg-accent-soft"
-                                href={attachment.url}
-                                rel="noreferrer"
-                                target="_blank"
-                              >
-                                <span className="rounded-full bg-accent/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">FILE</span>
-                                <span className="truncate">{attachment.filename}</span>
-                              </a>
-                            )}
-                          </div>
-                        ))}
+                    {message.deleted ? (
+                      <p className="italic opacity-60">{t(language, "messages.messageDeleted")}</p>
+                    ) : editingMessageId === message.id ? (
+                      <div className="space-y-2">
+                        <textarea
+                          autoFocus
+                          className="w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm text-foreground outline-none"
+                          onChange={(e) => setEditDraft(e.target.value)}
+                          rows={3}
+                          value={editDraft}
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            className="rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-white"
+                            onClick={async () => { if (editDraft.trim()) { await editPersistedMessage(activeRoom.id, message.id, editDraft); } setEditingMessageId(null); setEditDraft(""); }}
+                            type="button"
+                          >
+                            {t(language, "common.save")}
+                          </button>
+                          <button
+                            className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-foreground"
+                            onClick={() => { setEditingMessageId(null); setEditDraft(""); }}
+                            type="button"
+                          >
+                            {t(language, "common.cancel")}
+                          </button>
+                        </div>
                       </div>
+                    ) : (
+                      <>
+                        <p className="whitespace-pre-wrap break-words leading-7">{showTranslated ? translated : message.content}</p>
+                        {message.editedAt ? (
+                          <span className={isInbound ? "text-[11px] text-muted/70" : "text-[11px] text-white/50"}>{t(language, "messages.edited")}</span>
+                        ) : null}
+                        {message.attachments && message.attachments.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            {message.attachments.map((attachment, idx) => (
+                              <div key={idx}>
+                                {attachment.type === "image" ? (
+                                  <img
+                                    alt={attachment.filename}
+                                    className="max-w-full rounded-lg"
+                                    src={attachment.url}
+                                  />
+                                ) : attachment.type === "video" ? (
+                                  <video
+                                    className="max-w-full rounded-lg"
+                                    controls
+                                    src={attachment.url}
+                                  />
+                                ) : (
+                                  <a
+                                    className="flex items-center gap-3 rounded-xl border border-border bg-panel-soft px-3 py-2 text-sm text-foreground hover:border-accent/40 hover:bg-accent-soft"
+                                    href={attachment.url}
+                                    rel="noreferrer"
+                                    target="_blank"
+                                  >
+                                    <span className="rounded-full bg-accent/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">FILE</span>
+                                    <span className="truncate">{attachment.filename}</span>
+                                  </a>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
                     )}
+                    {!message.deleted && editingMessageId !== message.id && (
                     <div className="mt-2 flex items-center justify-between gap-2">
                       <button
                         className={isInbound ? "inline-flex items-center gap-1 rounded-full border border-border/70 px-2.5 py-1 text-[11px] font-semibold text-muted transition hover:border-accent/40 hover:text-accent" : "inline-flex items-center gap-1 rounded-full border border-white/35 bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white/90 transition hover:bg-white/20"}
@@ -302,8 +378,42 @@ export function MessagesScreen() {
                         <Languages className="h-3 w-3" />
                         {isTranslating ? t(language, "messages.translating") : showTranslated ? t(language, "messages.original") : t(language, "messages.translate")}
                       </button>
-                      <p className={isInbound ? "text-xs text-muted" : "text-xs text-white/80"}>{message.sentAt}</p>
+                      <div className="flex items-center gap-1">
+                        <p className={isInbound ? "text-xs text-muted" : "text-xs text-white/80"}>{message.sentAt}</p>
+                        {!isInbound && (
+                          <div className="relative">
+                            <button
+                              className="rounded-full p-1 text-white/60 transition hover:text-white"
+                              onClick={() => setMessageMenuId(messageMenuId === message.id ? null : message.id)}
+                              type="button"
+                            >
+                              <MoreHorizontal className="h-3.5 w-3.5" />
+                            </button>
+                            {messageMenuId === message.id && (
+                              <div className="absolute bottom-full right-0 z-20 mb-1 min-w-32 rounded-2xl border border-border bg-panel shadow-lg">
+                                <button
+                                  className="flex w-full items-center gap-2 rounded-t-2xl px-4 py-3 text-sm text-foreground hover:bg-accent-soft"
+                                  onClick={() => { setEditingMessageId(message.id); setEditDraft(message.content); setMessageMenuId(null); }}
+                                  type="button"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                  {t(language, "messages.editMessage")}
+                                </button>
+                                <button
+                                  className="flex w-full items-center gap-2 rounded-b-2xl px-4 py-3 text-sm text-red-500 hover:bg-red-500/10"
+                                  onClick={async () => { setMessageMenuId(null); await deletePersistedMessage(activeRoom.id, message.id); }}
+                                  type="button"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  {t(language, "messages.deleteMessage")}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
+                    )}
                   </div>
                     );
                   })()}
@@ -391,6 +501,33 @@ export function MessagesScreen() {
           </div>
         </div>
       </FeatureShell>
+
+      <Modal onClose={() => { setRenamingRoom(null); setRenameDraft(""); }} open={renamingRoom !== null} title={t(language, "messages.renameRoom")}>
+        <div className="space-y-4">
+          <input
+            className="app-input w-full rounded-[20px] px-4 py-3"
+            onChange={(e) => setRenameDraft(e.target.value)}
+            placeholder={renamingRoom?.title ?? ""}
+            value={renameDraft}
+          />
+          <div className="flex justify-end gap-3">
+            <button
+              className="rounded-full border border-border bg-panel px-4 py-3 text-sm font-semibold text-foreground"
+              onClick={() => { setRenamingRoom(null); setRenameDraft(""); }}
+              type="button"
+            >
+              {t(language, "common.cancel")}
+            </button>
+            <button
+              className="rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white"
+              onClick={async () => { if (renamingRoom && renameDraft.trim()) { await renamePersistedChatRoom(renamingRoom.id, renameDraft); } setRenamingRoom(null); setRenameDraft(""); }}
+              type="button"
+            >
+              {t(language, "common.save")}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal onClose={() => setComposerOpen(false)} open={composerOpen} title={t(language, "messages.createGroup")}>
         <div className="space-y-4">

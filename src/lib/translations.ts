@@ -262,6 +262,12 @@ export type CopyKey =
   | "messages.translating"
   | "messages.original"
   | "messages.attachments"
+  | "messages.messageDeleted"
+  | "messages.edited"
+  | "messages.editMessage"
+  | "messages.deleteMessage"
+  | "messages.renameRoom"
+  | "messages.deleteRoom"
   | "friends.search"
   | "friends.unfriend"
   | "friends.unfriendTitle"
@@ -650,6 +656,12 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "messages.translating": "Translating...",
     "messages.original": "Original",
     "messages.attachments": "Attachments ({n})",
+    "messages.messageDeleted": "Message Deleted",
+    "messages.edited": "(edited)",
+    "messages.editMessage": "Edit",
+    "messages.deleteMessage": "Delete",
+    "messages.renameRoom": "Rename",
+    "messages.deleteRoom": "Delete room",
     "friends.search": "Search usernames",
     "friends.unfriend": "Unfriend",
     "friends.unfriendTitle": "Unfriend resident",
@@ -1037,6 +1049,12 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "messages.translating": "翻譯中...",
     "messages.original": "原文",
     "messages.attachments": "附件 ({n})",
+    "messages.messageDeleted": "已刪除訊息",
+    "messages.edited": "（已編輯）",
+    "messages.editMessage": "編輯",
+    "messages.deleteMessage": "刪除",
+    "messages.renameRoom": "更改名稱",
+    "messages.deleteRoom": "刪除對話",
     "friends.search": "搜尋用戶名",
     "friends.unfriend": "取消好友",
     "friends.unfriendTitle": "取消好友關係",
