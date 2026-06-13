@@ -1,7 +1,7 @@
 "use client";
 
 import { onAuthStateChanged } from "firebase/auth";
-import { collection, doc, onSnapshot, orderBy, query, setDoc } from "firebase/firestore";
+import { collection, doc, limit, onSnapshot, orderBy, query, setDoc } from "firebase/firestore";
 import { useSyncExternalStore } from "react";
 import { useToLink } from "@/lib/app-state";
 import { calendarEvents as seededCalendarEvents } from "@/lib/demo-data";

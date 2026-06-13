@@ -311,20 +311,8 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
   }, [pathname, router, searchParams]);
 
   function closeDeleteDialog() {
-    // Remember which item was just closed to avoid immediately reopening it
-    justClosedItemIdRef.current = selected?.id ?? null;
-
-    if (searchParams.has("item")) {
-      const nextSearchParams = new URLSearchParams(searchParams.toString());
-      nextSearchParams.delete("item");
-      router.replace(nextSearchParams.size ? `${pathname}?${nextSearchParams.toString()}` : pathname);
-    }
-
-    setSelected(null);
-    setSelected(nextItem);
-    setCommentDraft("");
-    setQuestReasonDraft("");
-    setQuestDecisionDrafts({});
+    setDeleteCandidate(null);
+    setCountdown(3);
   }
 
   function openLeadDialog(item: FeedItem, kind: "clue" | "found") {

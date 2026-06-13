@@ -99,7 +99,7 @@ function deriveFirestoreDocumentState<T extends object>(
 
 function ensureFirestoreDocumentSubscription(
   entry: FirestoreDocumentEntry,
-  services: ReturnType<typeof getFirebaseServices>,
+  services: NonNullable<ReturnType<typeof getFirebaseServices>>,
   seedData: unknown,
 ) {
   if (entry.unsubscribe) {
@@ -141,7 +141,7 @@ function ensureFirestoreDocumentSubscription(
 
 function subscribeToFirestoreDocumentEntry(
   entry: FirestoreDocumentEntry,
-  services: ReturnType<typeof getFirebaseServices>,
+  services: NonNullable<ReturnType<typeof getFirebaseServices>>,
   seedData: unknown,
   listener: () => void,
 ) {
