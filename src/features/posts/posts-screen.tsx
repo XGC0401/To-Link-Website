@@ -2,7 +2,7 @@
 
 import { Ban, Flag, Heart, MessageCircle, MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AvatarBadge } from "@/components/ui/avatar-badge";
 import { FeatureShell } from "@/components/ui/feature-shell";
@@ -191,8 +191,17 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
       return;
     }
 
-    openSelectedDialog(highlightedItem);
-  }, [mode, posts.items, searchParams, selected?.id]);
+    queueMicrotask(() => {
+      setSelected(highlightedItem);
+      setPostMenuId(null);
+
+      if (!searchParams.has("item")) {
+        const nextSearchParams = new URLSearchParams(searchParams.toString());
+        nextSearchParams.set("item", highlightedItem.id);
+        router.replace(`${pathname}?${nextSearchParams.toString()}`);
+      }
+    });
+  }, [mode, posts.items, searchParams, selected?.id, pathname, router]);
 
   useEffect(() => {
     if (!deleteCandidate) {
@@ -277,6 +286,30 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
     setEditPriceReward("");
   }
 
+  function openSelectedDialog(item: FeedItem) {
+    setSelected(item);
+    setPostMenuId(null);
+
+    if (!searchParams.has("item")) {
+      const nextSearchParams = new URLSearchParams(searchParams.toString());
+      nextSearchParams.set("item", item.id);
+      router.replace(`${pathname}?${nextSearchParams.toString()}`);
+    }
+  }
+
+  const closeSelectedDialog = useCallback(() => {
+    if (searchParams.has("item")) {
+      const nextSearchParams = new URLSearchParams(searchParams.toString());
+      nextSearchParams.delete("item");
+      router.replace(nextSearchParams.size ? `${pathname}?${nextSearchParams.toString()}` : pathname);
+    }
+
+    setSelected(null);
+    setCommentDraft("");
+    setQuestReasonDraft("");
+    setQuestDecisionDrafts({});
+  }, [pathname, router, searchParams]);
+
   function closeDeleteDialog() {
     // Remember which item was just closed to avoid immediately reopening it
     justClosedItemIdRef.current = selected?.id ?? null;
@@ -289,19 +322,6 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
 
     setSelected(null);
     setSelected(nextItem);
-    setCommentDraft("");
-    setQuestReasonDraft("");
-    setQuestDecisionDrafts({});
-  }
-
-  function closeSelectedDialog() {
-    if (searchParams.has("item")) {
-      const nextSearchParams = new URLSearchParams(searchParams.toString());
-      nextSearchParams.delete("item");
-      router.replace(nextSearchParams.size ? `${pathname}?${nextSearchParams.toString()}` : pathname);
-    }
-
-    setSelected(null);
     setCommentDraft("");
     setQuestReasonDraft("");
     setQuestDecisionDrafts({});
