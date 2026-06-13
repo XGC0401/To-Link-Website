@@ -309,20 +309,23 @@ export function usePersistedSharedContent() {
 
 export function usePersistedPosts() {
   const { language } = useToLink();
-  // SECURITY: Only load user-specific posts from their own profile.
-  // Posts are now stored per-user in userProfiles/{uid}/appData/postOverrides
-  // to prevent unauthorized access to other users' posts.
+  // SECURITY: Only load user-specific post overrides from the current user's profile.
+  // The full feed is seeded globally and merged with any per-user overrides.
   const state = useSeededUserDocument<PostsDocument>({
     pathFactory: (uid) => ["userProfiles", uid, "appData", "postOverrides"],
     parse: normalizePostsDocument,
     seedData: POSTS_OVERRIDES_SEED,
   });
+  const mergedPosts = useMemo(
+    () => mergePersistedPosts(POSTS_SEED.items, state.data.items),
+    [state.data.items],
+  );
   const localizedData = useMemo(
     () => ({
       ...state.data,
-      items: localizeFeedItems(language, state.data.items),
+      items: localizeFeedItems(language, mergedPosts),
     }),
-    [language, state.data],
+    [language, mergedPosts],
   );
 
   return {
@@ -1827,7 +1830,7 @@ async function saveSharedChatRoomsDocument(documentValue: SharedChatRoomsDocumen
 
 async function loadEditablePostsDocument() {
   // SECURITY: Only load user-specific posts from their own profile
-  // All posts are now stored in userProfiles/{uid}/appData/postOverrides
+  // All posts are now stored per-user in userProfiles/{uid}/appData/postOverrides
   const overridePosts = await loadCurrentUserDocument(
     ["appData", "postOverrides"],
     POSTS_OVERRIDES_SEED,
@@ -1835,7 +1838,7 @@ async function loadEditablePostsDocument() {
   );
 
   return {
-    items: overridePosts?.items ?? [],
+    items: mergePersistedPosts(POSTS_SEED.items, overridePosts?.items ?? []),
   } satisfies PostsDocument;
 }
 
