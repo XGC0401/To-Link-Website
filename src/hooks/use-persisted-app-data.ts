@@ -1111,6 +1111,14 @@ export async function updatePersistedBookingStatus(
 }
 
 export async function addPersistedFriend(friend: FriendCard) {
+  const services = getFirebaseServices();
+  const currentUserId = services?.auth.currentUser?.uid;
+
+  // Prevent adding yourself as a friend
+  if (currentUserId && friend.id === currentUserId) {
+    return false;
+  }
+
   const currentConnections = await loadCurrentUserDocument(["appData", "connections"], CONNECTIONS_SEED, normalizeConnectionsDocument);
 
   if (!currentConnections) {
@@ -2290,7 +2298,7 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }
 
-function getAvatarLabel(name: string) {
+export function getAvatarLabel(name: string) {
   const initials = name
     .split(/\s+/)
     .map((part) => part.trim().charAt(0).toUpperCase())

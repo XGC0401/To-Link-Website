@@ -10,10 +10,12 @@ import { useAdminUsersList } from "@/hooks/use-admin-users-list";
 import { Modal } from "@/components/ui/modal";
 import {
   addPersistedFriend,
+  getAvatarLabel,
   openPersistedDirectChat,
   removePersistedFriend,
   usePersistedConnections,
 } from "@/hooks/use-persisted-app-data";
+import { getFirebaseServices } from "@/lib/firebase";
 import { t } from "@/lib/translations";
 import type { FriendCard } from "@/lib/types";
 
@@ -24,18 +26,23 @@ export function FriendsScreen() {
   const { users } = useAdminUsersList();
   const [query, setQuery] = useState("");
   const [candidate, setCandidate] = useState<FriendCard | null>(null);
+  const services = getFirebaseServices();
+  const currentUserId = services?.auth.currentUser?.uid || null;
 
   const realAccounts = useMemo(
     () =>
       users
-        .map((user) => ({
-          avatar: user.avatar || "U",
-          bio: user.bio || user.jobTitle || "",
-          id: user.id,
-          name: user.name || `${user.firstName} ${user.lastName}`.trim(),
-          status: (user.status === "online" || user.status === "offline" || user.status === "busy" ? user.status : "offline") as "online" | "offline" | "busy",
-          username: user.username || user.email.split("@")[0] || user.id,
-        }))
+        .map((user) => {
+          const displayName = user.name || `${user.firstName} ${user.lastName}`.trim();
+          return {
+            avatar: getAvatarLabel(displayName),
+            bio: user.bio || user.jobTitle || "",
+            id: user.id,
+            name: displayName,
+            status: (user.status === "online" || user.status === "offline" || user.status === "busy" ? user.status : "offline") as "online" | "offline" | "busy",
+            username: user.username || user.email.split("@")[0] || user.id,
+          };
+        })
         .filter((user) => Boolean(user.name || user.username)),
     [users],
   );
@@ -48,6 +55,7 @@ export function FriendsScreen() {
 
     return [...new Map(combined.map((friend) => [friend.id, friend])).values()]
       .filter((friend) => !friendIds.has(friend.id))
+      .filter((friend) => currentUserId && friend.id !== currentUserId) // Exclude current user
       .filter((friend) => {
         if (!searchTerm) {
           return true;
@@ -55,7 +63,7 @@ export function FriendsScreen() {
 
         return `${friend.name} ${friend.username}`.toLowerCase().includes(searchTerm);
       });
-  }, [connections.friendSuggestions, friendIds, query, realAccounts]);
+  }, [connections.friendSuggestions, friendIds, query, realAccounts, currentUserId]);
 
   async function handleOpenChat(friend: FriendCard) {
     const roomId = await openPersistedDirectChat({
