@@ -1820,7 +1820,8 @@ async function saveSharedChatRoomsDocument(documentValue: SharedChatRoomsDocumen
     return false;
   }
 
-  await setDoc(doc(services.db, "appData", "chatRooms"), documentValue, { merge: true });
+  const sanitizedDocument = stripUndefinedValues(documentValue) as Record<string, unknown>;
+  await setDoc(doc(services.db, "appData", "chatRooms"), sanitizedDocument, { merge: true });
   return true;
 }
 
@@ -2011,7 +2012,7 @@ function normalizeConnectionsDocument(value: unknown): ConnectionsDocument {
       ? (record.chatRooms as ChatRoom[]).map((room) => normalizeChatRoomView(room))
       : CONNECTIONS_SEED.chatRooms,
     friendList: Array.isArray(record.friendList)
-      ? (record.friendList as FriendCard[])
+      ? normalizeFriendCardList(record.friendList as FriendCard[])
       : CONNECTIONS_SEED.friendList,
   };
 }
@@ -2039,6 +2040,29 @@ function normalizeChatRoomView(room: ChatRoom): ChatRoom {
     title: typeof room.title === "string" ? room.title : "Direct message",
     unreadCount: typeof room.unreadCount === "number" ? room.unreadCount : 0,
   } satisfies ChatRoom;
+}
+
+function normalizeFriendCardList(friendCards: FriendCard[]) {
+  const uniqueFriends = new Map<string, FriendCard>();
+
+  for (const friend of friendCards) {
+    if (!friend?.id) {
+      continue;
+    }
+
+    if (!uniqueFriends.has(friend.id)) {
+      uniqueFriends.set(friend.id, {
+        id: friend.id,
+        name: friend.name || "",
+        username: friend.username || "",
+        avatar: friend.avatar || "U",
+        bio: friend.bio || "",
+        status: friend.status === "online" || friend.status === "offline" || friend.status === "busy" ? friend.status : "offline",
+      });
+    }
+  }
+
+  return [...uniqueFriends.values()];
 }
 
 function stripUndefinedValues<T>(value: T): T {

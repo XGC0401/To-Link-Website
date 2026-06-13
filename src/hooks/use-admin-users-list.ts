@@ -19,7 +19,7 @@ export function useAdminUsersList() {
 
     let isActive = true;
     const usersRef = collection(services.db, "userProfiles");
-    const usersQuery = query(usersRef, orderBy("createdAt", "desc"));
+    const usersQuery = query(usersRef);
 
     const unsubscribe = onSnapshot(
       usersQuery,
