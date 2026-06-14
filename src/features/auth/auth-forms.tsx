@@ -5,7 +5,6 @@ import {
   browserSessionPersistence,
   confirmPasswordReset,
   createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
   setPersistence,
   signInWithEmailAndPassword,
   updateProfile,
@@ -766,55 +765,14 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                   return;
                 }
 
-                // Reset mode: no oobCode → send reset email
+                // Reset mode: requires a valid Firebase password-reset link code
                 const code = searchParams.get("oobCode")?.trim();
 
                 if (!code) {
-                  const email = state.email.trim().toLowerCase();
-
-                  if (!email) {
-                    toast.error(t(language, "auth.enterForgotEmail"));
-                    return;
-                  }
-
-                  const services = getFirebaseServices();
-
-                  if (!services) {
-                    toast.error(firebaseSetupHint);
-                    return;
-                  }
-
-                  setLoading(true);
-
-                  try {
-                    await sendPasswordResetEmail(services.auth, email, {
-                      url:
-                        typeof window !== "undefined"
-                          ? `${window.location.origin}/forgot-password`
-                          : "/forgot-password",
-                      handleCodeInApp: true,
-                    });
-                    toast.success(t(language, "auth.resetSent"));
-                    router.push("/");
-                  } catch (error) {
-                    if (
-                      error &&
-                      typeof error === "object" &&
-                      "code" in error &&
-                      error.code === "auth/user-not-found"
-                    ) {
-                      toast.error(t(language, "auth.emailNotRegistered"));
-                    } else {
-                      toast.error(getFriendlyAuthError(error));
-                    }
-                  } finally {
-                    setLoading(false);
-                  }
-
+                  toast.error(t(language, "auth.error.invalidLink"));
                   return;
                 }
 
-                // Reset mode: oobCode present → confirm new password
                 if (!state.newPassword) {
                   toast.error(t(language, "auth.error.enterNewPassword"));
                   return;
@@ -1048,56 +1006,33 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
               ) : null}
 
               {mode === "reset" ? (
-                (() => {
-                  const hasOobCode = Boolean(searchParams.get("oobCode"));
-                  if (!hasOobCode) {
-                    return (
-                      <>
-                        <p className="text-sm leading-6 text-muted">
-                          {language === "zh-HK"
-                            ? "請輸入你的帳戶電郵，我們將向你傳送重設密碼的連結。"
-                            : "Enter your registered email and we'll send you a password reset link."}
-                        </p>
-                        <InputField
-                          icon={<Mail className="h-4 w-4" />}
-                          label={t(language, "auth.registeredEmail")}
-                          onChange={(value) => setState((current) => ({ ...current, email: value }))}
-                          type="email"
-                          value={state.email}
-                        />
-                      </>
-                    );
-                  }
-                  return (
-                    <>
-                      <InputField
-                        icon={<Mail className="h-4 w-4" />}
-                        label={t(language, "auth.registeredEmail")}
-                        onChange={(value) => setState((current) => ({ ...current, email: value }))}
-                        type="email"
-                        value={state.email}
-                      />
-                      <InputField
-                        icon={<KeyRound className="h-4 w-4" />}
-                        label={t(language, "auth.newPassword")}
-                        allowPasswordToggle
-                        onChange={(value) => setState((current) => ({ ...current, newPassword: value }))}
-                        type="password"
-                        value={state.newPassword}
-                      />
-                      <InputField
-                        icon={<KeyRound className="h-4 w-4" />}
-                        label={t(language, "auth.confirmNewPassword")}
-                        allowPasswordToggle
-                        onChange={(value) =>
-                          setState((current) => ({ ...current, confirmPassword: value }))
-                        }
-                        type="password"
-                        value={state.confirmPassword}
-                      />
-                    </>
-                  );
-                })()
+                <>
+                  <InputField
+                    icon={<Mail className="h-4 w-4" />}
+                    label={t(language, "auth.registeredEmail")}
+                    onChange={(value) => setState((current) => ({ ...current, email: value }))}
+                    type="email"
+                    value={state.email}
+                  />
+                  <InputField
+                    icon={<KeyRound className="h-4 w-4" />}
+                    label={t(language, "auth.newPassword")}
+                    allowPasswordToggle
+                    onChange={(value) => setState((current) => ({ ...current, newPassword: value }))}
+                    type="password"
+                    value={state.newPassword}
+                  />
+                  <InputField
+                    icon={<KeyRound className="h-4 w-4" />}
+                    label={t(language, "auth.confirmNewPassword")}
+                    allowPasswordToggle
+                    onChange={(value) =>
+                      setState((current) => ({ ...current, confirmPassword: value }))
+                    }
+                    type="password"
+                    value={state.confirmPassword}
+                  />
+                </>
               ) : null}
 
               <button
@@ -1117,7 +1052,7 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
               {mode !== "forgot" && mode !== "reset" ? (
                 <Link
                   className="inline-flex items-center rounded-full border border-border bg-panel px-4 py-2 font-semibold transition hover:border-accent/40 hover:bg-accent-soft hover:text-accent"
-                  href="/forgot-password"
+                  href="/reset-password"
                 >
                   {t(language, "auth.forgot")}
                 </Link>
