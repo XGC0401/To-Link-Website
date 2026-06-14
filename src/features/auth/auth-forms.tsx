@@ -8,7 +8,6 @@ import {
   sendPasswordResetEmail,
   setPersistence,
   signInWithEmailAndPassword,
-  signOut,
   updateProfile,
   verifyPasswordResetCode,
 } from "firebase/auth";
@@ -262,13 +261,6 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
   const [sendingEmailCode, setSendingEmailCode] = useState(false);
   const [verifyingEmailCode, setVerifyingEmailCode] = useState(false);
   const [legalModal, setLegalModal] = useState<"privacy" | "terms" | null>(null);
-  const [mfaState, setMfaState] = useState<{
-    open: boolean;
-    email: string;
-    code: string;
-    sending: boolean;
-    verifying: boolean;
-  }>({ open: false, email: "", code: "", sending: false, verifying: false });
 
   const formModeTitle = {
     login: t(language, "auth.login"),
@@ -626,17 +618,8 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                     );
                     await signInWithEmailAndPassword(services.auth, email, state.password);
 
-                    // Trigger MFA: send OTP to user's email
-                    setMfaState({ open: false, email, code: "", sending: true, verifying: false });
-                    try {
-                      await fetch("/api/auth/email-code", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ action: "send", email }),
-                      });
-                    } finally {
-                      setMfaState((s) => ({ ...s, open: true, sending: false }));
-                    }
+                    toast.success(t(language, "auth.signedIn"));
+                    router.push("/home");
                   } catch (error) {
                     toast.error(getFriendlyAuthError(error));
                   } finally {
@@ -807,8 +790,8 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                     await sendPasswordResetEmail(services.auth, email, {
                       url:
                         typeof window !== "undefined"
-                          ? `${window.location.origin}/reset-password`
-                          : "/reset-password",
+                          ? `${window.location.origin}/forgot-password`
+                          : "/forgot-password",
                       handleCodeInApp: true,
                     });
                     toast.success(t(language, "auth.resetSent"));
@@ -1134,7 +1117,7 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
               {mode !== "forgot" && mode !== "reset" ? (
                 <Link
                   className="inline-flex items-center rounded-full border border-border bg-panel px-4 py-2 font-semibold transition hover:border-accent/40 hover:bg-accent-soft hover:text-accent"
-                  href="/reset-password"
+                  href="/forgot-password"
                 >
                   {t(language, "auth.forgot")}
                 </Link>
@@ -1159,90 +1142,6 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
           </div>
         </section>
       </div>
-
-      <Modal
-        onClose={async () => {
-          const services = getFirebaseServices();
-          if (services) await signOut(services.auth);
-          setMfaState({ open: false, email: "", code: "", sending: false, verifying: false });
-        }}
-        open={mfaState.open}
-        title={language === "zh-HK" ? "雙重驗證" : "Two-Factor Verification"}
-      >
-        <div className="space-y-4">
-          <p className="text-sm leading-6 text-muted">
-            {language === "zh-HK"
-              ? `為保障帳戶安全，我們已向 ${mfaState.email} 傳送了一個 6 位驗證碼。請在下方輸入。`
-              : `For your security, a 6-digit verification code was sent to ${mfaState.email}. Enter it below.`}
-          </p>
-          <input
-            autoFocus
-            className="app-input w-full rounded-[20px] px-4 py-3 text-center text-lg font-bold tracking-[0.4em]"
-            inputMode="numeric"
-            maxLength={6}
-            onChange={(e) => setMfaState((s) => ({ ...s, code: e.target.value.replace(/\D/g, "") }))}
-            placeholder="000000"
-            value={mfaState.code}
-          />
-          <div className="flex gap-3">
-            <button
-              className="flex-1 rounded-full border border-border bg-panel px-4 py-3 text-sm font-semibold text-muted transition hover:text-foreground"
-              onClick={async () => {
-                setMfaState((s) => ({ ...s, sending: true }));
-                try {
-                  await fetch("/api/auth/email-code", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ action: "send", email: mfaState.email }),
-                  });
-                  toast.success(language === "zh-HK" ? "驗證碼已重新傳送。" : "Verification code resent.");
-                } finally {
-                  setMfaState((s) => ({ ...s, sending: false }));
-                }
-              }}
-              type="button"
-            >
-              {mfaState.sending
-                ? (language === "zh-HK" ? "傳送中…" : "Sending…")
-                : (language === "zh-HK" ? "重新傳送" : "Resend")}
-            </button>
-            <button
-              className={cn(
-                "flex-1 rounded-full bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong",
-                (mfaState.verifying || mfaState.code.length !== 6) && "cursor-not-allowed opacity-60",
-              )}
-              disabled={mfaState.verifying || mfaState.code.length !== 6}
-              onClick={async () => {
-                setMfaState((s) => ({ ...s, verifying: true }));
-                try {
-                  const res = await fetch("/api/auth/email-code", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ action: "verify", email: mfaState.email, code: mfaState.code }),
-                  });
-                  if (!res.ok) {
-                    const payload = (await res.json()) as { error?: string };
-                    toast.error(payload.error ?? (language === "zh-HK" ? "驗證碼不正確。" : "Incorrect verification code."));
-                    return;
-                  }
-                  toast.success(t(language, "auth.signedIn"));
-                  setMfaState({ open: false, email: "", code: "", sending: false, verifying: false });
-                  router.push("/home");
-                } catch {
-                  toast.error(language === "zh-HK" ? "驗證失敗，請重試。" : "Verification failed. Please try again.");
-                } finally {
-                  setMfaState((s) => ({ ...s, verifying: false }));
-                }
-              }}
-              type="button"
-            >
-              {mfaState.verifying
-                ? (language === "zh-HK" ? "驗證中…" : "Verifying…")
-                : (language === "zh-HK" ? "確認" : "Verify")}
-            </button>
-          </div>
-        </div>
-      </Modal>
 
       <Modal
         onClose={() => setLegalModal(null)}

@@ -36,7 +36,5 @@ services:
         sync: false
       - key: EMAIL_FROM
         sync: false
-      - key: RESEND_API_KEY
-        sync: false
       - key: AI_ASSISTANT_WEBHOOK_URL
         sync: false
