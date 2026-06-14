@@ -8,6 +8,7 @@ import {
   sendPasswordResetEmail,
   setPersistence,
   signInWithEmailAndPassword,
+  signOut,
   updateProfile,
   verifyPasswordResetCode,
 } from "firebase/auth";
@@ -261,6 +262,13 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
   const [sendingEmailCode, setSendingEmailCode] = useState(false);
   const [verifyingEmailCode, setVerifyingEmailCode] = useState(false);
   const [legalModal, setLegalModal] = useState<"privacy" | "terms" | null>(null);
+  const [mfaState, setMfaState] = useState<{
+    open: boolean;
+    email: string;
+    code: string;
+    sending: boolean;
+    verifying: boolean;
+  }>({ open: false, email: "", code: "", sending: false, verifying: false });
 
   const formModeTitle = {
     login: t(language, "auth.login"),
@@ -523,15 +531,15 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
           </div>
 
           <div className="relative z-10 grid gap-4 md:grid-cols-3">
-            {[
-              t(language, "auth.hero.card1"),
-              t(language, "auth.hero.card2"),
-              t(language, "auth.hero.card3"),
-            ].map((item) => (
-              <div key={item} className="app-panel rounded-[28px] border px-4 py-4 text-sm text-muted">
-                <p className="font-semibold text-foreground">{item}</p>
+            {([
+              { title: t(language, "auth.hero.card1"), desc: t(language, "auth.hero.card1Desc") },
+              { title: t(language, "auth.hero.card2"), desc: t(language, "auth.hero.card2Desc") },
+              { title: t(language, "auth.hero.card3"), desc: t(language, "auth.hero.card3Desc") },
+            ] as const).map((item) => (
+              <div key={item.title} className="app-panel rounded-[28px] border px-4 py-4 text-sm text-muted">
+                <p className="font-semibold text-foreground">{item.title}</p>
                 <p className="mt-2 leading-6">
-                  {t(language, "auth.hero.cardDesc")}
+                  {item.desc}
                 </p>
               </div>
             ))}
@@ -618,8 +626,17 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                     );
                     await signInWithEmailAndPassword(services.auth, email, state.password);
 
-                    toast.success(t(language, "auth.signedIn"));
-                    router.push("/home");
+                    // Trigger MFA: send OTP to user's email
+                    setMfaState({ open: false, email, code: "", sending: true, verifying: false });
+                    try {
+                      await fetch("/api/auth/email-code", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "send", email }),
+                      });
+                    } finally {
+                      setMfaState((s) => ({ ...s, open: true, sending: false }));
+                    }
                   } catch (error) {
                     toast.error(getFriendlyAuthError(error));
                   } finally {
@@ -761,12 +778,15 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                   return;
                 }
 
-                if (mode === "forgot") {
-                  if (!isFirebaseConfigured) {
-                    toast.error(firebaseSetupHint);
-                    return;
-                  }
+                if (!isFirebaseConfigured) {
+                  toast.error(firebaseSetupHint);
+                  return;
+                }
 
+                // Reset mode: no oobCode → send reset email
+                const code = searchParams.get("oobCode")?.trim();
+
+                if (!code) {
                   const email = state.email.trim().toLowerCase();
 
                   if (!email) {
@@ -811,11 +831,7 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                   return;
                 }
 
-                if (!isFirebaseConfigured) {
-                  toast.error(firebaseSetupHint);
-                  return;
-                }
-
+                // Reset mode: oobCode present → confirm new password
                 if (!state.newPassword) {
                   toast.error(t(language, "auth.error.enterNewPassword"));
                   return;
@@ -835,13 +851,6 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
 
                 if (!services) {
                   toast.error(firebaseSetupHint);
-                  return;
-                }
-
-                const code = searchParams.get("oobCode")?.trim();
-
-                if (!code) {
-                  toast.error(t(language, "auth.error.invalidLink"));
                   return;
                 }
 
@@ -1056,33 +1065,56 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
               ) : null}
 
               {mode === "reset" ? (
-                <>
-                  <InputField
-                    icon={<Mail className="h-4 w-4" />}
-                    label={t(language, "auth.registeredEmail")}
-                    onChange={(value) => setState((current) => ({ ...current, email: value }))}
-                    type="email"
-                    value={state.email}
-                  />
-                  <InputField
-                    icon={<KeyRound className="h-4 w-4" />}
-                    label={t(language, "auth.newPassword")}
-                    allowPasswordToggle
-                    onChange={(value) => setState((current) => ({ ...current, newPassword: value }))}
-                    type="password"
-                    value={state.newPassword}
-                  />
-                  <InputField
-                    icon={<KeyRound className="h-4 w-4" />}
-                    label={t(language, "auth.confirmNewPassword")}
-                    allowPasswordToggle
-                    onChange={(value) =>
-                      setState((current) => ({ ...current, confirmPassword: value }))
-                    }
-                    type="password"
-                    value={state.confirmPassword}
-                  />
-                </>
+                (() => {
+                  const hasOobCode = Boolean(searchParams.get("oobCode"));
+                  if (!hasOobCode) {
+                    return (
+                      <>
+                        <p className="text-sm leading-6 text-muted">
+                          {language === "zh-HK"
+                            ? "請輸入你的帳戶電郵，我們將向你傳送重設密碼的連結。"
+                            : "Enter your registered email and we'll send you a password reset link."}
+                        </p>
+                        <InputField
+                          icon={<Mail className="h-4 w-4" />}
+                          label={t(language, "auth.registeredEmail")}
+                          onChange={(value) => setState((current) => ({ ...current, email: value }))}
+                          type="email"
+                          value={state.email}
+                        />
+                      </>
+                    );
+                  }
+                  return (
+                    <>
+                      <InputField
+                        icon={<Mail className="h-4 w-4" />}
+                        label={t(language, "auth.registeredEmail")}
+                        onChange={(value) => setState((current) => ({ ...current, email: value }))}
+                        type="email"
+                        value={state.email}
+                      />
+                      <InputField
+                        icon={<KeyRound className="h-4 w-4" />}
+                        label={t(language, "auth.newPassword")}
+                        allowPasswordToggle
+                        onChange={(value) => setState((current) => ({ ...current, newPassword: value }))}
+                        type="password"
+                        value={state.newPassword}
+                      />
+                      <InputField
+                        icon={<KeyRound className="h-4 w-4" />}
+                        label={t(language, "auth.confirmNewPassword")}
+                        allowPasswordToggle
+                        onChange={(value) =>
+                          setState((current) => ({ ...current, confirmPassword: value }))
+                        }
+                        type="password"
+                        value={state.confirmPassword}
+                      />
+                    </>
+                  );
+                })()
               ) : null}
 
               <button
@@ -1102,7 +1134,7 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
               {mode !== "forgot" && mode !== "reset" ? (
                 <Link
                   className="inline-flex items-center rounded-full border border-border bg-panel px-4 py-2 font-semibold transition hover:border-accent/40 hover:bg-accent-soft hover:text-accent"
-                  href="/forgot-password"
+                  href="/reset-password"
                 >
                   {t(language, "auth.forgot")}
                 </Link>
@@ -1127,6 +1159,90 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
           </div>
         </section>
       </div>
+
+      <Modal
+        onClose={async () => {
+          const services = getFirebaseServices();
+          if (services) await signOut(services.auth);
+          setMfaState({ open: false, email: "", code: "", sending: false, verifying: false });
+        }}
+        open={mfaState.open}
+        title={language === "zh-HK" ? "雙重驗證" : "Two-Factor Verification"}
+      >
+        <div className="space-y-4">
+          <p className="text-sm leading-6 text-muted">
+            {language === "zh-HK"
+              ? `為保障帳戶安全，我們已向 ${mfaState.email} 傳送了一個 6 位驗證碼。請在下方輸入。`
+              : `For your security, a 6-digit verification code was sent to ${mfaState.email}. Enter it below.`}
+          </p>
+          <input
+            autoFocus
+            className="app-input w-full rounded-[20px] px-4 py-3 text-center text-lg font-bold tracking-[0.4em]"
+            inputMode="numeric"
+            maxLength={6}
+            onChange={(e) => setMfaState((s) => ({ ...s, code: e.target.value.replace(/\D/g, "") }))}
+            placeholder="000000"
+            value={mfaState.code}
+          />
+          <div className="flex gap-3">
+            <button
+              className="flex-1 rounded-full border border-border bg-panel px-4 py-3 text-sm font-semibold text-muted transition hover:text-foreground"
+              onClick={async () => {
+                setMfaState((s) => ({ ...s, sending: true }));
+                try {
+                  await fetch("/api/auth/email-code", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "send", email: mfaState.email }),
+                  });
+                  toast.success(language === "zh-HK" ? "驗證碼已重新傳送。" : "Verification code resent.");
+                } finally {
+                  setMfaState((s) => ({ ...s, sending: false }));
+                }
+              }}
+              type="button"
+            >
+              {mfaState.sending
+                ? (language === "zh-HK" ? "傳送中…" : "Sending…")
+                : (language === "zh-HK" ? "重新傳送" : "Resend")}
+            </button>
+            <button
+              className={cn(
+                "flex-1 rounded-full bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong",
+                (mfaState.verifying || mfaState.code.length !== 6) && "cursor-not-allowed opacity-60",
+              )}
+              disabled={mfaState.verifying || mfaState.code.length !== 6}
+              onClick={async () => {
+                setMfaState((s) => ({ ...s, verifying: true }));
+                try {
+                  const res = await fetch("/api/auth/email-code", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "verify", email: mfaState.email, code: mfaState.code }),
+                  });
+                  if (!res.ok) {
+                    const payload = (await res.json()) as { error?: string };
+                    toast.error(payload.error ?? (language === "zh-HK" ? "驗證碼不正確。" : "Incorrect verification code."));
+                    return;
+                  }
+                  toast.success(t(language, "auth.signedIn"));
+                  setMfaState({ open: false, email: "", code: "", sending: false, verifying: false });
+                  router.push("/home");
+                } catch {
+                  toast.error(language === "zh-HK" ? "驗證失敗，請重試。" : "Verification failed. Please try again.");
+                } finally {
+                  setMfaState((s) => ({ ...s, verifying: false }));
+                }
+              }}
+              type="button"
+            >
+              {mfaState.verifying
+                ? (language === "zh-HK" ? "驗證中…" : "Verifying…")
+                : (language === "zh-HK" ? "確認" : "Verify")}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         onClose={() => setLegalModal(null)}

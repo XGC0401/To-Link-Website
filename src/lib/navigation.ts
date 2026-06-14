@@ -23,7 +23,8 @@ export type NavigationIcon =
   | "calendar"
   | "booking"
   | "ai"
-  | "document";
+  | "document"
+  | "bestOfMonth";
 
 export interface RouteNavItem {
   kind: "route";
@@ -153,6 +154,12 @@ export const sidebarNavigation: SidebarNavItem[] = [
         labelKey: "nav.activities.booking",
         href: "/activities/booking-status",
         icon: "booking",
+      },
+      {
+        kind: "route",
+        labelKey: "nav.activities.bestOfMonth",
+        href: "/activities/best-of-month",
+        icon: "bestOfMonth",
       },
     ],
   },

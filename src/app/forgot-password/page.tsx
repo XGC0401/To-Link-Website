@@ -1,5 +1,5 @@
-import { AuthForms } from "@/features/auth/auth-forms";
+import { redirect } from "next/navigation";
 
 export default function ForgotPasswordPage() {
-  return <AuthForms mode="forgot" />;
+  redirect("/reset-password");
 }

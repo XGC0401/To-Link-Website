@@ -26,6 +26,7 @@ import {
   ShoppingBag,
   Sparkles,
   SquareStack,
+  Trophy,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -61,6 +62,33 @@ const iconMap: Record<NavigationIcon, React.ComponentType<{ className?: string }
   booking: Blocks,
   ai: Sparkles,
   document: FileText,
+  bestOfMonth: Trophy,
+};
+
+const iconColorMap: Record<NavigationIcon, string> = {
+  home: "text-sky-500",
+  posts: "text-violet-500",
+  nearby: "text-emerald-500",
+  connections: "text-blue-500",
+  activities: "text-amber-500",
+  building: "text-orange-500",
+  settings: "text-slate-500",
+  info: "text-slate-400",
+  logout: "text-rose-500",
+  sharing: "text-teal-500",
+  secondHand: "text-pink-500",
+  lostFound: "text-red-400",
+  quest: "text-lime-600",
+  shop: "text-pink-500",
+  community: "text-cyan-500",
+  message: "text-blue-400",
+  friends: "text-indigo-500",
+  event: "text-rose-400",
+  calendar: "text-amber-400",
+  booking: "text-purple-500",
+  ai: "text-violet-400",
+  document: "text-slate-400",
+  bestOfMonth: "text-yellow-500",
 };
 
 const infoItems = infoNavigation.filter((item) => item.action.type !== "signOut");
@@ -188,6 +216,7 @@ export function Sidebar() {
           }
 
           const Icon = iconMap[item.icon];
+          const groupColorClass = iconColorMap[item.icon];
           const isGroupActive = item.children.some((child) => pathname.startsWith(child.href));
           const shouldExpand = sidebarOpen && expandedGroups.has(item.labelKey);
           const isSettingsGroup = item.labelKey === "nav.settings";
@@ -202,7 +231,7 @@ export function Sidebar() {
                 onClick={() => toggleGroup(item.labelKey)}
                 type="button"
               >
-                <Icon className="h-4.5 w-4.5 shrink-0" />
+                <Icon className={cn("h-4.5 w-4.5 shrink-0", isGroupActive ? undefined : groupColorClass)} />
                 {sidebarOpen ? (
                   <>
                     <span className="flex-1">{t(language, item.labelKey)}</span>
@@ -296,7 +325,7 @@ export function Sidebar() {
             onClick={() => toggleGroup("nav.info")}
             type="button"
           >
-            <CircleHelp className="h-4.5 w-4.5 shrink-0" />
+            <CircleHelp className={cn("h-4.5 w-4.5 shrink-0", activeInfoPanel ? undefined : "text-slate-400")} />
             {sidebarOpen ? (
               <>
                 <span className="flex-1">{t(language, "nav.info")}</span>
@@ -372,6 +401,7 @@ function SidebarRouteLink({
   label: string;
 }) {
   const Icon = iconMap[icon];
+  const colorClass = iconColorMap[icon];
 
   return (
     <Link
@@ -383,7 +413,7 @@ function SidebarRouteLink({
       )}
       href={href}
     >
-      <Icon className="h-4.5 w-4.5 shrink-0" />
+      <Icon className={cn("h-4.5 w-4.5 shrink-0", active ? "text-white" : colorClass)} />
       {collapsed ? null : <span>{label}</span>}
     </Link>
   );

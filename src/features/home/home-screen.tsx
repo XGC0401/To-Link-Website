@@ -14,6 +14,7 @@ import {
   Droplets,
   MessagesSquare,
   Thermometer,
+  Trophy,
   type LucideIcon,
   SunMedium,
   Wind,
@@ -27,6 +28,7 @@ import { toast } from "sonner";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { Modal } from "@/components/ui/modal";
 import { openPersistedDirectChat, usePersistedCurrentUserProfile, usePersistedPosts, usePersistedSharedContent, savePersistedAdminAnnouncement, savePersistedAdvertisements } from "@/hooks/use-persisted-app-data";
+import { BestOfMonthPopup } from "@/features/activities/best-of-month-screen";
 import { formatAppDateTime, formatAppDayLabel } from "@/lib/date";
 import { t } from "@/lib/translations";
 import type { FeedItem, Language, Advertisement } from "@/lib/types";
@@ -112,6 +114,7 @@ export function HomeScreen() {
   const [editAdsOpen, setEditAdsOpen] = useState(false);
   const [adsDraft, setAdsDraft] = useState<Advertisement[]>([]);
   const [savingAds, setSavingAds] = useState(false);
+  const [bestOfMonthOpen, setBestOfMonthOpen] = useState(false);
   const advertisements = sharedContent.advertisementsByLanguage[language] ?? [];
   const activeAdvertisement = advertisements[activeAd] ?? advertisements[0];
   const isAdmin = profile.role === "admin";
@@ -324,7 +327,7 @@ export function HomeScreen() {
 
         <Panel className="flex min-h-[15.5rem] min-w-0 flex-col overflow-hidden">
           <PanelHeader
-            title={t(language, "page.adminMessage")}
+            title={t(language, "home.adminBroadcast") === "Community Broadcast" ? t(language, "page.adminMessage") : t(language, "page.adminMessage")}
             description={t(language, "home.adminBroadcast")}
             action={isAdmin ? (
               <button
@@ -339,6 +342,20 @@ export function HomeScreen() {
           />
           <div className="mt-4 flex-1 overflow-y-auto pr-2 text-sm leading-7 text-muted">
             {sharedContent.adminMessage}
+          </div>
+        </Panel>
+
+        {/* Best of the Month card */}
+        <Panel className="flex min-h-[15.5rem] min-w-0 flex-col overflow-hidden bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950/30 dark:to-amber-950/20">
+          <PanelHeader
+            eyebrow={language === "zh-HK" ? "本月" : "This Month"}
+            title={t(language, "bestOfMonth.title")}
+            action={
+              <Trophy className="h-6 w-6 text-yellow-500" />
+            }
+          />
+          <div className="mt-4 flex-1 overflow-y-auto">
+            <BestOfMonthPopup onViewAll={() => setBestOfMonthOpen(true)} />
           </div>
         </Panel>
       </div>
@@ -363,10 +380,17 @@ export function HomeScreen() {
       </div>
 
       <Modal
+        open={bestOfMonthOpen}
+        onClose={() => setBestOfMonthOpen(false)}
+        title={t(language, "bestOfMonth.title")}
+      >
+        <BestOfMonthPopup onViewAll={() => { setBestOfMonthOpen(false); window.location.href = "/activities/best-of-month"; }} />
+      </Modal>
+
+      <Modal
         open={editAnnouncementOpen}
         onClose={() => setEditAnnouncementOpen(false)}
-        title={language === "zh-HK" ? "編輯公告" : "Edit Announcement"}
-      >
+        title={language === "zh-HK" ? "編輯公告" : "Edit Announcement"}      >
         <div className="space-y-4">
           <textarea
             className="app-input min-h-[200px] w-full rounded-lg px-4 py-3 text-sm"

@@ -169,3 +169,26 @@ Current implementation issues to revisit later (not part of the product requirem
 2. Posts page: the previously reported comment-button issue still needs direct reproduction and debugging, because it was not isolated during this pass.
 3. Translation audit: a full app-wide untranslated-text sweep has still not been completed; this pass only fixed the targeted copy issues.
 4. Profile picture propagation: avatar upload and the profile-photo entry points are wired, but full verification that updated profile pictures appear correctly across all other-user and historical surfaces is still pending.
+
+===== Summary =====
+
+To-Link is a modern, full-stack community management and lifestyle platform designed to strengthen the relationships between residents living in the same building or neighbourhood. The platform aims to bridge the gap between neighbours by creating a connected, helpful, and engaged residential community — moving beyond passive co-existence toward meaningful interaction and mutual support.
+
+Aims of To-Link:
+1. Foster community connections — Help residents discover, befriend, and communicate with their neighbours in a safe and structured digital environment.
+2. Enable mutual assistance — Provide tools for residents to offer help, request assistance, and collaborate on everyday tasks through a quest and task system.
+3. Streamline building services — Centralise facility bookings, building documents, community announcements, and administrative communications under one platform.
+4. Promote active community participation — Encourage residents to attend events, join activities, earn recognition through a points and leaderboard system, and contribute positively to the community.
+5. Ensure security and trust — Implement two-factor authentication (MFA), moderation tools, content reporting, and account management to maintain a safe platform.
+
+What To-Link Provides:
+- Authentication & Security: Secure email/password login with two-factor authentication (email OTP) and a self-service password reset flow. Account registration with full resident profile creation.
+- Home Dashboard: Real-time weather widget, community announcements managed by admins, rotating advertisement panels, and a Best of the Month leaderboard highlighting top community contributors.
+- Community Posts: Four post categories — Sharing, 2nd Hand Marketplace, Lost & Find, and Quests — each with full creation, search, sort, like, comment, and reporting functionality.
+- Nearby Discovery: Location-based search for nearby shops and community organisations with both list and interactive map views, powered by live geocoding and places APIs.
+- Connections & Messaging: Real-time group and direct messaging with message editing, deletion, and media attachments. A friends system with suggestions, unfriending, and blocked user management.
+- Activities & Calendar: Community event listings, a personal calendar with scheduled events, facility booking status tracking, and a Best of the Month leaderboard page celebrating top residents by points, quests, and activities.
+- Building Services: Facility booking with a structured form, a document library for building regulations and guides, and an AI-powered chat assistant for resident queries.
+- Settings & Personalisation: Profile management, website appearance settings (light/dark mode, font scale, language toggle between English and Traditional Chinese), and a user management panel for administrators.
+- Internationalisation: Full bilingual support across all pages and features in English and Traditional Chinese (zh-HK).
+- Infrastructure: Built with Next.js 16 App Router, Firebase Authentication and Firestore for real-time data, Cloudinary for media uploads, and deployable to Render.com as a production-ready service.

@@ -66,6 +66,9 @@ export type CopyKey =
   | "auth.hero.card2"
   | "auth.hero.card3"
   | "auth.hero.cardDesc"
+  | "auth.hero.card1Desc"
+  | "auth.hero.card2Desc"
+  | "auth.hero.card3Desc"
   | "auth.hero.headline"
   | "auth.error.enterIdentifier"
   | "auth.error.enterPassword"
@@ -82,6 +85,16 @@ export type CopyKey =
   | "auth.error.missingEmail"
   | "auth.error.failed"
   | "nav.home"
+  | "bestOfMonth.title"
+  | "bestOfMonth.subtitle"
+  | "bestOfMonth.viewAll"
+  | "bestOfMonth.rank1"
+  | "bestOfMonth.rank2"
+  | "bestOfMonth.rank3"
+  | "bestOfMonth.points"
+  | "bestOfMonth.quests"
+  | "bestOfMonth.activities"
+  | "bestOfMonth.empty"
   | "nav.posts"
   | "nav.nearby"
   | "nav.connections"
@@ -102,6 +115,7 @@ export type CopyKey =
   | "nav.activities.events"
   | "nav.activities.calendar"
   | "nav.activities.booking"
+  | "nav.activities.bestOfMonth"
   | "nav.building.facilities"
   | "nav.building.ai"
   | "nav.building.documents"
@@ -460,6 +474,9 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "auth.hero.card2": "Quest collaboration",
     "auth.hero.card3": "Building services",
     "auth.hero.cardDesc": "Designed to stay elegant, fast, and modular as the platform grows.",
+    "auth.hero.card1Desc": "Stay informed with the latest building announcements, community news, and local events in real time.",
+    "auth.hero.card2Desc": "Collaborate with neighbours on quests, lost-and-found items, and shared errands to build a helping community.",
+    "auth.hero.card3Desc": "Book facilities, browse building documents, and access AI-assisted support for everyday living.",
     "auth.hero.headline": "An elevated neighborhood hub where residents connect, collaborate, and get things done.",
     "auth.error.enterIdentifier": "Enter your email, username, or phone number to sign in.",
     "auth.error.enterPassword": "Enter your password to sign in.",
@@ -476,6 +493,16 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "auth.error.missingEmail": "Enter your email address to continue.",
     "auth.error.failed": "Authentication failed.",
     "nav.home": "Home",
+    "bestOfMonth.title": "Best of the Month",
+    "bestOfMonth.subtitle": "Top residents this month by points, quests completed, and community participation.",
+    "bestOfMonth.viewAll": "View Leaderboard",
+    "bestOfMonth.rank1": "1st Place",
+    "bestOfMonth.rank2": "2nd Place",
+    "bestOfMonth.rank3": "3rd Place",
+    "bestOfMonth.points": "pts",
+    "bestOfMonth.quests": "quests",
+    "bestOfMonth.activities": "activities",
+    "bestOfMonth.empty": "No leaderboard data yet.",
     "nav.posts": "Posts",
     "nav.nearby": "Nearby",
     "nav.connections": "Connections",
@@ -496,6 +523,7 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "nav.activities.events": "Events",
     "nav.activities.calendar": "Calendar",
     "nav.activities.booking": "Booking Status",
+    "nav.activities.bestOfMonth": "Best of the Month",
     "nav.building.facilities": "Facilities",
     "nav.building.ai": "AI Chat",
     "nav.building.documents": "Documents",
@@ -853,6 +881,9 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "auth.hero.card2": "任務協作",
     "auth.hero.card3": "大廈服務",
     "auth.hero.cardDesc": "設計優雅、快速，隨平台成長保持模組化。",
+    "auth.hero.card1Desc": "即時掌握最新大廈公告、社區資訊及本地活動動態。",
+    "auth.hero.card2Desc": "與鄰居合作完成任務、尋找失物及互助跑腿，共建助人社區。",
+    "auth.hero.card3Desc": "預約設施、瀏覽大廈文件，並使用 AI 助理獲取日常生活支援。",
     "auth.hero.headline": "以社區為核心，讓居民連結、協作、高效辦事的鄰里平台。",
     "auth.error.enterIdentifier": "請輸入電郵、用戶名或電話號碼以登入。",
     "auth.error.enterPassword": "請輸入密碼以登入。",
@@ -869,6 +900,16 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "auth.error.missingEmail": "請輸入電郵地址以繼續。",
     "auth.error.failed": "認證失敗。",
     "nav.home": "主頁",
+    "bestOfMonth.title": "本月之星",
+    "bestOfMonth.subtitle": "本月積分、完成任務及社區參與最多的住戶。",
+    "bestOfMonth.viewAll": "查看排行榜",
+    "bestOfMonth.rank1": "第一名",
+    "bestOfMonth.rank2": "第二名",
+    "bestOfMonth.rank3": "第三名",
+    "bestOfMonth.points": "分",
+    "bestOfMonth.quests": "任務",
+    "bestOfMonth.activities": "活動",
+    "bestOfMonth.empty": "暫無排行榜資料。",
     "nav.posts": "帖子",
     "nav.nearby": "附近",
     "nav.connections": "連結",
@@ -889,6 +930,7 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "nav.activities.events": "活動",
     "nav.activities.calendar": "日曆",
     "nav.activities.booking": "預約狀態",
+    "nav.activities.bestOfMonth": "本月之星",
     "nav.building.facilities": "會所設施",
     "nav.building.ai": "AI 對話",
     "nav.building.documents": "文件",
