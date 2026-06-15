@@ -51,7 +51,6 @@ export interface UserProfile {
   bio: string;
   role: "admin" | "resident";
   status: "online" | "offline" | "busy";
-  points: number;
 }
 
 export interface NotificationItem {

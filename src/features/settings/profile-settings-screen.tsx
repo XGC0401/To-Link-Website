@@ -368,7 +368,6 @@ export function ProfileSettingsScreen() {
             <div className="mt-4 grid gap-4">
               {[
                 [t(language, "profile.onlineStatus"), formatUserStatus(language, profile.status)],
-                [t(language, "profile.points"), String(profile.points)],
                 [t(language, "profile.maskedId"), t(language, "profile.personalId")],
                 [t(language, "profile.password"), t(language, "profile.changePassword")],
               ].map(([label, value]) => (

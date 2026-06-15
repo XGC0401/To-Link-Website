@@ -46,7 +46,6 @@ export function useAdminUsersList() {
             bio: data.bio || "",
             role: data.role || "resident",
             status: data.status || "offline",
-            points: data.points || 0,
           } as UserProfile;
         });
 
@@ -65,7 +64,6 @@ export function useAdminUsersList() {
           bio: friend.bio,
           role: "resident" as const,
           status: friend.status,
-          points: 0,
         }));
 
         const realUserIds = new Set(usersList.map((user) => user.id));

@@ -14,7 +14,6 @@ interface LeaderboardEntry {
   name: string;
   username: string;
   avatar: string;
-  points: number;
   questsCompleted: number;
   activitiesCount: number;
 }
@@ -56,9 +55,9 @@ export function BestOfMonthScreen() {
   const leaderboard = useMemo<LeaderboardEntry[]>(() => {
     // Gather all known users: current user + friend suggestions + friends
     const allUsers = [
-      { id: profile.id, name: profile.name, username: profile.username, avatar: profile.avatar, points: (profile as { points?: number }).points ?? 0 },
-      ...connections.friendSuggestions.map((u) => ({ id: u.id, name: u.name, username: u.username, avatar: u.avatar, points: 0 })),
-      ...connections.friendList.map((u) => ({ id: u.id, name: u.name, username: u.username, avatar: u.avatar, points: 0 })),
+      { id: profile.id, name: profile.name, username: profile.username, avatar: profile.avatar },
+      ...connections.friendSuggestions.map((u) => ({ id: u.id, name: u.name, username: u.username, avatar: u.avatar })),
+      ...connections.friendList.map((u) => ({ id: u.id, name: u.name, username: u.username, avatar: u.avatar })),
     ];
 
     // Deduplicate by id
@@ -84,25 +83,13 @@ export function BestOfMonthScreen() {
       activityCounts[profile.id] = (activityCounts[profile.id] ?? 0) + 1;
     }
 
-    // Assign seeded points to demo users for ranking
-    const demoPoints: Record<string, number> = {
-      "friend-1": 312,
-      "friend-2": 204,
-      "friend-3": 278,
-      "friend-4": 186,
-      "friend-5": 245,
-      "friend-6": 193,
-      "friend-7": 167,
-    };
-
     return unique
       .map((u) => ({
         ...u,
-        points: u.points || demoPoints[u.id] || 0,
         questsCompleted: questCounts[u.id] ?? 0,
         activitiesCount: activityCounts[u.id] ?? 0,
       }))
-      .sort((a, b) => b.points - a.points || b.questsCompleted - a.questsCompleted)
+      .sort((a, b) => b.questsCompleted - a.questsCompleted || b.activitiesCount - a.activitiesCount)
       .slice(0, 3);
   }, [profile, connections.friendSuggestions, connections.friendList, posts, calendarEvents]);
 
@@ -144,10 +131,6 @@ export function BestOfMonthScreen() {
                 </span>
                 <div className="mt-4 w-full space-y-2 text-sm">
                   <div className="flex items-center justify-between rounded-xl bg-white/60 px-3 py-2">
-                    <span className="text-muted">{language === "zh-HK" ? "積分" : "Points"}</span>
-                    <span className="font-bold text-foreground">{entry.points} {t(language, "bestOfMonth.points")}</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-xl bg-white/60 px-3 py-2">
                     <span className="text-muted">{language === "zh-HK" ? "完成任務" : "Quests"}</span>
                     <span className="font-bold text-foreground">{entry.questsCompleted} {t(language, "bestOfMonth.quests")}</span>
                   </div>
@@ -181,7 +164,6 @@ export function BestOfMonthScreen() {
                     <p className="text-xs text-muted">@{entry.username}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-accent">{entry.points} {t(language, "bestOfMonth.points")}</p>
                     <p className="text-xs text-muted">{entry.questsCompleted} {t(language, "bestOfMonth.quests")} · {entry.activitiesCount} {t(language, "bestOfMonth.activities")}</p>
                   </div>
                 </div>
@@ -203,21 +185,35 @@ export function BestOfMonthPopup({
   const { language } = useToLink();
   const { profile } = usePersistedCurrentUserProfile();
   const connections = usePersistedConnections();
+  const { items: posts } = usePersistedPosts();
+  const calendarEvents = useCalendarEvents();
 
   const top3 = useMemo<LeaderboardEntry[]>(() => {
     const allUsers = [
-      { id: profile.id, name: profile.name, username: profile.username, avatar: profile.avatar, points: (profile as { points?: number }).points ?? 0 },
-      ...connections.friendSuggestions.map((u) => ({ id: u.id, name: u.name, username: u.username, avatar: u.avatar, points: 0 })),
-      ...connections.friendList.map((u) => ({ id: u.id, name: u.name, username: u.username, avatar: u.avatar, points: 0 })),
+      { id: profile.id, name: profile.name, username: profile.username, avatar: profile.avatar },
+      ...connections.friendSuggestions.map((u) => ({ id: u.id, name: u.name, username: u.username, avatar: u.avatar })),
+      ...connections.friendList.map((u) => ({ id: u.id, name: u.name, username: u.username, avatar: u.avatar })),
     ];
     const seen = new Set<string>();
-    const demoPoints: Record<string, number> = { "friend-1": 312, "friend-3": 278, "friend-5": 245, "friend-2": 204, "friend-4": 186, "friend-6": 193, "friend-7": 167 };
+
+    const questCounts: Record<string, number> = {};
+    for (const post of posts) {
+      if (post.category === "quest" || post.category === "lostFound") {
+        questCounts[post.authorId] = (questCounts[post.authorId] ?? 0) + 1;
+      }
+    }
+
+    const activityCounts: Record<string, number> = {};
+    for (const _event of calendarEvents) {
+      activityCounts[profile.id] = (activityCounts[profile.id] ?? 0) + 1;
+    }
+
     return allUsers
       .filter((u) => { if (seen.has(u.id)) return false; seen.add(u.id); return true; })
-      .map((u) => ({ ...u, points: u.points || demoPoints[u.id] || 0, questsCompleted: 0, activitiesCount: 0 }))
-      .sort((a, b) => b.points - a.points)
+      .map((u) => ({ ...u, questsCompleted: questCounts[u.id] ?? 0, activitiesCount: activityCounts[u.id] ?? 0 }))
+      .sort((a, b) => b.questsCompleted - a.questsCompleted || b.activitiesCount - a.activitiesCount)
       .slice(0, 3);
-  }, [profile, connections.friendSuggestions, connections.friendList]);
+  }, [profile, connections.friendSuggestions, connections.friendList, posts, calendarEvents]);
 
   const rankColors = ["text-yellow-500", "text-slate-400", "text-amber-600"];
   const rankIcons = [Crown, Trophy, Star];
@@ -236,7 +232,7 @@ export function BestOfMonthPopup({
               <p className="truncate font-semibold text-foreground">{entry.name}</p>
               <p className="text-xs text-muted">@{entry.username}</p>
             </div>
-            <span className="font-bold text-accent">{entry.points} {t(language, "bestOfMonth.points")}</span>
+            <span className="text-xs text-muted">{entry.questsCompleted} {t(language, "bestOfMonth.quests")} · {entry.activitiesCount} {t(language, "bestOfMonth.activities")}</span>
           </div>
         );
       })}

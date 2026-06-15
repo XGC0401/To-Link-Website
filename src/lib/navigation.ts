@@ -24,7 +24,8 @@ export type NavigationIcon =
   | "booking"
   | "ai"
   | "document"
-  | "bestOfMonth";
+  | "bestOfMonth"
+  | "data";
 
 export interface RouteNavItem {
   kind: "route";
@@ -216,7 +217,13 @@ export const sidebarNavigation: SidebarNavItem[] = [
   },
 ];
 
-export const infoNavigation: ActionNavItem[] = [
+export const infoNavigation: Array<ActionNavItem | RouteNavItem> = [
+  {
+    kind: "route",
+    labelKey: "nav.info.data",
+    icon: "data",
+    href: "/info/data",
+  },
   {
     kind: "action",
     labelKey: "nav.info.feedback",
@@ -287,6 +294,7 @@ export function getPageTitle(pathname: string) {
     { startsWith: "/building/documents", titleKey: "nav.building.documents" },
     { startsWith: "/settings/website", titleKey: "nav.settings.website" },
     { startsWith: "/settings/profile", titleKey: "nav.settings.profile" },
+    { startsWith: "/info/data", titleKey: "nav.info.data" },
   ];
 
   return orderedRoutes.find((route) => pathname.startsWith(route.startsWith))?.titleKey ?? "nav.home";

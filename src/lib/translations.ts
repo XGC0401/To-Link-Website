@@ -91,7 +91,6 @@ export type CopyKey =
   | "bestOfMonth.rank1"
   | "bestOfMonth.rank2"
   | "bestOfMonth.rank3"
-  | "bestOfMonth.points"
   | "bestOfMonth.quests"
   | "bestOfMonth.activities"
   | "bestOfMonth.empty"
@@ -130,6 +129,34 @@ export type CopyKey =
   | "nav.info.privacy"
   | "nav.info.terms"
   | "nav.info.version"
+  | "nav.info.data"
+  | "data.title"
+  | "data.subtitle"
+  | "data.totalPosts"
+  | "data.totalUsers"
+  | "data.questsCompleted"
+  | "data.totalLikes"
+  | "data.totalComments"
+  | "data.totalRewards"
+  | "data.postsByCategory"
+  | "data.sharing"
+  | "data.secondHand"
+  | "data.lostFound"
+  | "data.quests"
+  | "data.questBreakdown"
+  | "data.questOpen"
+  | "data.questAccepted"
+  | "data.questCompleted"
+  | "data.questFailed"
+  | "data.engagementRate"
+  | "data.avgLikesPerPost"
+  | "data.avgCommentsPerPost"
+  | "data.totalRewardsOffered"
+  | "data.recentActivity"
+  | "data.postsThisWeek"
+  | "data.postsThisMonth"
+  | "data.uniqueAuthors"
+  | "data.activeQuests"
   | "control.fontSize"
   | "control.language"
   | "control.notifications"
@@ -369,7 +396,6 @@ export type CopyKey =
   | "profile.deletedAt"
   | "profile.statusSecurity"
   | "profile.onlineStatus"
-  | "profile.points"
   | "profile.personalId"
   | "profile.password"
   | "profile.maskedId"
@@ -494,12 +520,11 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "auth.error.failed": "Authentication failed.",
     "nav.home": "Home",
     "bestOfMonth.title": "Best of the Month",
-    "bestOfMonth.subtitle": "Top residents this month by points, quests completed, and community participation.",
+    "bestOfMonth.subtitle": "Top residents this month by quests completed and community participation.",
     "bestOfMonth.viewAll": "View Leaderboard",
     "bestOfMonth.rank1": "1st Place",
     "bestOfMonth.rank2": "2nd Place",
     "bestOfMonth.rank3": "3rd Place",
-    "bestOfMonth.points": "pts",
     "bestOfMonth.quests": "quests",
     "bestOfMonth.activities": "activities",
     "bestOfMonth.empty": "No leaderboard data yet.",
@@ -538,6 +563,34 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "nav.info.privacy": "Privacy Policy",
     "nav.info.terms": "Terms of Service",
     "nav.info.version": "Version v1.0.0",
+    "nav.info.data": "Data & Insights",
+    "data.title": "Data & Insights",
+    "data.subtitle": "Platform engagement overview for stakeholders",
+    "data.totalPosts": "Total Posts",
+    "data.totalUsers": "Registered Users",
+    "data.questsCompleted": "Quests Completed",
+    "data.totalLikes": "Total Likes",
+    "data.totalComments": "Total Comments",
+    "data.totalRewards": "Total Rewards (HKD)",
+    "data.postsByCategory": "Posts by Category",
+    "data.sharing": "Sharing",
+    "data.secondHand": "Second-hand",
+    "data.lostFound": "Lost & Found",
+    "data.quests": "Quests",
+    "data.questBreakdown": "Quest Completion Breakdown",
+    "data.questOpen": "Open",
+    "data.questAccepted": "In Progress",
+    "data.questCompleted": "Completed",
+    "data.questFailed": "Failed / Overdue",
+    "data.engagementRate": "Engagement",
+    "data.avgLikesPerPost": "Avg. Likes per Post",
+    "data.avgCommentsPerPost": "Avg. Comments per Post",
+    "data.totalRewardsOffered": "Total Rewards Offered",
+    "data.recentActivity": "Recent Activity",
+    "data.postsThisWeek": "Posts this week",
+    "data.postsThisMonth": "Posts this month",
+    "data.uniqueAuthors": "Unique Authors",
+    "data.activeQuests": "Active Quests",
     "control.fontSize": "Font Size",
     "control.language": "Language",
     "control.notifications": "Notifications",
@@ -777,7 +830,6 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "profile.deletedAt": "Deleted at",
     "profile.statusSecurity": "Status & Security",
     "profile.onlineStatus": "Online status",
-    "profile.points": "Points balance",
     "profile.personalId": "Personal ID display",
     "profile.password": "Password",
     "profile.maskedId": "Masked and stored server-side",
@@ -901,12 +953,11 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "auth.error.failed": "認證失敗。",
     "nav.home": "主頁",
     "bestOfMonth.title": "本月之星",
-    "bestOfMonth.subtitle": "本月積分、完成任務及社區參與最多的住戶。",
+    "bestOfMonth.subtitle": "本月完成任務及社區參與最多的住戶。",
     "bestOfMonth.viewAll": "查看排行榜",
     "bestOfMonth.rank1": "第一名",
     "bestOfMonth.rank2": "第二名",
     "bestOfMonth.rank3": "第三名",
-    "bestOfMonth.points": "分",
     "bestOfMonth.quests": "任務",
     "bestOfMonth.activities": "活動",
     "bestOfMonth.empty": "暫無排行榜資料。",
@@ -945,6 +996,34 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "nav.info.privacy": "私隱政策",
     "nav.info.terms": "服務條款",
     "nav.info.version": "版本 v1.0.0",
+    "nav.info.data": "數據與分析",
+    "data.title": "數據與分析",
+    "data.subtitle": "平台參與數據概覽（供持份者參考）",
+    "data.totalPosts": "帖子總數",
+    "data.totalUsers": "注冊用戶",
+    "data.questsCompleted": "已完成任務",
+    "data.totalLikes": "總點讚數",
+    "data.totalComments": "總留言數",
+    "data.totalRewards": "總獎勵（港幣）",
+    "data.postsByCategory": "按類別統計帖子",
+    "data.sharing": "共享",
+    "data.secondHand": "二手市場",
+    "data.lostFound": "失物招領",
+    "data.quests": "任務",
+    "data.questBreakdown": "任務完成情況",
+    "data.questOpen": "待接受",
+    "data.questAccepted": "進行中",
+    "data.questCompleted": "已完成",
+    "data.questFailed": "失敗 / 逾期",
+    "data.engagementRate": "互動統計",
+    "data.avgLikesPerPost": "每帖平均點讚",
+    "data.avgCommentsPerPost": "每帖平均留言",
+    "data.totalRewardsOffered": "提供的總獎勵",
+    "data.recentActivity": "近期活動",
+    "data.postsThisWeek": "本週帖子",
+    "data.postsThisMonth": "本月帖子",
+    "data.uniqueAuthors": "獨立作者",
+    "data.activeQuests": "活躍任務",
     "control.fontSize": "字體大小",
     "control.language": "語言",
     "control.notifications": "通知",
@@ -1184,7 +1263,6 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "profile.deletedAt": "刪除於",
     "profile.statusSecurity": "狀態與安全",
     "profile.onlineStatus": "線上狀態",
-    "profile.points": "積分餘額",
     "profile.personalId": "個人證件顯示",
     "profile.password": "密碼",
     "profile.maskedId": "已遮蔽，儲存於伺服器端",

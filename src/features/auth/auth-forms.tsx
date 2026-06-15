@@ -726,7 +726,6 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                       jobTitle: state.jobTitle.trim(),
                       role: userRole,
                       status: "online",
-                      points: 0,
                       createdAt: new Date().toISOString(),
                     };
 

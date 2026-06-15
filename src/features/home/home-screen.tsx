@@ -314,14 +314,16 @@ export function HomeScreen() {
                 />
               ))}
             </div>
-            <button
-              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-panel-strong px-4 py-2 text-sm font-semibold text-foreground transition hover:border-accent/40 hover:text-accent"
-              onClick={() => (isAdmin ? (setAdsDraft(advertisements), setEditAdsOpen(true)) : undefined)}
-              type="button"
-            >
-              {t(language, "home.manageAds")}
-              <ArrowRight className="h-4 w-4" />
-            </button>
+            {isAdmin ? (
+              <button
+                className="inline-flex shrink-0 items-center gap-2 rounded-full border border-accent bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong"
+                onClick={() => { setAdsDraft(advertisements); setEditAdsOpen(true); }}
+                type="button"
+              >
+                {t(language, "home.manageAds")}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            ) : null}
           </div>
         </Panel>
 

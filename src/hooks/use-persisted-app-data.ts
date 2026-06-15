@@ -2414,7 +2414,6 @@ function normalizeUserProfile(value: unknown): UserProfile {
       record.status === "online" || record.status === "offline" || record.status === "busy"
         ? record.status
         : currentUser.status,
-    points: typeof record.points === "number" ? record.points : currentUser.points,
   };
 }
 

@@ -32,7 +32,6 @@ export const currentUser: UserProfile = {
   bio: "Community-minded resident who likes helping neighbors get things done quickly.",
   role: "resident",
   status: "busy",
-  points: 186,
 };
 
 // Admin account - automatically created and synced to new users
@@ -51,7 +50,6 @@ export const adminUser: UserProfile = {
   bio: "System administrator account. Contact for support and issues.",
   role: "admin",
   status: "online",
-  points: 0,
 };
 
 export const notifications: NotificationItem[] = [

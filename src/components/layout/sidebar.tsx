@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import {
+  BarChart3,
   BellRing,
   Blocks,
   BookOpenText,
@@ -63,6 +64,7 @@ const iconMap: Record<NavigationIcon, React.ComponentType<{ className?: string }
   ai: Sparkles,
   document: FileText,
   bestOfMonth: Trophy,
+  data: BarChart3,
 };
 
 const iconColorMap: Record<NavigationIcon, string> = {
@@ -89,10 +91,11 @@ const iconColorMap: Record<NavigationIcon, string> = {
   ai: "text-violet-400",
   document: "text-slate-400",
   bestOfMonth: "text-yellow-500",
+  data: "text-indigo-500",
 };
 
-const infoItems = infoNavigation.filter((item) => item.action.type !== "signOut");
-const signOutItem = infoNavigation.find((item) => item.action.type === "signOut");
+const infoItems = infoNavigation.filter((item) => item.kind !== "action" || item.action.type !== "signOut");
+const signOutItem = infoNavigation.find((item) => item.kind === "action" && item.action.type === "signOut") as import("@/lib/navigation").ActionNavItem | undefined;
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -140,7 +143,7 @@ export function Sidebar() {
     });
   }
 
-  function handleActionItem(item: (typeof infoNavigation)[number]) {
+  function handleActionItem(item: import("@/lib/navigation").ActionNavItem) {
     if (item.action.type === "signOut") {
       const services = getFirebaseServices();
 
@@ -342,6 +345,27 @@ export function Sidebar() {
             <div className="space-y-1 pl-4">
               {infoItems.map((item) => {
                 const Icon = iconMap[item.icon];
+
+                if (item.kind === "route") {
+                  const isActive = pathname.startsWith(item.href);
+
+                  return (
+                    <Link
+                      key={item.labelKey}
+                      href={item.href}
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-medium transition",
+                        isActive
+                          ? "bg-accent text-white"
+                          : "text-muted hover:bg-panel-strong hover:text-foreground",
+                      )}
+                    >
+                      <Icon className={cn("h-4 w-4 shrink-0", !isActive && iconColorMap[item.icon])} />
+                      <span>{t(language, item.labelKey)}</span>
+                    </Link>
+                  );
+                }
+
                 const isOpen =
                   item.action.type === "infoModal" && activeInfoPanel === item.action.panelId;
 
