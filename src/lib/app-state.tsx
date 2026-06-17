@@ -32,6 +32,8 @@ interface ToLinkContextValue {
   activeInfoPanel: InfoPanelId | null;
   openInfoPanel: (value: InfoPanelId) => void;
   closeInfoPanel: () => void;
+  bestOfMonthOpen: boolean;
+  setBestOfMonthOpen: (value: boolean) => void;
 }
 
 const ToLinkContext = createContext<ToLinkContextValue | null>(null);
@@ -50,6 +52,7 @@ export function ToLinkProvider({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [activeInfoPanel, setActiveInfoPanel] = useState<InfoPanelId | null>(null);
+  const [bestOfMonthOpen, setBestOfMonthOpen] = useState(false);
 
   useEffect(() => {
     applyDocumentPreferences(theme, fontScale, language);
@@ -75,8 +78,10 @@ export function ToLinkProvider({
       activeInfoPanel,
       openInfoPanel: setActiveInfoPanel,
       closeInfoPanel: () => setActiveInfoPanel(null),
+      bestOfMonthOpen,
+      setBestOfMonthOpen,
     }),
-    [activeInfoPanel, fontScale, language, notificationsOpen, sidebarOpen, theme],
+    [activeInfoPanel, bestOfMonthOpen, fontScale, language, notificationsOpen, sidebarOpen, theme],
   );
 
   return <ToLinkContext.Provider value={value}>{children}</ToLinkContext.Provider>;

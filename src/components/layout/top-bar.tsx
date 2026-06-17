@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, CircleHelp, Menu, MoonStar, SunMedium } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Bell, CircleHelp, Menu, MoonStar, SunMedium, Trophy } from "lucide-react";
 import { AvatarBadge } from "@/components/ui/avatar-badge";
+import { Modal } from "@/components/ui/modal";
 import { usePersistedCurrentUserProfile, usePersistedDashboardData } from "@/hooks/use-persisted-app-data";
+import { BestOfMonthPopup } from "@/features/activities/best-of-month-screen";
 import { getPageDescription, getPageTitle } from "@/lib/navigation";
 import { t } from "@/lib/translations";
 import { cn } from "@/lib/utils";
@@ -12,9 +15,12 @@ import { usePathname } from "next/navigation";
 
 export function TopBar() {
   const pathname = usePathname();
+  const router = useRouter();
   const showWelcome = pathname === "/home";
   const { profile } = usePersistedCurrentUserProfile();
   const {
+    bestOfMonthOpen,
+    setBestOfMonthOpen,
     language,
     notificationsOpen,
     setNotificationsOpen,
@@ -28,6 +34,7 @@ export function TopBar() {
   const pageDescriptionKey = getPageDescription(pathname);
 
   return (
+    <>
     <header className="app-panel app-panel-strong relative z-40 flex items-center justify-between gap-4 rounded-[28px] border px-4 py-3 md:px-5">
       <div className="flex min-w-0 items-center gap-3">
         <button
@@ -62,6 +69,20 @@ export function TopBar() {
       </div>
 
       <div className="flex items-center gap-2">
+        <button
+          className={cn(
+            "flex h-11 w-11 items-center justify-center rounded-2xl border transition",
+            bestOfMonthOpen
+              ? "border-yellow-400 bg-yellow-400 text-white"
+              : "border-border bg-panel-strong text-foreground hover:border-yellow-400/60 hover:text-yellow-500",
+          )}
+          onClick={() => setBestOfMonthOpen(!bestOfMonthOpen)}
+          title={t(language, "bestOfMonth.title")}
+          type="button"
+        >
+          <Trophy className="h-4.5 w-4.5" />
+        </button>
+
         <button
           className={cn(
             "flex h-11 items-center gap-2 rounded-2xl border px-3 text-sm font-medium transition",
@@ -112,5 +133,19 @@ export function TopBar() {
         </Link>
       </div>
     </header>
+
+    <Modal
+      onClose={() => setBestOfMonthOpen(false)}
+      open={bestOfMonthOpen}
+      title={t(language, "bestOfMonth.title")}
+    >
+      <BestOfMonthPopup
+        onViewAll={() => {
+          setBestOfMonthOpen(false);
+          router.push("/activities/best-of-month");
+        }}
+      />
+    </Modal>
+  </>
   );
 }

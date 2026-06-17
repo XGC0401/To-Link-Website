@@ -151,6 +151,7 @@ interface SharedChatRoomsState {
   currentUserId: string | null;
   error: string | null;
   ready: boolean;
+  refresh?: () => void;
   rooms: SharedChatRoomDocument[];
   status: "error" | "loading" | "ready";
 }
@@ -473,6 +474,12 @@ export function usePersistedConnections() {
       chatRoomOverridesState.ready &&
       suggestionsState.ready &&
       sharedChatRooms.ready,
+    refresh: () => {
+      connectionsState.refresh();
+      chatRoomOverridesState.refresh();
+      suggestionsState.refresh();
+      sharedChatRooms.refresh?.();
+    },
     status:
       connectionsState.status === "error" ||
       chatRoomOverridesState.status === "error" ||
@@ -1634,6 +1641,7 @@ function usePersistedSharedChatRooms(): SharedChatRoomsState {
     currentUserId,
     error: currentUserId ? sharedChatRoomsDocumentState.error : null,
     ready: !services || !currentUserId || sharedChatRoomsDocumentState.ready,
+    refresh: sharedChatRoomsDocumentState.refresh,
     rooms: sharedRooms,
     status,
   };
@@ -2357,7 +2365,7 @@ function normalizeDeletedUsersDocument(value: unknown): DeletedUsersDocument {
   };
 }
 
-function useDeletedUserIds(): Set<string> {
+export function useDeletedUserIds(): Set<string> {
   const state = useSeededFirestoreDocument<DeletedUsersDocument>({
     parse: normalizeDeletedUsersDocument,
     path: ["appData", "deletedUsers"],

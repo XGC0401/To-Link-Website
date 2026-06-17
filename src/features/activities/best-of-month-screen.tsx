@@ -2,6 +2,7 @@
 
 import { Crown, Star, Trophy } from "lucide-react";
 import { useMemo } from "react";
+import { AvatarBadge } from "@/components/ui/avatar-badge";
 import { FeatureShell } from "@/components/ui/feature-shell";
 import { usePersistedConnections, usePersistedCurrentUserProfile } from "@/hooks/use-persisted-app-data";
 import { usePersistedPosts } from "@/hooks/use-persisted-app-data";
@@ -116,9 +117,12 @@ export function BestOfMonthScreen() {
             return (
               <div key={entry.id} className={`flex flex-col items-center rounded-[28px] border p-6 ${config.cardBg}`}>
                 <div className="relative">
-                  <div className={`flex h-16 w-16 items-center justify-center rounded-full text-xl font-black text-white shadow-lg ${config.bg} ${config.ring}`}>
-                    {entry.avatar}
-                  </div>
+                  <AvatarBadge
+                    alt={entry.name}
+                    className={`h-16 w-16 text-xl font-black text-white shadow-lg ${config.bg} ${config.ring}`}
+                    textClassName="text-white"
+                    value={entry.avatar}
+                  />
                   <span className={`absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black ${config.badge}`}>
                     <Icon className="h-3.5 w-3.5" />
                   </span>
@@ -156,9 +160,12 @@ export function BestOfMonthScreen() {
                   <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-black text-white ${index === 0 ? "bg-yellow-400" : index === 1 ? "bg-slate-400" : "bg-amber-600"}`}>
                     {index + 1}
                   </span>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">
-                    {entry.avatar}
-                  </div>
+                  <AvatarBadge
+                    alt={entry.name}
+                    className="h-10 w-10 bg-accent text-sm font-bold text-white"
+                    textClassName="text-white"
+                    value={entry.avatar}
+                  />
                   <div className="flex-1">
                     <p className="font-semibold text-foreground">{entry.name}</p>
                     <p className="text-xs text-muted">@{entry.username}</p>
@@ -225,9 +232,12 @@ export function BestOfMonthPopup({
         return (
           <div key={entry.id} className="flex items-center gap-3 rounded-2xl border border-border bg-panel px-4 py-3">
             <RankIcon className={`h-5 w-5 shrink-0 ${rankColors[index]}`} />
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">
-              {entry.avatar}
-            </div>
+            <AvatarBadge
+              alt={entry.name}
+              className="h-9 w-9 bg-accent text-sm font-bold text-white"
+              textClassName="text-white"
+              value={entry.avatar}
+            />
             <div className="flex-1 min-w-0">
               <p className="truncate font-semibold text-foreground">{entry.name}</p>
               <p className="text-xs text-muted">@{entry.username}</p>

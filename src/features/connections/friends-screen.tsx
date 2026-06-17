@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, UserRoundMinus } from "lucide-react";
+import { RefreshCw, Search, UserRoundMinus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import {
   getAvatarLabel,
   openPersistedDirectChat,
   removePersistedFriend,
+  useDeletedUserIds,
   usePersistedConnections,
   usePersistedCurrentUserProfile,
 } from "@/hooks/use-persisted-app-data";
@@ -26,6 +27,7 @@ export function FriendsScreen() {
   const connections = usePersistedConnections();
   const { users } = useAdminUsersList();
   const { profile } = usePersistedCurrentUserProfile();
+  const deletedUserIds = useDeletedUserIds();
   const [query, setQuery] = useState("");
   const [candidate, setCandidate] = useState<FriendCard | null>(null);
   const services = getFirebaseServices();
@@ -45,8 +47,9 @@ export function FriendsScreen() {
             username: user.username || user.email.split("@")[0] || user.id,
           };
         })
-        .filter((user) => Boolean(user.name || user.username)),
-    [users],
+        .filter((user) => Boolean(user.name || user.username))
+        .filter((user) => !deletedUserIds.has(user.id)),
+    [users, deletedUserIds],
   );
 
   const friendIds = useMemo(() => new Set(connections.friendList.map((friend) => friend.id)), [connections.friendList]);
@@ -142,6 +145,14 @@ export function FriendsScreen() {
               <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
                 {language === "zh-HK" ? "好友建議" : "Friend suggestions"}
               </h3>
+              <button
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted transition hover:border-accent/40 hover:text-accent"
+                onClick={() => connections.refresh()}
+                title={language === "zh-HK" ? "重新整理" : "Refresh"}
+                type="button"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </button>
             </div>
             <div className="space-y-3">
               {suggestions.map((friend) => (
@@ -194,9 +205,19 @@ export function FriendsScreen() {
               <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
                 {language === "zh-HK" ? "已是好友" : "Your friends"}
               </h3>
+              <button
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted transition hover:border-accent/40 hover:text-accent"
+                onClick={() => connections.refresh()}
+                title={language === "zh-HK" ? "重新整理" : "Refresh"}
+                type="button"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </button>
             </div>
             <div className="space-y-3">
-                {connections.friendList.map((friend) => (
+                {connections.friendList.map((friend) => {
+                  const isDeleted = deletedUserIds.has(friend.id);
+                  return (
                 <article key={friend.id} className="rounded-[26px] border border-border bg-panel-strong p-4">
                   <div className="flex items-start gap-4">
                     <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">
@@ -204,7 +225,14 @@ export function FriendsScreen() {
                       <span className={friend.status === "online" ? "absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500" : friend.status === "busy" ? "absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-rose-500" : "absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-zinc-400"} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-foreground">{friend.name}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-foreground">{friend.name}</p>
+                        {isDeleted ? (
+                          <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-500">
+                            {language === "zh-HK" ? "已刪除帳號" : "Deleted User"}
+                          </span>
+                        ) : null}
+                      </div>
                       <p className="text-sm text-muted">@{friend.username}</p>
                       <p className="mt-2 text-sm leading-6 text-muted">{friend.bio}</p>
                     </div>
@@ -212,9 +240,7 @@ export function FriendsScreen() {
                   <div className="mt-4 flex gap-2">
                     <button
                       className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white"
-                      onClick={() => {
-                        void handleOpenChat(friend);
-                      }}
+                      onClick={() => { void handleOpenChat(friend); }}
                       type="button"
                     >
                       {t(language, "common.message")}
@@ -229,7 +255,8 @@ export function FriendsScreen() {
                     </button>
                   </div>
                 </article>
-              ))}
+                  );
+              })}
             </div>
           </section>
         </div>

@@ -1,8 +1,8 @@
 "use client";
 
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getFirebaseServices, isFirebaseConfigured } from "@/lib/firebase";
 
 type FirestoreDocumentStatus = "loading" | "ready" | "error";
@@ -12,6 +12,7 @@ interface FirestoreDocumentState<T> {
   error: string | null;
   ready: boolean;
   status: FirestoreDocumentStatus;
+  refresh: () => void;
 }
 
 interface SeededDocumentOptions<T> {
@@ -28,6 +29,8 @@ interface SeededUserDocumentOptions<T> {
   seedData: T;
 }
 
+const POLL_INTERVAL_MS = 5000;
+
 export function useSeededFirestoreDocument<T extends object>({
   enabled = true,
   parse,
@@ -36,7 +39,10 @@ export function useSeededFirestoreDocument<T extends object>({
 }: SeededDocumentOptions<T>): FirestoreDocumentState<T> {
   const pathKey = path.join("/");
 
-  const [state, setState] = useState<FirestoreDocumentState<T>>(() => ({
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
+
+  const [state, setState] = useState<Omit<FirestoreDocumentState<T>, "refresh">>(() => ({
     data: seedData,
     error: null,
     ready: !enabled || !isFirebaseConfigured,
@@ -49,7 +55,9 @@ export function useSeededFirestoreDocument<T extends object>({
       error: null,
       ready: true,
       status: "ready",
+      refresh,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [seedData],
   );
 
@@ -72,9 +80,10 @@ export function useSeededFirestoreDocument<T extends object>({
     const segments = pathKey.split("/") as [string, ...string[]];
     const reference = doc(services.db, ...segments);
 
-    return onSnapshot(
-      reference,
-      (snapshot) => {
+    async function fetchDoc() {
+      try {
+        const snapshot = await getDoc(reference);
+
         if (!snapshot.exists()) {
           void setDoc(reference, seedDataRef.current as Record<string, unknown>, { merge: true });
           setState({
@@ -92,19 +101,23 @@ export function useSeededFirestoreDocument<T extends object>({
           ready: true,
           status: "ready",
         });
-      },
-      (error) => {
+      } catch (error) {
         setState({
           data: seedDataRef.current,
-          error: error.message,
+          error: error instanceof Error ? error.message : "Fetch failed",
           ready: true,
           status: "error",
         });
-      },
-    );
-  }, [enabled, pathKey]);
+      }
+    }
 
-  return enabled && isFirebaseConfigured ? state : fallbackState;
+    void fetchDoc();
+    const interval = setInterval(() => void fetchDoc(), POLL_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [enabled, pathKey, refreshKey]);
+
+  return enabled && isFirebaseConfigured ? { ...state, refresh } : fallbackState;
 }
 
 export function useSeededUserDocument<T extends object>({
@@ -113,7 +126,10 @@ export function useSeededUserDocument<T extends object>({
   pathFactory,
   seedData,
 }: SeededUserDocumentOptions<T>): FirestoreDocumentState<T> {
-  const [state, setState] = useState<FirestoreDocumentState<T>>(() => ({
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
+
+  const [state, setState] = useState<Omit<FirestoreDocumentState<T>, "refresh">>(() => ({
     data: seedData,
     error: null,
     ready: !enabled || !isFirebaseConfigured,
@@ -126,7 +142,9 @@ export function useSeededUserDocument<T extends object>({
       error: null,
       ready: true,
       status: "ready",
+      refresh,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [seedData],
   );
 
@@ -148,11 +166,51 @@ export function useSeededUserDocument<T extends object>({
       return;
     }
 
-    let unsubscribeDocument: (() => void) | undefined;
+    let currentUserId: string | null = null;
+    let intervalId: ReturnType<typeof setInterval> | undefined;
+
+    async function fetchDoc(uid: string) {
+      const svc = getFirebaseServices();
+
+      if (!svc) return;
+
+      const path = pathFactoryRef.current(uid);
+      const reference = doc(svc.db, ...path);
+
+      try {
+        const snapshot = await getDoc(reference);
+
+        if (!snapshot.exists()) {
+          void setDoc(reference, seedDataRef.current as Record<string, unknown>, { merge: true });
+          setState({
+            data: seedDataRef.current,
+            error: null,
+            ready: true,
+            status: "ready",
+          });
+          return;
+        }
+
+        setState({
+          data: parseRef.current(snapshot.data()),
+          error: null,
+          ready: true,
+          status: "ready",
+        });
+      } catch (error) {
+        setState({
+          data: seedDataRef.current,
+          error: error instanceof Error ? error.message : "Fetch failed",
+          ready: true,
+          status: "error",
+        });
+      }
+    }
 
     const unsubscribeAuth = onAuthStateChanged(services.auth, (user) => {
-      unsubscribeDocument?.();
-      unsubscribeDocument = undefined;
+      clearInterval(intervalId);
+      intervalId = undefined;
+      currentUserId = null;
 
       if (!user) {
         setState({
@@ -164,46 +222,18 @@ export function useSeededUserDocument<T extends object>({
         return;
       }
 
-      const path = pathFactoryRef.current(user.uid);
-      const reference = doc(services.db, ...path);
-
-      unsubscribeDocument = onSnapshot(
-        reference,
-        (snapshot) => {
-          if (!snapshot.exists()) {
-            void setDoc(reference, seedDataRef.current as Record<string, unknown>, { merge: true });
-            setState({
-              data: seedDataRef.current,
-              error: null,
-              ready: true,
-              status: "ready",
-            });
-            return;
-          }
-
-          setState({
-            data: parseRef.current(snapshot.data()),
-            error: null,
-            ready: true,
-            status: "ready",
-          });
-        },
-        (error) => {
-          setState({
-            data: seedDataRef.current,
-            error: error.message,
-            ready: true,
-            status: "error",
-          });
-        },
-      );
+      currentUserId = user.uid;
+      void fetchDoc(user.uid);
+      intervalId = setInterval(() => {
+        if (currentUserId) void fetchDoc(currentUserId);
+      }, POLL_INTERVAL_MS);
     });
 
     return () => {
-      unsubscribeDocument?.();
+      clearInterval(intervalId);
       unsubscribeAuth();
     };
-  }, [enabled]);
+  }, [enabled, refreshKey]);
 
-  return enabled && isFirebaseConfigured ? state : fallbackState;
+  return enabled && isFirebaseConfigured ? { ...state, refresh } : fallbackState;
 }
