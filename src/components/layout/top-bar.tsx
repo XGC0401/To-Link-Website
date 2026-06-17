@@ -87,8 +87,8 @@ export function TopBar() {
           className={cn(
             "flex h-11 items-center gap-2 rounded-2xl border px-3 text-sm font-medium transition",
             notificationsOpen
-              ? "border-accent bg-accent text-white"
-              : "border-border bg-panel-strong text-foreground hover:border-accent/40 hover:text-accent",
+              ? "border-violet-500 bg-violet-500 text-white"
+              : "border-border bg-panel-strong text-foreground hover:border-violet-400/60 hover:text-violet-500",
           )}
           onClick={() => setNotificationsOpen(!notificationsOpen)}
           type="button"
@@ -101,7 +101,7 @@ export function TopBar() {
         </button>
 
         <button
-          className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-panel-strong text-foreground transition hover:border-accent/40 hover:text-accent"
+          className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-panel-strong text-foreground transition hover:border-amber-400/60 hover:text-amber-500"
           onClick={toggleTheme}
           type="button"
         >

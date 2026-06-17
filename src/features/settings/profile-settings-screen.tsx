@@ -380,10 +380,10 @@ export function ProfileSettingsScreen() {
           </section>
 
           <section className="rounded-[28px] border border-rose-300 bg-rose-50/70 p-5 dark:border-rose-500/40 dark:bg-rose-500/10">
-            <h3 className="text-lg font-semibold text-rose-700 dark:text-rose-200">
+            <h3 className="text-lg font-semibold text-rose-700 dark:text-rose-300">
               {language === "zh-HK" ? "危險操作" : "Danger zone"}
             </h3>
-            <p className="mt-2 text-sm leading-7 text-rose-700/85 dark:text-rose-100/85">
+            <p className="mt-2 text-sm font-medium leading-7 text-rose-700 dark:text-rose-300">
               {language === "zh-HK"
                 ? "刪除帳戶後將無法復原，請只在你確定永久離開 To-Link 時使用。"
                 : "Deleting the account cannot be undone. Only use this when you are certain you want to leave To-Link permanently."}
