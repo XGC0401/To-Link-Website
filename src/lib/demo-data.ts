@@ -77,6 +77,22 @@ export const notifications: NotificationItem[] = [
     timeLabel: "26 Jun 2026 · 13:00-17:00",
     critical: true,
   },
+  {
+    id: "notif-4",
+    title: "Water supply maintenance",
+    description: "Temporary water interruption for Tower A and Tower B on 27 Jun 2026 from 09:30 to 12:30. Please store enough water in advance.",
+    level: "warning",
+    timeLabel: "27 Jun 2026 · 09:30-12:30",
+    critical: true,
+  },
+  {
+    id: "notif-5",
+    title: "Lobby cleaning advisory",
+    description: "Main lobby and lift lobby floors will be cleaned on 28 Jun 2026 from 14:00 to 16:00. Please walk carefully and avoid the wet areas.",
+    level: "info",
+    timeLabel: "28 Jun 2026 · 14:00-16:00",
+    critical: true,
+  },
 ];
 
 export const advertisements: Advertisement[] = [
@@ -101,7 +117,7 @@ export const advertisements: Advertisement[] = [
 ];
 
 export const adminMessage =
-  "Welcome to the upgraded To-Link experience. Please keep feedback constructive, complete pending quest handovers before midnight, and remember that confirmed bookings now sync directly into your calendar overview.";
+  "Fire drill notice: The building-wide drill will take place on 24 Jun 2026 at 10:00. Please use the stairs, avoid the lifts, and gather at the podium assembly point after evacuation.";
 
 export const homeFeed: FeedItem[] = [
   {
@@ -267,6 +283,22 @@ const notificationsZhHK: NotificationItem[] = [
     description: "C座外牆工程將於 2026年6月26日 13:00 至 17:00 進行，期間可能出現間歇性鑽鑿噪音。",
     level: "info",
     timeLabel: "2026年6月26日 · 13:00-17:00",
+    critical: true,
+  },
+  {
+    id: "notif-4",
+    title: "食水供應維修通知",
+    description: "A座及B座將於 2026年6月27日 09:30 至 12:30 暫停供水，請預先儲備足夠用水。",
+    level: "warning",
+    timeLabel: "2026年6月27日 · 09:30-12:30",
+    critical: true,
+  },
+  {
+    id: "notif-5",
+    title: "大堂清潔提示",
+    description: "主大堂及升降機大堂地面將於 2026年6月28日 14:00 至 16:00 清潔，請小心行走並避開濕滑位置。",
+    level: "info",
+    timeLabel: "2026年6月28日 · 14:00-16:00",
     critical: true,
   },
 ];

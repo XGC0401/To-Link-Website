@@ -44,10 +44,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     () => `to-link-notice-dismiss-until:${profile.id}`,
     [profile.id],
   );
-  const noticeSessionSeenKey = useMemo(
-    () => `to-link-notice-session-seen:${profile.id}`,
-    [profile.id],
-  );
   const currentBuildingNotice = buildingNotices[buildingNoticeIndex] ?? null;
 
   useEffect(() => {
@@ -57,21 +53,15 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
     const rawDismissUntil = window.localStorage.getItem(noticeDismissKey);
     const dismissUntil = rawDismissUntil ? Number(rawDismissUntil) : Number.NaN;
-    const alreadyHandledThisSession = window.sessionStorage.getItem(noticeSessionSeenKey) === "1";
-
-    if (alreadyHandledThisSession) {
-      return;
-    }
 
     if (Number.isFinite(dismissUntil) && Date.now() < dismissUntil) {
-      window.sessionStorage.setItem(noticeSessionSeenKey, "1");
       return;
     }
 
     setSnoozeNoticesForToday(false);
     setBuildingNoticeIndex(0);
     setBuildingNoticeOpen(true);
-  }, [buildingNotices, noticeDismissKey, noticeSessionSeenKey]);
+  }, [buildingNotices, noticeDismissKey]);
 
   function closeInfoPanelWithReset() {
     setFeedbackFiles([]);
@@ -81,13 +71,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   function closeBuildingNotices() {
     if (typeof window !== "undefined") {
       if (snoozeNoticesForToday) {
-        window.localStorage.setItem(noticeDismissKey, String(getNextNoonTimestamp()));
+        window.localStorage.setItem(noticeDismissKey, String(getEndOfDayTimestamp()));
       } else {
         window.localStorage.removeItem(noticeDismissKey);
       }
-
-      // Prevent this popup from reappearing during the current login session.
-      window.sessionStorage.setItem(noticeSessionSeenKey, "1");
     }
 
     setBuildingNoticeOpen(false);
@@ -383,13 +370,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <Modal
         onClose={closeBuildingNotices}
         open={buildingNoticeOpen && Boolean(currentBuildingNotice)}
-        title={language === "zh-HK" ? "大廈公告" : "Building Notices"}
+        title={language === "zh-HK" ? "大廈通告" : "Building Announcement"}
         width="max-w-2xl"
       >
         {currentBuildingNotice ? (
           <div className="space-y-4">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-strong">
-              {language === "zh-HK" ? "公告" : "Notice"} {buildingNoticeIndex + 1}/{buildingNotices.length}
+              {language === "zh-HK" ? "通告" : "Announcement"} {buildingNoticeIndex + 1}/{buildingNotices.length}
             </p>
             <h3 className="text-xl font-semibold text-foreground">{currentBuildingNotice.title}</h3>
             <p className="text-sm text-muted">{currentBuildingNotice.timeLabel}</p>
@@ -435,16 +422,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function getNextNoonTimestamp() {
+function getEndOfDayTimestamp() {
   const now = new Date();
-  const noon = new Date(now);
-  noon.setHours(12, 0, 0, 0);
+  const endOfDay = new Date(now);
+  endOfDay.setHours(23, 59, 59, 999);
 
-  if (now.getTime() >= noon.getTime()) {
-    noon.setDate(noon.getDate() + 1);
-  }
-
-  return noon.getTime();
+  return endOfDay.getTime();
 }
 
 function isBuildingNotice(item: { title: string; description: string; critical?: boolean }) {

@@ -93,7 +93,7 @@ export function TopBar({
           <button
             className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-panel-strong text-foreground transition hover:border-accent/60 hover:text-accent"
             onClick={() => onOpenBuildingNotices?.()}
-            title={language === "zh-HK" ? "大廈公告" : "Building Notices"}
+            title={language === "zh-HK" ? "大廈通告" : "Building Announcement"}
             type="button"
           >
             <CircleAlert className="h-4.5 w-4.5" />

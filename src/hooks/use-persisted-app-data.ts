@@ -5,6 +5,7 @@ import { collection, doc, getDoc, getDocs, limit, query, setDoc, writeBatch } fr
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   adminMessage,
+  adminUser,
   aiConversations as seededAiConversations,
   bookings as seededBookings,
   chatRooms as seededChatRooms,
@@ -255,16 +256,20 @@ const DELETED_USERS_SEED: DeletedUsersDocument = {
   uids: [],
 };
 
+const ADMIN_SESSION_STORAGE_KEY = "to-link-hardcoded-admin-session";
+
 export function usePersistedCurrentUserProfile() {
   const { language } = useToLink();
   const services = getFirebaseServices();
   const authUserId = services?.auth.currentUser?.uid;
+  const isHardcodedAdminSession =
+    typeof window !== "undefined" && window.localStorage.getItem(ADMIN_SESSION_STORAGE_KEY) === "1";
   const seedProfile = useMemo(
     () => ({
-      ...currentUser,
-      id: authUserId ?? currentUser.id,
+      ...(isHardcodedAdminSession ? adminUser : currentUser),
+      id: authUserId ?? (isHardcodedAdminSession ? adminUser.id : currentUser.id),
     }),
-    [authUserId],
+    [authUserId, isHardcodedAdminSession],
   );
   const state = useSeededUserDocument<UserProfile>({
     pathFactory: (uid) => ["userProfiles", uid],
@@ -728,12 +733,14 @@ export async function savePersistedAdminAnnouncement(announcement: string) {
   const services = getFirebaseServices();
   const firestore = services?.db;
   const currentEmail = services?.auth.currentUser?.email?.toLowerCase();
+  const isHardcodedAdminSession =
+    typeof window !== "undefined" && window.localStorage.getItem(ADMIN_SESSION_STORAGE_KEY) === "1";
   
   if (!firestore) {
     throw new Error("Firebase services not available");
   }
 
-  if (currentEmail !== "admin@admin.com") {
+  if (!isHardcodedAdminSession && currentEmail !== "admin@admin.com") {
     throw new Error("Only admin@admin.com can edit building notices.");
   }
 

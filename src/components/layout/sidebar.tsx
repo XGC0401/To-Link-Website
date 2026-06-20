@@ -97,6 +97,8 @@ const iconColorMap: Record<NavigationIcon, string> = {
 const infoItems = infoNavigation.filter((item) => item.kind !== "action" || item.action.type !== "signOut");
 const signOutItem = infoNavigation.find((item) => item.kind === "action" && item.action.type === "signOut") as import("@/lib/navigation").ActionNavItem | undefined;
 
+const ADMIN_SESSION_STORAGE_KEY = "to-link-hardcoded-admin-session";
+
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -146,6 +148,10 @@ export function Sidebar() {
 
   function handleActionItem(item: import("@/lib/navigation").ActionNavItem) {
     if (item.action.type === "signOut") {
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
+      }
+
       const services = getFirebaseServices();
 
       if (!services) {

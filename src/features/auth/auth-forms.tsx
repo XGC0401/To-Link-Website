@@ -6,6 +6,7 @@ import {
   confirmPasswordReset,
   createUserWithEmailAndPassword,
   setPersistence,
+  signOut,
   signInWithEmailAndPassword,
   updateProfile,
   verifyPasswordResetCode,
@@ -31,6 +32,8 @@ import { cn } from "@/lib/utils";
 import { useToLink } from "@/lib/app-state";
 import { Modal } from "@/components/ui/modal";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+
+const ADMIN_SESSION_STORAGE_KEY = "to-link-hardcoded-admin-session";
 
 const COUNTRY_CODES = [
   { code: "+93", label: "Afghanistan (+93)" },
@@ -617,6 +620,14 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                           ? "管理員帳戶密碼不正確。"
                           : "Incorrect admin account password.",
                       );
+                      return;
+                    }
+
+                    if (email.toLowerCase() === "admin@admin.com" && state.password === "admin123") {
+                      await signOut(services.auth).catch(() => undefined);
+                      window.localStorage.setItem(ADMIN_SESSION_STORAGE_KEY, "1");
+                      toast.success(t(language, "auth.signedIn"));
+                      router.push("/home");
                       return;
                     }
 
