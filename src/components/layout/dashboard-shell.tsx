@@ -447,7 +447,7 @@ function getNextNoonTimestamp() {
   return noon.getTime();
 }
 
-function isBuildingNotice(item: { title: string; description: string }) {
+function isBuildingNotice(item: { title: string; description: string; critical?: boolean }) {
   const haystack = `${item.title} ${item.description}`.toLowerCase();
 
   const buildingKeywords = [
@@ -472,6 +472,14 @@ function isBuildingNotice(item: { title: string; description: string }) {
     "噪音",
     "公告",
   ];
+
+  if (haystack.includes("form_notice::") || haystack.includes("image_notice::")) {
+    return true;
+  }
+
+  if (item.title.toLowerCase().includes("notice") || item.title.includes("通知") || item.critical) {
+    return true;
+  }
 
   return buildingKeywords.some((keyword) => haystack.includes(keyword));
 }
