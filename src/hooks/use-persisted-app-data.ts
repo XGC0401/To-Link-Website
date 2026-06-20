@@ -120,7 +120,16 @@ interface BlockedUsersDocument {
   items: BlockedUserItem[];
 }
 
+interface DeletedUserEntry {
+  deletedAt: string;
+  email?: string;
+  uid: string;
+  username?: string;
+}
+
 interface DeletedUsersDocument {
+  emails: string[];
+  entries: DeletedUserEntry[];
   uids: string[];
 }
 
@@ -241,6 +250,8 @@ const BLOCKED_USERS_SEED: BlockedUsersDocument = {
 };
 
 const DELETED_USERS_SEED: DeletedUsersDocument = {
+  emails: [],
+  entries: [],
   uids: [],
 };
 
@@ -558,10 +569,12 @@ function normalizeUserHandleLookup(value: string) {
 }
 
 export async function deletePersistedCurrentUserAccountData({
+  email,
   phone,
   uid,
   username,
 }: {
+  email?: string;
   phone: string;
   uid: string;
   username: string;
@@ -572,16 +585,41 @@ export async function deletePersistedCurrentUserAccountData({
     return false;
   }
 
-  // Mark user as deleted in the shared deleted-users registry so other users stop seeing them
+  // Mark user as deleted in the shared deleted-users registry so other users stop seeing them.
+  // Keep uid and email tombstones to distinguish "deleted" from "never existed" checks.
   const deletedUsersRef = doc(services.db, "appData", "deletedUsers");
   const deletedUsersSnap = await getDoc(deletedUsersRef);
-  const currentDeletedUids: string[] = deletedUsersSnap.exists()
-    ? ((deletedUsersSnap.data() as Record<string, unknown>)?.uids as string[] ?? []).filter(Boolean)
-    : [];
+  const deletedUsersDoc = normalizeDeletedUsersDocument(
+    deletedUsersSnap.exists() ? deletedUsersSnap.data() : DELETED_USERS_SEED,
+  );
+  const normalizedEmail = email?.trim().toLowerCase();
+  const nextUidSet = new Set(deletedUsersDoc.uids);
+  const nextEmailSet = new Set(deletedUsersDoc.emails.map((value) => value.trim().toLowerCase()));
+  nextUidSet.add(uid);
 
-  if (!currentDeletedUids.includes(uid)) {
-    await setDoc(deletedUsersRef, { uids: [...currentDeletedUids, uid] }, { merge: true });
+  if (normalizedEmail) {
+    nextEmailSet.add(normalizedEmail);
   }
+
+  const nextEntriesByUid = new Map(deletedUsersDoc.entries.map((entry) => [entry.uid, entry]));
+  const existingEntry = nextEntriesByUid.get(uid);
+
+  nextEntriesByUid.set(uid, {
+    deletedAt: existingEntry?.deletedAt ?? new Date().toISOString(),
+    email: normalizedEmail ?? existingEntry?.email,
+    uid,
+    username: username || existingEntry?.username,
+  });
+
+  await setDoc(
+    deletedUsersRef,
+    {
+      emails: [...nextEmailSet],
+      entries: [...nextEntriesByUid.values()],
+      uids: [...nextUidSet],
+    } satisfies DeletedUsersDocument,
+    { merge: true },
+  );
 
   // Redact the deleted user's messages in all shared chat rooms and remove them from member lists
   const currentChatRooms = await loadSharedChatRoomsDocument();
@@ -1719,6 +1757,7 @@ function toChatRoomView(
     preview: buildChatRoomPreview(room),
     title: resolveChatRoomTitle(room, currentUserId),
     unreadCount: 0,
+    updatedAt: room.updatedAt,
   } satisfies ChatRoom;
 }
 
@@ -2147,6 +2186,7 @@ async function appendCurrentUserChatRoomMessage(
     messages: nextMessages,
     preview: nextMessages[nextMessages.length - 1]?.content ?? currentRoom.preview,
     unreadCount: 0,
+    updatedAt: new Date().toISOString(),
   });
 }
 
@@ -2265,6 +2305,7 @@ function normalizeChatRoomView(room: ChatRoom): ChatRoom {
     preview: typeof room.preview === "string" ? room.preview : "",
     title: typeof room.title === "string" ? room.title : "Direct message",
     unreadCount: typeof room.unreadCount === "number" ? room.unreadCount : 0,
+    updatedAt: typeof room.updatedAt === "string" ? room.updatedAt : undefined,
   } satisfies ChatRoom;
 }
 
@@ -2364,9 +2405,47 @@ function normalizeBlockedUsersDocument(value: unknown): BlockedUsersDocument {
 
 function normalizeDeletedUsersDocument(value: unknown): DeletedUsersDocument {
   const record = asRecord(value);
+  const entries = Array.isArray(record.entries)
+    ? (record.entries as Array<Record<string, unknown>>)
+        .map((entry) => {
+          const uid = typeof entry.uid === "string" ? entry.uid.trim() : "";
+
+          if (!uid) {
+            return null;
+          }
+
+          const email = typeof entry.email === "string" ? entry.email.trim().toLowerCase() : undefined;
+          const username = typeof entry.username === "string" ? entry.username.trim() : undefined;
+
+          return {
+            deletedAt:
+              typeof entry.deletedAt === "string" && entry.deletedAt
+                ? entry.deletedAt
+                : new Date().toISOString(),
+            email: email || undefined,
+            uid,
+            username: username || undefined,
+          } satisfies DeletedUserEntry;
+        })
+        .filter((entry): entry is DeletedUserEntry => entry !== null)
+    : [];
+
+  const uids = Array.from(new Set([
+    ...(Array.isArray(record.uids) ? (record.uids as string[]).filter(Boolean) : []),
+    ...entries.map((entry) => entry.uid),
+  ]));
+
+  const emails = Array.from(new Set([
+    ...(Array.isArray(record.emails)
+      ? (record.emails as string[]).map((value) => value.trim().toLowerCase()).filter(Boolean)
+      : []),
+    ...entries.map((entry) => entry.email).filter((value): value is string => Boolean(value)),
+  ]));
 
   return {
-    uids: Array.isArray(record.uids) ? (record.uids as string[]).filter(Boolean) : [],
+    emails,
+    entries,
+    uids,
   };
 }
 
@@ -2378,6 +2457,19 @@ export function useDeletedUserIds(): Set<string> {
   });
 
   return useMemo(() => new Set(state.data.uids), [state.data.uids]);
+}
+
+export function useDeletedUserEmails(): Set<string> {
+  const state = useSeededFirestoreDocument<DeletedUsersDocument>({
+    parse: normalizeDeletedUsersDocument,
+    path: ["appData", "deletedUsers"],
+    seedData: DELETED_USERS_SEED,
+  });
+
+  return useMemo(
+    () => new Set(state.data.emails.map((value) => value.trim().toLowerCase())),
+    [state.data.emails],
+  );
 }
 
 function normalizeUserProfile(value: unknown): UserProfile {

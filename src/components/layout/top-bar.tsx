@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, CircleHelp, Menu, MoonStar, SunMedium, Trophy } from "lucide-react";
+import { Bell, CircleAlert, CircleHelp, Menu, MoonStar, SunMedium, Trophy } from "lucide-react";
 import { AvatarBadge } from "@/components/ui/avatar-badge";
 import { Modal } from "@/components/ui/modal";
 import { usePersistedCurrentUserProfile, usePersistedDashboardData } from "@/hooks/use-persisted-app-data";
@@ -13,7 +13,13 @@ import { cn } from "@/lib/utils";
 import { useToLink } from "@/lib/app-state";
 import { usePathname } from "next/navigation";
 
-export function TopBar() {
+export function TopBar({
+  hasBuildingNotices = false,
+  onOpenBuildingNotices,
+}: {
+  hasBuildingNotices?: boolean;
+  onOpenBuildingNotices?: () => void;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const showWelcome = pathname === "/home";
@@ -82,6 +88,17 @@ export function TopBar() {
         >
           <Trophy className="h-4.5 w-4.5" />
         </button>
+
+        {hasBuildingNotices ? (
+          <button
+            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-panel-strong text-foreground transition hover:border-accent/60 hover:text-accent"
+            onClick={() => onOpenBuildingNotices?.()}
+            title={language === "zh-HK" ? "大廈公告" : "Building Notices"}
+            type="button"
+          >
+            <CircleAlert className="h-4.5 w-4.5" />
+          </button>
+        ) : null}
 
         <button
           className={cn(

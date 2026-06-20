@@ -2,12 +2,14 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { ImageUp, Upload, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
+import { Modal } from "@/components/ui/modal";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { useDashboardData } from "@/lib/dashboard-data-context";
+import { usePersistedCurrentUserProfile } from "@/hooks/use-persisted-app-data";
 import {
   cloudinarySetupHint,
   uploadFilesToCloudinary,
@@ -26,14 +28,53 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     setNotificationsOpen,
   } = useToLink();
   const { dashboardData, sharedContent } = useDashboardData();
+  const { profile } = usePersistedCurrentUserProfile();
   const [feedbackFiles, setFeedbackFiles] = useState<File[]>([]);
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+  const [buildingNoticeOpen, setBuildingNoticeOpen] = useState(false);
+  const [buildingNoticeIndex, setBuildingNoticeIndex] = useState(0);
+  const [snoozeNoticesForToday, setSnoozeNoticesForToday] = useState(false);
   const notifications = dashboardData.notificationsByLanguage[language] ?? [];
   const faqItems = sharedContent.faqItemsByLanguage[language] ?? [];
+  const buildingNotices = useMemo(() => notifications, [notifications]);
+  const noticeDismissKey = useMemo(
+    () => `to-link-notice-dismiss-until:${profile.id}`,
+    [profile.id],
+  );
+  const currentBuildingNotice = buildingNotices[buildingNoticeIndex] ?? null;
+
+  useEffect(() => {
+    if (!buildingNotices.length || typeof window === "undefined") {
+      return;
+    }
+
+    const rawDismissUntil = window.localStorage.getItem(noticeDismissKey);
+    const dismissUntil = rawDismissUntil ? Number(rawDismissUntil) : Number.NaN;
+
+    if (Number.isFinite(dismissUntil) && Date.now() < dismissUntil) {
+      return;
+    }
+
+    setSnoozeNoticesForToday(false);
+    setBuildingNoticeIndex(0);
+    setBuildingNoticeOpen(true);
+  }, [buildingNotices, noticeDismissKey]);
 
   function closeInfoPanelWithReset() {
     setFeedbackFiles([]);
     closeInfoPanel();
+  }
+
+  function closeBuildingNotices() {
+    if (typeof window !== "undefined") {
+      if (snoozeNoticesForToday) {
+        window.localStorage.setItem(noticeDismissKey, String(getNextNoonTimestamp()));
+      } else {
+        window.localStorage.removeItem(noticeDismissKey);
+      }
+    }
+
+    setBuildingNoticeOpen(false);
   }
 
   function handleFeedbackFileSelection(fileList: FileList | null) {
@@ -80,7 +121,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <Sidebar />
 
         <div className="relative flex min-w-0 flex-1 flex-col p-3 md:p-4">
-          <TopBar />
+          <TopBar
+            hasBuildingNotices={buildingNotices.length > 0}
+            onOpenBuildingNotices={() => {
+              setSnoozeNoticesForToday(false);
+              setBuildingNoticeIndex((current) =>
+                Math.min(current, Math.max(buildingNotices.length - 1, 0)),
+              );
+              setBuildingNoticeOpen(true);
+            }}
+          />
           <main className="relative z-10 mt-4 flex min-h-0 flex-1 overflow-hidden">{children}</main>
 
           <AnimatePresence>
@@ -313,6 +363,70 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </AnimatePresence>
         </div>
       </div>
+
+      <Modal
+        onClose={closeBuildingNotices}
+        open={buildingNoticeOpen && Boolean(currentBuildingNotice)}
+        title={language === "zh-HK" ? "大廈公告" : "Building Notices"}
+        width="max-w-2xl"
+      >
+        {currentBuildingNotice ? (
+          <div className="space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-strong">
+              {language === "zh-HK" ? "公告" : "Notice"} {buildingNoticeIndex + 1}/{buildingNotices.length}
+            </p>
+            <h3 className="text-xl font-semibold text-foreground">{currentBuildingNotice.title}</h3>
+            <p className="text-sm text-muted">{currentBuildingNotice.timeLabel}</p>
+            <p className="text-sm leading-7 text-muted">{currentBuildingNotice.description}</p>
+
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  className="rounded-full border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-45"
+                  disabled={buildingNoticeIndex === 0}
+                  onClick={() => setBuildingNoticeIndex((current) => Math.max(current - 1, 0))}
+                  type="button"
+                >
+                  &lt;
+                </button>
+                <button
+                  className="rounded-full border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-45"
+                  disabled={buildingNoticeIndex >= buildingNotices.length - 1}
+                  onClick={() =>
+                    setBuildingNoticeIndex((current) =>
+                      Math.min(current + 1, buildingNotices.length - 1),
+                    )
+                  }
+                  type="button"
+                >
+                  &gt;
+                </button>
+              </div>
+
+              <label className="flex items-center gap-2 text-sm text-muted">
+                <input
+                  checked={snoozeNoticesForToday}
+                  onChange={(event) => setSnoozeNoticesForToday(event.target.checked)}
+                  type="checkbox"
+                />
+                {language === "zh-HK" ? "今天不再顯示" : "Stop showing for today"}
+              </label>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
+}
+
+function getNextNoonTimestamp() {
+  const now = new Date();
+  const noon = new Date(now);
+  noon.setHours(12, 0, 0, 0);
+
+  if (now.getTime() >= noon.getTime()) {
+    noon.setDate(noon.getDate() + 1);
+  }
+
+  return noon.getTime();
 }

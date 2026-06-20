@@ -1,7 +1,7 @@
 "use client";
 
 import { onAuthStateChanged } from "firebase/auth";
-import { collection, doc, limit, onSnapshot, orderBy, query, setDoc } from "firebase/firestore";
+import { collection, deleteDoc, doc, limit, onSnapshot, orderBy, query, setDoc } from "firebase/firestore";
 import { useSyncExternalStore } from "react";
 import { useToLink } from "@/lib/app-state";
 import { calendarEvents as seededCalendarEvents } from "@/lib/demo-data";
@@ -10,10 +10,13 @@ import { localizeCalendarEvents } from "@/lib/seeded-content-localization";
 import type { CalendarEventItem } from "@/lib/types";
 
 const STORAGE_KEY = "to-link-calendar-events";
+const HIDDEN_SEEDED_STORAGE_KEY = "to-link-calendar-hidden-seeded-events";
 const listeners = new Set<() => void>();
 let cachedRawEvents = "";
 let cachedLocalEvents: CalendarEventItem[] = [];
 let cachedRemoteEvents: CalendarEventItem[] = [];
+let cachedHiddenSeedIdsRaw = "";
+let cachedHiddenSeedIds = new Set<string>();
 let cachedSnapshot: CalendarEventItem[] = seededCalendarEvents;
 let initialized = false;
 let disposeRemoteListener: (() => void) | null = null;
@@ -46,6 +49,33 @@ export function addCalendarEvent(event: CalendarEventItem) {
   void persistEventRemotely(user.uid, nextEvent);
 }
 
+export function removeCalendarEvent(eventId: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  ensureInitialized();
+  removeEventsByIds(new Set([eventId]));
+}
+
+export function removeCalendarEventsByTypeAndTitle(type: CalendarEventItem["type"], title: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  ensureInitialized();
+
+  const ids = cachedSnapshot
+    .filter((event) => event.type === type && event.title === title)
+    .map((event) => event.id);
+
+  if (!ids.length) {
+    return;
+  }
+
+  removeEventsByIds(new Set(ids));
+}
+
 function subscribe(listener: () => void) {
   listeners.add(listener);
   ensureInitialized();
@@ -57,8 +87,9 @@ function subscribe(listener: () => void) {
   }
 
   const handleStorage = (event: StorageEvent) => {
-    if (event.key === STORAGE_KEY) {
+    if (event.key === STORAGE_KEY || event.key === HIDDEN_SEEDED_STORAGE_KEY) {
       refreshLocalEvents();
+      refreshHiddenSeedIds();
       rebuildSnapshot();
       emitChange();
     }
@@ -95,6 +126,7 @@ function ensureInitialized() {
 
   initialized = true;
   refreshLocalEvents();
+  refreshHiddenSeedIds();
   rebuildSnapshot();
 
   const services = getFirebaseServices();
@@ -167,8 +199,24 @@ function refreshLocalEvents() {
   cachedLocalEvents = parseStoredUserEvents(rawValue);
 }
 
+function refreshHiddenSeedIds() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const rawValue = window.localStorage.getItem(HIDDEN_SEEDED_STORAGE_KEY) ?? "";
+
+  if (rawValue === cachedHiddenSeedIdsRaw) {
+    return;
+  }
+
+  cachedHiddenSeedIdsRaw = rawValue;
+  cachedHiddenSeedIds = parseHiddenSeedIds(rawValue);
+}
+
 function rebuildSnapshot() {
-  cachedSnapshot = [...seededCalendarEvents, ...mergeUserEvents(cachedRemoteEvents, cachedLocalEvents)];
+  const visibleSeededEvents = seededCalendarEvents.filter((event) => !cachedHiddenSeedIds.has(event.id));
+  cachedSnapshot = [...visibleSeededEvents, ...mergeUserEvents(cachedRemoteEvents, cachedLocalEvents)];
 }
 
 function mergeUserEvents(...sources: CalendarEventItem[][]) {
@@ -196,6 +244,56 @@ function persistEventLocally(event: CalendarEventItem) {
   emitChange();
 }
 
+function removeEventsByIds(eventIds: Set<string>) {
+  if (!eventIds.size) {
+    return;
+  }
+
+  const visibleSeededEventIds = new Set(seededCalendarEvents.map((event) => event.id));
+  let hiddenSeedChanged = false;
+
+  for (const eventId of eventIds) {
+    if (visibleSeededEventIds.has(eventId)) {
+      cachedHiddenSeedIds.add(eventId);
+      hiddenSeedChanged = true;
+    }
+  }
+
+  if (hiddenSeedChanged) {
+    persistHiddenSeedIds();
+  }
+
+  const nextLocalEvents = cachedLocalEvents.filter((event) => !eventIds.has(event.id));
+
+  if (nextLocalEvents.length !== cachedLocalEvents.length) {
+    const nextRawEvents = JSON.stringify(nextLocalEvents);
+    window.localStorage.setItem(STORAGE_KEY, nextRawEvents);
+    cachedRawEvents = nextRawEvents;
+    cachedLocalEvents = nextLocalEvents;
+  }
+
+  cachedRemoteEvents = cachedRemoteEvents.filter((event) => !eventIds.has(event.id));
+  rebuildSnapshot();
+  emitChange();
+
+  const services = getFirebaseServices();
+  const user = services?.auth.currentUser;
+
+  if (!services || !user) {
+    return;
+  }
+
+  for (const eventId of eventIds) {
+    void removeEventRemotely(user.uid, eventId);
+  }
+}
+
+function persistHiddenSeedIds() {
+  const nextRawValue = JSON.stringify([...cachedHiddenSeedIds]);
+  window.localStorage.setItem(HIDDEN_SEEDED_STORAGE_KEY, nextRawValue);
+  cachedHiddenSeedIdsRaw = nextRawValue;
+}
+
 async function persistEventRemotely(userId: string, event: CalendarEventItem) {
   const services = getFirebaseServices();
 
@@ -207,6 +305,16 @@ async function persistEventRemotely(userId: string, event: CalendarEventItem) {
     ...event,
     createdAt: new Date().toISOString(),
   });
+}
+
+async function removeEventRemotely(userId: string, eventId: string) {
+  const services = getFirebaseServices();
+
+  if (!services) {
+    return;
+  }
+
+  await deleteDoc(doc(services.db, "userProfiles", userId, "calendarEvents", eventId));
 }
 
 async function syncLocalEventsToFirestore(userId: string) {
@@ -281,6 +389,24 @@ function parseStoredUserEvents(rawValue: string | null) {
     return parsed.filter(isCalendarEventItem);
   } catch {
     return [] as CalendarEventItem[];
+  }
+}
+
+function parseHiddenSeedIds(rawValue: string | null) {
+  try {
+    if (!rawValue) {
+      return new Set<string>();
+    }
+
+    const parsed = JSON.parse(rawValue) as unknown;
+
+    if (!Array.isArray(parsed)) {
+      return new Set<string>();
+    }
+
+    return new Set(parsed.filter((value): value is string => typeof value === "string" && value.trim().length > 0));
+  } catch {
+    return new Set<string>();
   }
 }
 

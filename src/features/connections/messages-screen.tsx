@@ -50,10 +50,13 @@ export function MessagesScreen() {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
 
-  const filteredRooms = useMemo(
-    () => connections.chatRooms.filter((room) => room.title.toLowerCase().includes(query.toLowerCase())),
-    [connections.chatRooms, query],
-  );
+  const filteredRooms = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return connections.chatRooms
+      .filter((room) => room.title.toLowerCase().includes(normalizedQuery))
+      .sort((left, right) => getRoomActivityTimestamp(right) - getRoomActivityTimestamp(left));
+  }, [connections.chatRooms, query]);
   const requestedRoomId = searchParams.get("room");
   const resolvedRoomId =
     activeRoomId ??
@@ -79,6 +82,41 @@ export function MessagesScreen() {
     const previewText = latestMessage?.content?.trim() || room.preview;
 
     return previewText.replace(/\s+/g, " ");
+  }
+
+  function getRoomActivityTimestamp(room: (typeof connections.chatRooms)[number]) {
+    const updatedAtTimestamp = room.updatedAt ? Date.parse(room.updatedAt) : Number.NaN;
+
+    if (Number.isFinite(updatedAtTimestamp)) {
+      return updatedAtTimestamp;
+    }
+
+    const latestMessage = room.messages[room.messages.length - 1];
+
+    if (!latestMessage) {
+      return 0;
+    }
+
+    const messageIdTimestampMatch = latestMessage.id.match(/(\d{10,})/);
+
+    if (messageIdTimestampMatch) {
+      const idTimestamp = Number(messageIdTimestampMatch[1]);
+
+      if (Number.isFinite(idTimestamp)) {
+        return idTimestamp;
+      }
+    }
+
+    const clockMatch = latestMessage.sentAt.match(/^(\d{1,2}):(\d{2})$/);
+
+    if (clockMatch) {
+      const now = new Date();
+      const local = new Date(now);
+      local.setHours(Number(clockMatch[1]), Number(clockMatch[2]), 0, 0);
+      return local.getTime();
+    }
+
+    return 0;
   }
 
   async function handleToggleTranslation(roomId: string, messageId: string, content: string) {

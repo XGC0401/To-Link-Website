@@ -11,13 +11,17 @@ import {
   startOfWeek,
 } from "date-fns";
 import { enUS, zhHK } from "date-fns/locale";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
 import { Modal } from "@/components/ui/modal";
-import { addCalendarEvent, useCalendarEvents } from "@/hooks/use-calendar-events";
+import {
+  addCalendarEvent,
+  removeCalendarEvent,
+  useCalendarEvents,
+} from "@/hooks/use-calendar-events";
 import { formatCalendarEventType } from "@/lib/seeded-content-localization";
 import { t } from "@/lib/translations";
 import { cn } from "@/lib/utils";
@@ -173,7 +177,21 @@ export function CalendarScreen() {
                         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-strong">{formatCalendarEventType(language, event.type)}</p>
                         <h4 className="mt-2 text-lg font-semibold text-foreground">{event.title}</h4>
                       </div>
-                      <span className="rounded-full bg-panel px-3 py-1 text-xs text-muted">{event.timeLabel}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-full bg-panel px-3 py-1 text-xs text-muted">{event.timeLabel}</span>
+                        <button
+                          aria-label={language === "zh-HK" ? "刪除活動" : "Delete event"}
+                          className="inline-flex items-center gap-1 rounded-full border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                          onClick={() => {
+                            removeCalendarEvent(event.id);
+                            toast.success(language === "zh-HK" ? "已刪除活動。" : "Event deleted.");
+                          }}
+                          type="button"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          {t(language, "common.delete")}
+                        </button>
+                      </div>
                     </div>
                     <p className="mt-3 text-sm leading-7 text-muted">{event.description}</p>
                   </article>

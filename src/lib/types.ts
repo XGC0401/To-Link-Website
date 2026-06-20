@@ -176,6 +176,7 @@ export interface ChatRoom {
   online: boolean;
   group: boolean;
   messages: ChatMessage[];
+  updatedAt?: string;
 }
 
 export interface FriendCard {

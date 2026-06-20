@@ -161,6 +161,7 @@ export function ProfileSettingsScreen() {
 
     try {
       const accountSnapshot = {
+        email: user.email ?? profile.email,
         phone: profile.phone,
         uid: user.uid,
         username: profile.username,

@@ -4,7 +4,11 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
-import { addCalendarEvent, useCalendarEvents } from "@/hooks/use-calendar-events";
+import {
+  addCalendarEvent,
+  removeCalendarEventsByTypeAndTitle,
+  useCalendarEvents,
+} from "@/hooks/use-calendar-events";
 import { usePersistedSharedContent } from "@/hooks/use-persisted-app-data";
 import { t } from "@/lib/translations";
 
@@ -44,25 +48,39 @@ export function EventsScreen() {
                 </div>
               ))}
             </div>
-            <button
-              className={joined ? "mt-5 rounded-full border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700" : "mt-5 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white"}
-              disabled={joined}
-              onClick={() => {
-                const [date = new Date().toISOString().slice(0, 10), time = t(language, "nearby.pendingConfirmation")] = item.eventDate.split(" ");
-                addCalendarEvent({
-                  id: crypto.randomUUID(),
-                  title: item.eventTitle,
-                  description: item.description,
-                  date,
-                  timeLabel: time,
-                  type: "joined",
-                });
-                toast.success(t(language, "toast.eventJoinSaved"));
-              }}
-              type="button"
-            >
-              {joined ? (language === "zh-HK" ? "已加入日曆" : "Added to Calendar") : t(language, "common.join")}
-            </button>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button
+                className={joined ? "rounded-full border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700" : "rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white"}
+                disabled={joined}
+                onClick={() => {
+                  const [date = new Date().toISOString().slice(0, 10), time = t(language, "nearby.pendingConfirmation")] = item.eventDate.split(" ");
+                  addCalendarEvent({
+                    id: crypto.randomUUID(),
+                    title: item.eventTitle,
+                    description: item.description,
+                    date,
+                    timeLabel: time,
+                    type: "joined",
+                  });
+                  toast.success(t(language, "toast.eventJoinSaved"));
+                }}
+                type="button"
+              >
+                {joined ? (language === "zh-HK" ? "已加入日曆" : "Added to Calendar") : t(language, "common.join")}
+              </button>
+              {joined ? (
+                <button
+                  className="rounded-full border border-rose-300 bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-700"
+                  onClick={() => {
+                    removeCalendarEventsByTypeAndTitle("joined", item.eventTitle);
+                    toast.success(language === "zh-HK" ? "已從日曆移除活動。" : "Event removed from calendar.");
+                  }}
+                  type="button"
+                >
+                  {language === "zh-HK" ? "從日曆移除" : "Remove from Calendar"}
+                </button>
+              ) : null}
+            </div>
           </article>
         );})}
       </div>
