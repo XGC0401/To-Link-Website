@@ -28,11 +28,14 @@ import { Panel, PanelHeader } from "@/components/ui/panel";
 import { Modal } from "@/components/ui/modal";
 import { openPersistedDirectChat, usePersistedCurrentUserProfile, usePersistedPosts, usePersistedSharedContent, savePersistedAdminAnnouncement, savePersistedAdvertisements } from "@/hooks/use-persisted-app-data";
 import { formatAppDateTime, formatAppDayLabel } from "@/lib/date";
+import { uploadFilesToCloudinary, validateMediaSelection } from "@/lib/media-upload";
 import { t } from "@/lib/translations";
 import type { FeedItem, Language, Advertisement } from "@/lib/types";
 import { cn, truncate } from "@/lib/utils";
 import { useToLink } from "@/lib/app-state";
 import { useWeather } from "@/hooks/use-weather";
+
+type BuildingNoticeMode = "form" | "image";
 
 function getWeatherVisual(code: number) {
   if (code === 0 || code === 1) {
@@ -107,7 +110,12 @@ export function HomeScreen() {
   const [activeAd, setActiveAd] = useState(0);
   const [currentTimeLabel, setCurrentTimeLabel] = useState("");
   const [editAnnouncementOpen, setEditAnnouncementOpen] = useState(false);
-  const [editAnnouncementText, setEditAnnouncementText] = useState("");
+  const [editNoticeMode, setEditNoticeMode] = useState<BuildingNoticeMode>("form");
+  const [editNoticeTitle, setEditNoticeTitle] = useState("");
+  const [editNoticeDateTime, setEditNoticeDateTime] = useState("");
+  const [editNoticeDescription, setEditNoticeDescription] = useState("");
+  const [editNoticeImageFile, setEditNoticeImageFile] = useState<File | null>(null);
+  const [editNoticeImagePreview, setEditNoticeImagePreview] = useState("");
   const [savingAnnouncement, setSavingAnnouncement] = useState(false);
   const [editAdsOpen, setEditAdsOpen] = useState(false);
   const [adsDraft, setAdsDraft] = useState<Advertisement[]>([]);
@@ -115,6 +123,12 @@ export function HomeScreen() {
   const advertisements = sharedContent.advertisementsByLanguage[language] ?? [];
   const activeAdvertisement = advertisements[activeAd] ?? advertisements[0];
   const isAdmin = profile.role === "admin";
+  const canEditBuildingNotice =
+    isAdmin && profile.email.toLowerCase() === "admin@admin.com";
+  const parsedBuildingNotice = useMemo(
+    () => parseBuildingNotice(sharedContent.adminMessage || ""),
+    [sharedContent.adminMessage],
+  );
 
   useEffect(() => {
     const updateCurrentTimeLabel = () => {
@@ -176,19 +190,103 @@ export function HomeScreen() {
   async function handleSaveAnnouncement() {
     setSavingAnnouncement(true);
     try {
-      await savePersistedAdminAnnouncement(editAnnouncementText);
+      if (!canEditBuildingNotice) {
+        toast.error(language === "zh-HK" ? "只有 admin@admin.com 可編輯公告。" : "Only admin@admin.com can edit building notices.");
+        return;
+      }
+
+      let payload = "";
+
+      if (editNoticeMode === "form") {
+        if (!editNoticeTitle.trim() || !editNoticeDateTime.trim() || !editNoticeDescription.trim()) {
+          toast.error(
+            language === "zh-HK"
+              ? "請填寫完整的公告標題、日期時間及內容。"
+              : "Please complete title, date/time, and description.",
+          );
+          return;
+        }
+
+        payload = serializeFormNotice({
+          dateTime: editNoticeDateTime.trim(),
+          description: editNoticeDescription.trim(),
+          title: editNoticeTitle.trim(),
+        });
+      } else {
+        let imageUrl = editNoticeImagePreview.trim();
+
+        if (editNoticeImageFile) {
+          const [upload] = await uploadFilesToCloudinary([editNoticeImageFile]);
+          imageUrl = upload?.secureUrl ?? "";
+        }
+
+        if (!imageUrl) {
+          toast.error(language === "zh-HK" ? "請先上載公告圖片。" : "Please upload a notice image first.");
+          return;
+        }
+
+        payload = serializeImageNotice(imageUrl);
+      }
+
+      await savePersistedAdminAnnouncement(payload);
       setEditAnnouncementOpen(false);
       toast.success(language === "zh-HK" ? "公告已更新" : "Announcement updated");
     } catch (error) {
-      toast.error(language === "zh-HK" ? "無法保存公告" : "Unable to save announcement");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : language === "zh-HK"
+            ? "無法保存公告"
+            : "Unable to save announcement",
+      );
     } finally {
       setSavingAnnouncement(false);
     }
   }
 
   function openEditAnnouncement() {
-    setEditAnnouncementText(sharedContent.adminMessage || "");
+    const parsed = parseBuildingNotice(sharedContent.adminMessage || "");
+
+    if (parsed.mode === "image") {
+      setEditNoticeMode("image");
+      setEditNoticeImagePreview(parsed.imageUrl);
+      setEditNoticeImageFile(null);
+      setEditNoticeTitle("");
+      setEditNoticeDateTime("");
+      setEditNoticeDescription("");
+    } else {
+      setEditNoticeMode("form");
+      setEditNoticeTitle(parsed.title);
+      setEditNoticeDateTime(parsed.dateTime);
+      setEditNoticeDescription(parsed.description);
+      setEditNoticeImagePreview("");
+      setEditNoticeImageFile(null);
+    }
+
     setEditAnnouncementOpen(true);
+  }
+
+  function handleNoticeImageSelection(fileList: FileList | null) {
+    if (!fileList?.length) {
+      return;
+    }
+
+    const validation = validateMediaSelection(fileList);
+
+    if (!validation.valid) {
+      toast.error(validation.errors[0] ?? (language === "zh-HK" ? "無效圖片檔案。" : "Invalid image file."));
+      return;
+    }
+
+    const imageFile = validation.images[0];
+
+    if (!imageFile) {
+      toast.error(language === "zh-HK" ? "請選擇圖片檔案。" : "Please select an image file.");
+      return;
+    }
+
+    setEditNoticeImageFile(imageFile);
+    setEditNoticeImagePreview(URL.createObjectURL(imageFile));
   }
 
   return (
@@ -328,7 +426,7 @@ export function HomeScreen() {
           <PanelHeader
             title={t(language, "home.adminBroadcast") === "Community Broadcast" ? t(language, "page.adminMessage") : t(language, "page.adminMessage")}
             description={t(language, "home.adminBroadcast")}
-            action={isAdmin ? (
+            action={canEditBuildingNotice ? (
               <button
                 className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-panel-strong px-3 py-2 text-foreground transition hover:border-accent/40 hover:text-accent"
                 onClick={openEditAnnouncement}
@@ -340,7 +438,21 @@ export function HomeScreen() {
             ) : undefined}
           />
           <div className="mt-4 flex-1 overflow-y-auto pr-2 text-sm leading-7 text-muted">
-            {sharedContent.adminMessage}
+            {parsedBuildingNotice.mode === "image" ? (
+              <img
+                alt={language === "zh-HK" ? "大廈公告圖片" : "Building notice image"}
+                className="max-h-72 w-full rounded-2xl object-cover"
+                src={parsedBuildingNotice.imageUrl}
+              />
+            ) : (
+              <div className="space-y-2">
+                <p className="text-lg font-semibold text-foreground">{parsedBuildingNotice.title}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">
+                  {parsedBuildingNotice.dateTime}
+                </p>
+                <p>{parsedBuildingNotice.description}</p>
+              </div>
+            )}
           </div>
         </Panel>
 
@@ -371,12 +483,72 @@ export function HomeScreen() {
         onClose={() => setEditAnnouncementOpen(false)}
         title={language === "zh-HK" ? "編輯公告" : "Edit Announcement"}      >
         <div className="space-y-4">
-          <textarea
-            className="app-input min-h-[200px] w-full rounded-lg px-4 py-3 text-sm"
-            onChange={(e) => setEditAnnouncementText(e.target.value)}
-            placeholder={language === "zh-HK" ? "輸入新公告" : "Enter announcement text"}
-            value={editAnnouncementText}
-          />
+          <div className="flex gap-2">
+            <button
+              className={editNoticeMode === "form" ? "flex-1 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white" : "flex-1 rounded-full border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground"}
+              onClick={() => setEditNoticeMode("form")}
+              type="button"
+            >
+              {language === "zh-HK" ? "表單公告" : "Form Notice"}
+            </button>
+            <button
+              className={editNoticeMode === "image" ? "flex-1 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white" : "flex-1 rounded-full border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground"}
+              onClick={() => setEditNoticeMode("image")}
+              type="button"
+            >
+              {language === "zh-HK" ? "圖片公告" : "Image Notice"}
+            </button>
+          </div>
+
+          {editNoticeMode === "form" ? (
+            <div className="space-y-3">
+              <input
+                className="app-input w-full rounded-lg px-4 py-3 text-sm"
+                onChange={(e) => setEditNoticeTitle(e.target.value)}
+                placeholder={language === "zh-HK" ? "公告標題" : "Notice title"}
+                value={editNoticeTitle}
+              />
+              <input
+                className="app-input w-full rounded-lg px-4 py-3 text-sm"
+                onChange={(e) => setEditNoticeDateTime(e.target.value)}
+                placeholder={language === "zh-HK" ? "日期 / 時間" : "Date / Time"}
+                value={editNoticeDateTime}
+              />
+              <textarea
+                className="app-input min-h-[160px] w-full rounded-lg px-4 py-3 text-sm"
+                onChange={(e) => setEditNoticeDescription(e.target.value)}
+                placeholder={language === "zh-HK" ? "公告內容" : "Notice description"}
+                value={editNoticeDescription}
+              />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <input
+                accept="image/*"
+                className="app-input w-full rounded-lg px-4 py-3 text-sm"
+                onChange={(event) => handleNoticeImageSelection(event.target.files)}
+                type="file"
+              />
+              {editNoticeImagePreview ? (
+                <img
+                  alt={language === "zh-HK" ? "公告預覽" : "Notice preview"}
+                  className="max-h-72 w-full rounded-2xl object-cover"
+                  src={editNoticeImagePreview}
+                />
+              ) : (
+                <p className="text-sm text-muted">
+                  {language === "zh-HK" ? "請上載公告圖片。" : "Upload a notice image."}
+                </p>
+              )}
+            </div>
+          )}
+
+          <p className="text-xs text-muted">
+            {language === "zh-HK"
+              ? "公告內容僅支援「表單公告」或「圖片公告」。"
+              : "Building notice content supports only Form Notice or Image Notice."}
+          </p>
+
           <div className="flex gap-3">
             <button
               className="flex-1 rounded-full bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:opacity-50"
@@ -479,6 +651,54 @@ export function HomeScreen() {
       </Modal>
     </div>
   );
+}
+
+function serializeFormNotice(input: { title: string; dateTime: string; description: string }) {
+  return `FORM_NOTICE::${JSON.stringify(input)}`;
+}
+
+function serializeImageNotice(imageUrl: string) {
+  return `IMAGE_NOTICE::${imageUrl}`;
+}
+
+function parseBuildingNotice(raw: string):
+  | { mode: "form"; title: string; dateTime: string; description: string }
+  | { mode: "image"; imageUrl: string } {
+  if (raw.startsWith("IMAGE_NOTICE::")) {
+    const imageUrl = raw.replace("IMAGE_NOTICE::", "").trim();
+    return { imageUrl, mode: "image" };
+  }
+
+  if (raw.startsWith("FORM_NOTICE::")) {
+    try {
+      const parsed = JSON.parse(raw.replace("FORM_NOTICE::", "")) as {
+        dateTime?: string;
+        description?: string;
+        title?: string;
+      };
+
+      return {
+        dateTime: parsed.dateTime ?? "",
+        description: parsed.description ?? "",
+        mode: "form",
+        title: parsed.title ?? "",
+      };
+    } catch {
+      return {
+        dateTime: "",
+        description: raw,
+        mode: "form",
+        title: "",
+      };
+    }
+  }
+
+  return {
+    dateTime: "",
+    description: raw,
+    mode: "form",
+    title: "",
+  };
 }
 
 function WeatherStatusVisual({

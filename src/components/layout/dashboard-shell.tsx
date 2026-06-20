@@ -36,9 +36,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [snoozeNoticesForToday, setSnoozeNoticesForToday] = useState(false);
   const notifications = dashboardData.notificationsByLanguage[language] ?? [];
   const faqItems = sharedContent.faqItemsByLanguage[language] ?? [];
-  const buildingNotices = useMemo(() => notifications, [notifications]);
+  const buildingNotices = useMemo(
+    () => notifications.filter((item) => isBuildingNotice(item)),
+    [notifications],
+  );
   const noticeDismissKey = useMemo(
     () => `to-link-notice-dismiss-until:${profile.id}`,
+    [profile.id],
+  );
+  const noticeSessionSeenKey = useMemo(
+    () => `to-link-notice-session-seen:${profile.id}`,
     [profile.id],
   );
   const currentBuildingNotice = buildingNotices[buildingNoticeIndex] ?? null;
@@ -50,15 +57,21 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
     const rawDismissUntil = window.localStorage.getItem(noticeDismissKey);
     const dismissUntil = rawDismissUntil ? Number(rawDismissUntil) : Number.NaN;
+    const alreadyHandledThisSession = window.sessionStorage.getItem(noticeSessionSeenKey) === "1";
+
+    if (alreadyHandledThisSession) {
+      return;
+    }
 
     if (Number.isFinite(dismissUntil) && Date.now() < dismissUntil) {
+      window.sessionStorage.setItem(noticeSessionSeenKey, "1");
       return;
     }
 
     setSnoozeNoticesForToday(false);
     setBuildingNoticeIndex(0);
     setBuildingNoticeOpen(true);
-  }, [buildingNotices, noticeDismissKey]);
+  }, [buildingNotices, noticeDismissKey, noticeSessionSeenKey]);
 
   function closeInfoPanelWithReset() {
     setFeedbackFiles([]);
@@ -72,6 +85,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       } else {
         window.localStorage.removeItem(noticeDismissKey);
       }
+
+      // Prevent this popup from reappearing during the current login session.
+      window.sessionStorage.setItem(noticeSessionSeenKey, "1");
     }
 
     setBuildingNoticeOpen(false);
@@ -429,4 +445,33 @@ function getNextNoonTimestamp() {
   }
 
   return noon.getTime();
+}
+
+function isBuildingNotice(item: { title: string; description: string }) {
+  const haystack = `${item.title} ${item.description}`.toLowerCase();
+
+  const buildingKeywords = [
+    "fire drill",
+    "evacuation",
+    "lift",
+    "elevator",
+    "repair",
+    "maintenance",
+    "construction",
+    "noise",
+    "building notice",
+    "fire",
+    "消防",
+    "演習",
+    "火警",
+    "升降機",
+    "電梯",
+    "維修",
+    "工程",
+    "施工",
+    "噪音",
+    "公告",
+  ];
+
+  return buildingKeywords.some((keyword) => haystack.includes(keyword));
 }

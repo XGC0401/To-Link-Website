@@ -727,9 +727,14 @@ export async function savePersistedDashboardData(dashboardPatch: Partial<Dashboa
 export async function savePersistedAdminAnnouncement(announcement: string) {
   const services = getFirebaseServices();
   const firestore = services?.db;
+  const currentEmail = services?.auth.currentUser?.email?.toLowerCase();
   
   if (!firestore) {
     throw new Error("Firebase services not available");
+  }
+
+  if (currentEmail !== "admin@admin.com") {
+    throw new Error("Only admin@admin.com can edit building notices.");
   }
 
   const sharedContentRef = doc(firestore, "appData", "sharedContent");

@@ -611,6 +611,15 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                       return;
                     }
 
+                    if (email.toLowerCase() === "admin@admin.com" && state.password !== "admin123") {
+                      toast.error(
+                        language === "zh-HK"
+                          ? "管理員帳戶密碼不正確。"
+                          : "Incorrect admin account password.",
+                      );
+                      return;
+                    }
+
                     await setPersistence(
                       services.auth,
                       state.rememberMe ? browserLocalPersistence : browserSessionPersistence,
@@ -641,6 +650,15 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
 
                   if (!email) {
                     toast.error(t(language, "auth.error.enterEmail"));
+                    return;
+                  }
+
+                  if (email === "admin@admin.com") {
+                    toast.error(
+                      language === "zh-HK"
+                        ? "此電郵為系統管理員專用，不能註冊。"
+                        : "This email is reserved for the system admin and cannot be registered.",
+                    );
                     return;
                   }
 
