@@ -2427,7 +2427,7 @@ function normalizeDeletedUsersDocument(value: unknown): DeletedUsersDocument {
             username: username || undefined,
           } satisfies DeletedUserEntry;
         })
-        .filter((entry): entry is DeletedUserEntry => entry !== null)
+        .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
     : [];
 
   const uids = Array.from(new Set([
