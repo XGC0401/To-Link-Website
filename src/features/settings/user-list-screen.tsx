@@ -112,9 +112,28 @@ export function UserListScreen() {
                   {language === "zh-HK" ? "沒有找到用戶" : "No users found"}
                 </p>
               </div>
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-1">
+              {filteredUsers.map((user) => (
+                <div
+                  key={user.id}
+                  className="flex items-start gap-4 rounded-[24px] border border-border bg-panel-strong p-4"
+                >
+                  <div className="relative flex-shrink-0">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">
+                      {user.avatar}
+                    </div>
+                    <div
+                      className={cn(
+                        "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-panel-strong",
+                        getStatusColor(user.status),
+                      )}
+                    />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="truncate font-semibold text-foreground">
+                      <h3 className="font-semibold text-foreground truncate">
                         {user.name}
                       </h3>
                       <span
