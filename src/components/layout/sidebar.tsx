@@ -116,6 +116,7 @@ export function Sidebar() {
   const [expandedGroups, setExpandedGroups] = useState(
     () => new Set<string>(),
   );
+  const scaleClasses = getSidebarScaleClasses(fontScale);
 
   function toggleGroup(labelKey: string) {
     if (!sidebarOpen) {
@@ -209,6 +210,7 @@ export function Sidebar() {
                 icon={item.icon}
                 active={pathname === item.href}
                 collapsed={!sidebarOpen}
+                fontScale={fontScale}
                 label={t(language, item.labelKey)}
               />
             );
@@ -228,16 +230,17 @@ export function Sidebar() {
             <div key={item.labelKey} className="space-y-1">
               <button
                 className={cn(
-                  "flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-medium text-muted transition",
+                  "flex w-full items-center gap-3 rounded-2xl text-left font-medium text-muted transition",
+                  scaleClasses.groupButton,
                   isGroupActive && "bg-accent-soft text-accent-strong",
                 )}
                 onClick={() => toggleGroup(item.labelKey)}
                 type="button"
               >
-                <Icon className={cn("h-4.5 w-4.5 shrink-0", isGroupActive ? undefined : groupColorClass)} />
+                <Icon className={cn(scaleClasses.icon, "shrink-0", isGroupActive ? undefined : groupColorClass)} />
                 {sidebarOpen ? (
                   <>
-                    <span className="flex-1">{t(language, item.labelKey)}</span>
+                    <span className={cn("flex-1", scaleClasses.label)}>{t(language, item.labelKey)}</span>
                     {shouldExpand ? (
                       <ChevronDown className="h-4 w-4" />
                     ) : (
@@ -262,6 +265,7 @@ export function Sidebar() {
                         icon={child.icon}
                         active={pathname === child.href}
                         collapsed={!sidebarOpen}
+                        fontScale={fontScale}
                         label={t(language, child.labelKey)}
                       />
                     );
@@ -299,7 +303,10 @@ export function Sidebar() {
                           {t(language, "control.language")}
                         </p>
                         <button
-                          className="flex w-full items-center justify-between gap-2 rounded-2xl border border-border bg-panel-strong px-3 py-2.5 text-sm font-semibold text-muted transition hover:text-foreground"
+                          className={cn(
+                            "flex w-full items-center justify-between gap-2 rounded-2xl border border-border bg-panel-strong font-semibold text-muted transition hover:text-foreground",
+                            scaleClasses.languageButton,
+                          )}
                           onClick={toggleLanguage}
                           type="button"
                         >
@@ -322,16 +329,17 @@ export function Sidebar() {
         <div className="space-y-1">
           <button
             className={cn(
-              "flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-medium text-muted transition",
+              "flex w-full items-center gap-3 rounded-2xl text-left font-medium text-muted transition",
+              scaleClasses.groupButton,
               activeInfoPanel && "bg-accent-soft text-accent-strong",
             )}
             onClick={() => toggleGroup("nav.info")}
             type="button"
           >
-            <CircleHelp className={cn("h-4.5 w-4.5 shrink-0", activeInfoPanel ? undefined : "text-slate-400")} />
+            <CircleHelp className={cn(scaleClasses.icon, "shrink-0", activeInfoPanel ? undefined : "text-slate-400")} />
             {sidebarOpen ? (
               <>
-                <span className="flex-1">{t(language, "nav.info")}</span>
+                <span className={cn("flex-1", scaleClasses.label)}>{t(language, "nav.info")}</span>
                 {expandedGroups.has("nav.info") ? (
                   <ChevronDown className="h-4 w-4" />
                 ) : (
@@ -354,14 +362,15 @@ export function Sidebar() {
                       key={item.labelKey}
                       href={item.href}
                       className={cn(
-                        "flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-medium transition",
+                        "flex w-full items-center gap-3 rounded-2xl text-left font-medium transition",
+                        scaleClasses.groupButton,
                         isActive
                           ? "bg-accent text-white"
                           : "text-muted hover:bg-panel-strong hover:text-foreground",
                       )}
                     >
-                      <Icon className={cn("h-4 w-4 shrink-0", !isActive && iconColorMap[item.icon])} />
-                      <span>{t(language, item.labelKey)}</span>
+                      <Icon className={cn(scaleClasses.icon, "shrink-0", !isActive && iconColorMap[item.icon])} />
+                      <span className={scaleClasses.label}>{t(language, item.labelKey)}</span>
                     </Link>
                   );
                 }
@@ -373,7 +382,8 @@ export function Sidebar() {
                   <button
                     key={item.labelKey}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-medium transition",
+                      "flex w-full items-center gap-3 rounded-2xl text-left font-medium transition",
+                      scaleClasses.groupButton,
                       isOpen
                         ? "bg-accent text-white"
                         : "text-muted hover:bg-panel-strong hover:text-foreground",
@@ -381,8 +391,8 @@ export function Sidebar() {
                     onClick={() => handleActionItem(item)}
                     type="button"
                   >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span>{t(language, item.labelKey)}</span>
+                    <Icon className={cn(scaleClasses.icon, "shrink-0")} />
+                    <span className={scaleClasses.label}>{t(language, item.labelKey)}</span>
                   </button>
                 );
               })}
@@ -395,15 +405,16 @@ export function Sidebar() {
         <div className="mt-3 border-t border-border/80 pt-3">
           <button
             className={cn(
-              "flex w-full items-center gap-3 rounded-2xl border border-rose-200/80 bg-rose-50/70 px-3 py-2.5 text-left text-sm font-medium text-rose-700 transition",
+              "flex w-full items-center gap-3 rounded-2xl border border-rose-200/80 bg-rose-50/70 text-left font-medium text-rose-700 transition",
+              scaleClasses.groupButton,
               "hover:border-rose-300 hover:bg-rose-100/80 hover:text-rose-800",
               !sidebarOpen && "justify-center",
             )}
             onClick={() => handleActionItem(signOutItem)}
             type="button"
           >
-            <LogOut className="h-4.5 w-4.5 shrink-0" />
-            {sidebarOpen ? <span>{t(language, signOutItem.labelKey)}</span> : null}
+            <LogOut className={cn(scaleClasses.icon, "shrink-0")} />
+            {sidebarOpen ? <span className={scaleClasses.label}>{t(language, signOutItem.labelKey)}</span> : null}
           </button>
         </div>
       ) : null}
@@ -414,31 +425,73 @@ export function Sidebar() {
 function SidebarRouteLink({
   active,
   collapsed,
+  fontScale,
   href,
   icon,
   label,
 }: {
   active: boolean;
   collapsed: boolean;
+  fontScale: FontScale;
   href: string;
   icon: NavigationIcon;
   label: string;
 }) {
   const Icon = iconMap[icon];
   const colorClass = iconColorMap[icon];
+  const scaleClasses = getSidebarScaleClasses(fontScale);
 
   return (
     <Link
       className={cn(
-        "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition",
+        "flex items-center gap-3 rounded-2xl font-medium transition",
+        scaleClasses.routeButton,
         active
           ? "bg-accent text-white shadow-lg shadow-accent/25"
           : "text-muted hover:bg-panel-strong hover:text-foreground",
       )}
       href={href}
     >
-      <Icon className={cn("h-4.5 w-4.5 shrink-0", active ? "text-white" : colorClass)} />
-      {collapsed ? null : <span>{label}</span>}
+      <Icon className={cn(scaleClasses.icon, "shrink-0", active ? "text-white" : colorClass)} />
+      {collapsed ? null : <span className={scaleClasses.label}>{label}</span>}
     </Link>
   );
+}
+
+function getSidebarScaleClasses(fontScale: FontScale) {
+  switch (fontScale) {
+    case "s":
+      return {
+        groupButton: "px-2.5 py-2 text-sm",
+        icon: "h-4 w-4",
+        label: "text-sm",
+        languageButton: "px-3 py-2 text-sm",
+        routeButton: "px-2.5 py-2 text-sm",
+      };
+    case "b":
+      return {
+        groupButton: "px-3.5 py-3 text-base",
+        icon: "h-[1.25rem] w-[1.25rem]",
+        label: "text-base",
+        languageButton: "px-4 py-3 text-base",
+        routeButton: "px-3.5 py-3 text-base",
+      };
+    case "l":
+      return {
+        groupButton: "px-4 py-3.5 text-lg",
+        icon: "h-[1.375rem] w-[1.375rem]",
+        label: "text-lg",
+        languageButton: "px-4 py-3.5 text-lg",
+        routeButton: "px-4 py-3.5 text-lg",
+      };
+    case "m":
+    default:
+      return {
+        groupButton: "px-3 py-2.5 text-sm",
+        icon: "h-4.5 w-4.5",
+        label: "text-sm",
+        languageButton: "px-3 py-2.5 text-sm",
+        routeButton: "px-3 py-2.5 text-sm",
+      };
+  }
 }

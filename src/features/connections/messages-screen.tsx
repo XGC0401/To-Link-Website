@@ -1,6 +1,6 @@
 "use client";
 
-import { Languages, MoreHorizontal, Pencil, Search, Send, Trash2, Users, Paperclip, X } from "lucide-react";
+import { Languages, MoreHorizontal, Pencil, Search, Send, Trash2, Users, Paperclip, Settings2, X } from "lucide-react";
 import { useMemo, useState, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -72,6 +72,13 @@ export function MessagesScreen() {
 
   function getMessageKey(roomId: string, messageId: string) {
     return `${roomId}:${messageId}`;
+  }
+
+  function getRoomPreview(room: (typeof connections.chatRooms)[number]) {
+    const latestMessage = room.messages[room.messages.length - 1];
+    const previewText = latestMessage?.content?.trim() || room.preview;
+
+    return previewText.replace(/\s+/g, " ");
   }
 
   async function handleToggleTranslation(roomId: string, messageId: string, content: string) {
@@ -218,9 +225,9 @@ export function MessagesScreen() {
           <div className="min-h-0 overflow-y-auto pr-1">
             <div className="space-y-3">
               {filteredRooms.map((room) => (
-                <div key={room.id} className="relative flex items-stretch gap-1">
+                <div key={room.id} className="relative">
                   <button
-                    className={room.id === activeRoom?.id ? "flex flex-1 items-center gap-3 rounded-[24px] border border-accent bg-accent-soft p-4 text-left" : "flex flex-1 items-center gap-3 rounded-[24px] border border-border bg-panel-strong p-4 text-left"}
+                    className={room.id === activeRoom?.id ? "flex w-full items-center gap-3 rounded-[24px] border border-accent bg-accent-soft p-4 pr-12 text-left" : "flex w-full items-center gap-3 rounded-[24px] border border-border bg-panel-strong p-4 pr-12 text-left"}
                     onClick={() => setActiveRoomId(room.id)}
                     type="button"
                   >
@@ -236,16 +243,17 @@ export function MessagesScreen() {
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-1 truncate text-sm text-muted">{room.preview}</p>
+                      <p className="mt-1 truncate text-sm text-muted">{getRoomPreview(room)}</p>
                     </div>
                   </button>
-                  <div className="relative flex items-center">
+                  <div className="absolute right-3 top-3">
                     <button
-                      className="flex items-center rounded-full p-2 text-muted transition hover:bg-accent/10 hover:text-foreground"
+                      aria-label={t(language, "messages.roomOptions")}
+                      className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-panel/90 text-muted transition hover:border-accent/40 hover:bg-panel hover:text-foreground"
                       onClick={(e) => { e.stopPropagation(); setRoomMenuId(roomMenuId === room.id ? null : room.id); }}
                       type="button"
                     >
-                      <MoreHorizontal className="h-4 w-4" />
+                      <Settings2 className="h-4 w-4" />
                     </button>
                     {roomMenuId === room.id && (
                       <div className="absolute right-0 top-full z-20 mt-1 min-w-36 rounded-2xl border border-border bg-panel shadow-lg">
@@ -479,10 +487,10 @@ export function MessagesScreen() {
                 />
                 <div className="flex flex-col gap-2 self-end">
                   <button
-                    className="rounded-full bg-muted p-3 text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-full border border-border bg-panel p-3 text-muted transition hover:border-accent/40 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                     disabled={uploadingMedia}
                     onClick={() => fileInputRef.current?.click()}
-                    title="Attach media or documents"
+                    title={t(language, "messages.attachMedia")}
                     type="button"
                   >
                     <Paperclip className="h-4 w-4" />

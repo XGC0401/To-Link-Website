@@ -327,27 +327,32 @@ export function usePersistedSharedContent() {
 
 export function usePersistedPosts() {
   const { language } = useToLink();
-  // SECURITY: Only load user-specific post overrides from the current user's profile.
-  // The full feed is seeded globally and merged with any per-user overrides.
-  const state = useSeededUserDocument<PostsDocument>({
+  const sharedState = useSeededFirestoreDocument<PostsDocument>({
+    parse: normalizePostsDocument,
+    path: ["appData", "posts"],
+    seedData: POSTS_SEED,
+  });
+  const overrideState = useSeededUserDocument<PostsDocument>({
     pathFactory: (uid) => ["userProfiles", uid, "appData", "postOverrides"],
     parse: normalizePostsDocument,
     seedData: POSTS_OVERRIDES_SEED,
   });
   const mergedPosts = useMemo(
-    () => mergePersistedPosts(POSTS_SEED.items, state.data.items),
-    [state.data.items],
+    () => mergePersistedPosts(sharedState.data.items, overrideState.data.items),
+    [overrideState.data.items, sharedState.data.items],
   );
   const localizedData = useMemo(
     () => ({
-      ...state.data,
+      ...sharedState.data,
+      ...overrideState.data,
       items: localizeFeedItems(language, mergedPosts),
     }),
-    [language, mergedPosts, state.data],
+    [language, mergedPosts, overrideState.data, sharedState.data],
   );
 
   return {
-    ...state,
+    ...sharedState,
+    ...overrideState,
     data: localizedData,
     items: localizedData.items,
   };
@@ -2047,27 +2052,27 @@ async function saveSharedChatRoomsDocument(documentValue: SharedChatRoomsDocumen
 }
 
 async function loadEditablePostsDocument() {
-  // SECURITY: Only load user-specific posts from their own profile
-  // All posts are now stored per-user in userProfiles/{uid}/appData/postOverrides
-  const overridePosts = await loadCurrentUserDocument(
-    ["appData", "postOverrides"],
-    POSTS_OVERRIDES_SEED,
-    normalizePostsDocument
-  );
+  const [sharedPosts, overridePosts] = await Promise.all([
+    loadSharedDocument(["appData", "posts"], POSTS_SEED, normalizePostsDocument),
+    loadCurrentUserDocument(["appData", "postOverrides"], POSTS_OVERRIDES_SEED, normalizePostsDocument),
+  ]);
 
   return {
-    items: mergePersistedPosts(POSTS_SEED.items, overridePosts?.items ?? []),
+    items: mergePersistedPosts(sharedPosts.items, overridePosts?.items ?? []),
   } satisfies PostsDocument;
 }
 
 async function persistEditablePostsDocument(documentValue: PostsDocument) {
-  // SECURITY: Save only to user-specific posts location
-  // This ensures posts are private and only accessible to the post owner
   const normalizedDocument = {
     items: documentValue.items.map((item) => preparePersistedPostItem(item)),
   } satisfies PostsDocument;
 
-  return saveCurrentUserDocument(["appData", "postOverrides"], normalizedDocument);
+  const [sharedSaved, privateSaved] = await Promise.all([
+    saveSharedDocument(["appData", "posts"], normalizedDocument),
+    saveCurrentUserDocument(["appData", "postOverrides"], normalizedDocument),
+  ]);
+
+  return sharedSaved || privateSaved;
 }
 
 async function loadCurrentUserChatRoomOverride(roomId: string) {

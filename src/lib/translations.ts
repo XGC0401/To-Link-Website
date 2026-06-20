@@ -302,12 +302,14 @@ export type CopyKey =
   | "messages.translate"
   | "messages.translating"
   | "messages.original"
+  | "messages.attachMedia"
   | "messages.attachments"
   | "messages.messageDeleted"
   | "messages.edited"
   | "messages.editMessage"
   | "messages.deleteMessage"
   | "messages.renameRoom"
+  | "messages.roomOptions"
   | "messages.deleteRoom"
   | "friends.search"
   | "friends.unfriend"
@@ -736,12 +738,14 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "messages.translate": "Translate",
     "messages.translating": "Translating...",
     "messages.original": "Original",
+    "messages.attachMedia": "Attach media or documents",
     "messages.attachments": "Attachments ({n})",
     "messages.messageDeleted": "Message Deleted",
     "messages.edited": "(edited)",
     "messages.editMessage": "Edit",
     "messages.deleteMessage": "Delete",
     "messages.renameRoom": "Rename",
+    "messages.roomOptions": "Chat room options",
     "messages.deleteRoom": "Delete room",
     "friends.search": "Search usernames",
     "friends.unfriend": "Unfriend",
@@ -1169,12 +1173,14 @@ const copy: Record<Language, Record<CopyKey, string>> = {
     "messages.translate": "翻譯",
     "messages.translating": "翻譯中...",
     "messages.original": "原文",
+    "messages.attachMedia": "附加媒體或文件",
     "messages.attachments": "附件 ({n})",
     "messages.messageDeleted": "已刪除訊息",
     "messages.edited": "（已編輯）",
     "messages.editMessage": "編輯",
     "messages.deleteMessage": "刪除",
     "messages.renameRoom": "更改名稱",
+    "messages.roomOptions": "聊天室選項",
     "messages.deleteRoom": "刪除對話",
     "friends.search": "搜尋用戶名",
     "friends.unfriend": "取消好友",

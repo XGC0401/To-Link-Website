@@ -1125,7 +1125,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
           </div>
         }
       >
-        <div className="grid h-full grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 overflow-y-auto pr-1 xl:grid-cols-[repeat(auto-fit,minmax(320px,1fr))]">
+        <div className="grid h-full items-start grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 overflow-y-auto pr-1 xl:grid-cols-[repeat(auto-fit,minmax(320px,1fr))]">
           {filteredItems.map((item) => {
             const author = getPostAuthor(item);
             const likedByCurrentUser = Boolean(item.likedByUserIds?.includes(profile.id));
@@ -1154,7 +1154,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
             return (
               <article
                 key={item.id}
-                className="relative flex min-h-[24rem] flex-col rounded-[28px] border border-border bg-panel-strong p-5"
+                className="relative flex h-fit min-h-0 flex-col rounded-[28px] border border-border bg-panel-strong p-5"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
