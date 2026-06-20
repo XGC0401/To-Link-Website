@@ -10,6 +10,7 @@ import { Modal } from "@/components/ui/modal";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { useDashboardData } from "@/lib/dashboard-data-context";
 import { usePersistedCurrentUserProfile } from "@/hooks/use-persisted-app-data";
+import { parseBuildingAnnouncement } from "@/lib/building-announcement";
 import {
   cloudinarySetupHint,
   uploadFilesToCloudinary,
@@ -32,22 +33,20 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [feedbackFiles, setFeedbackFiles] = useState<File[]>([]);
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
   const [buildingNoticeOpen, setBuildingNoticeOpen] = useState(false);
-  const [buildingNoticeIndex, setBuildingNoticeIndex] = useState(0);
   const [snoozeNoticesForToday, setSnoozeNoticesForToday] = useState(false);
   const notifications = dashboardData.notificationsByLanguage[language] ?? [];
   const faqItems = sharedContent.faqItemsByLanguage[language] ?? [];
-  const buildingNotices = useMemo(
-    () => notifications.filter((item) => isBuildingNotice(item)),
-    [notifications],
+  const parsedBuildingAnnouncement = useMemo(
+    () => parseBuildingAnnouncement(sharedContent.buildingAnnouncement || ""),
+    [sharedContent.buildingAnnouncement],
   );
   const noticeDismissKey = useMemo(
     () => `to-link-notice-dismiss-until:${profile.id}`,
     [profile.id],
   );
-  const currentBuildingNotice = buildingNotices[buildingNoticeIndex] ?? null;
 
   useEffect(() => {
-    if (!buildingNotices.length || typeof window === "undefined") {
+    if (!sharedContent.buildingAnnouncement || typeof window === "undefined") {
       return;
     }
 
@@ -59,9 +58,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     }
 
     setSnoozeNoticesForToday(false);
-    setBuildingNoticeIndex(0);
     setBuildingNoticeOpen(true);
-  }, [buildingNotices, noticeDismissKey]);
+  }, [noticeDismissKey, sharedContent.buildingAnnouncement]);
 
   function closeInfoPanelWithReset() {
     setFeedbackFiles([]);
@@ -125,12 +123,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
         <div className="relative flex min-w-0 flex-1 flex-col p-3 md:p-4">
           <TopBar
-            hasBuildingNotices={buildingNotices.length > 0}
+              hasBuildingNotices={Boolean(sharedContent.buildingAnnouncement)}
             onOpenBuildingNotices={() => {
               setSnoozeNoticesForToday(false);
-              setBuildingNoticeIndex((current) =>
-                Math.min(current, Math.max(buildingNotices.length - 1, 0)),
-              );
               setBuildingNoticeOpen(true);
             }}
           />
@@ -369,52 +364,34 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
       <Modal
         onClose={closeBuildingNotices}
-        open={buildingNoticeOpen && Boolean(currentBuildingNotice)}
+        open={buildingNoticeOpen && Boolean(sharedContent.buildingAnnouncement)}
         title={language === "zh-HK" ? "大廈通告" : "Building Announcement"}
         width="max-w-2xl"
       >
-        {currentBuildingNotice ? (
+        {sharedContent.buildingAnnouncement ? (
           <div className="space-y-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-strong">
-              {language === "zh-HK" ? "通告" : "Announcement"} {buildingNoticeIndex + 1}/{buildingNotices.length}
-            </p>
-            <h3 className="text-xl font-semibold text-foreground">{currentBuildingNotice.title}</h3>
-            <p className="text-sm text-muted">{currentBuildingNotice.timeLabel}</p>
-            <p className="text-sm leading-7 text-muted">{currentBuildingNotice.description}</p>
-
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <button
-                  className="rounded-full border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-45"
-                  disabled={buildingNoticeIndex === 0}
-                  onClick={() => setBuildingNoticeIndex((current) => Math.max(current - 1, 0))}
-                  type="button"
-                >
-                  &lt;
-                </button>
-                <button
-                  className="rounded-full border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-45"
-                  disabled={buildingNoticeIndex >= buildingNotices.length - 1}
-                  onClick={() =>
-                    setBuildingNoticeIndex((current) =>
-                      Math.min(current + 1, buildingNotices.length - 1),
-                    )
-                  }
-                  type="button"
-                >
-                  &gt;
-                </button>
+            {parsedBuildingAnnouncement.mode === "image" ? (
+              <img
+                alt={language === "zh-HK" ? "大廈通告圖片" : "Building announcement image"}
+                className="max-h-72 w-full rounded-2xl object-cover"
+                src={parsedBuildingAnnouncement.imageUrl}
+              />
+            ) : (
+              <div className="space-y-2">
+                <h3 className="text-xl font-semibold text-foreground">{parsedBuildingAnnouncement.title}</h3>
+                <p className="text-sm text-muted">{parsedBuildingAnnouncement.timeLabel}</p>
+                <p className="text-sm leading-7 text-muted">{parsedBuildingAnnouncement.description}</p>
               </div>
+            )}
 
-              <label className="flex items-center gap-2 text-sm text-muted">
-                <input
-                  checked={snoozeNoticesForToday}
-                  onChange={(event) => setSnoozeNoticesForToday(event.target.checked)}
-                  type="checkbox"
-                />
-                {language === "zh-HK" ? "今天不再顯示" : "Stop showing for today"}
-              </label>
-            </div>
+            <label className="flex items-center gap-2 text-sm text-muted">
+              <input
+                checked={snoozeNoticesForToday}
+                onChange={(event) => setSnoozeNoticesForToday(event.target.checked)}
+                type="checkbox"
+              />
+              {language === "zh-HK" ? "今天不再顯示" : "Stop showing for today"}
+            </label>
           </div>
         ) : null}
       </Modal>
@@ -428,41 +405,4 @@ function getEndOfDayTimestamp() {
   endOfDay.setHours(23, 59, 59, 999);
 
   return endOfDay.getTime();
-}
-
-function isBuildingNotice(item: { title: string; description: string; critical?: boolean }) {
-  const haystack = `${item.title} ${item.description}`.toLowerCase();
-
-  const buildingKeywords = [
-    "fire drill",
-    "evacuation",
-    "lift",
-    "elevator",
-    "repair",
-    "maintenance",
-    "construction",
-    "noise",
-    "building notice",
-    "fire",
-    "消防",
-    "演習",
-    "火警",
-    "升降機",
-    "電梯",
-    "維修",
-    "工程",
-    "施工",
-    "噪音",
-    "公告",
-  ];
-
-  if (haystack.includes("form_notice::") || haystack.includes("image_notice::")) {
-    return true;
-  }
-
-  if (item.title.toLowerCase().includes("notice") || item.title.includes("通知") || item.critical) {
-    return true;
-  }
-
-  return buildingKeywords.some((keyword) => haystack.includes(keyword));
 }

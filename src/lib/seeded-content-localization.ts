@@ -364,6 +364,20 @@ export function localizeAdminMessage(language: Language, message: string) {
   return message === t("en", "home.adminMessageContent") ? t("zh-HK", "home.adminMessageContent") : message;
 }
 
+const SEEDED_BUILDING_ANNOUNCEMENT_EN =
+  "FORM_NOTICE::{\"title\":\"Fire drill notice\",\"timeLabel\":\"24 Jun 2026 · 10:00\",\"description\":\"Building-wide fire drill on 24 Jun 2026 at 10:00. Please use staircases and gather at the podium assembly point.\"}";
+
+const SEEDED_BUILDING_ANNOUNCEMENT_ZH =
+  "FORM_NOTICE::{\"title\":\"消防演習通知\",\"timeLabel\":\"2026年6月24日 · 10:00\",\"description\":\"全棟將於 2026年6月24日 10:00 進行消防演習。請使用樓梯並到平台集合點集合。\"}";
+
+export function localizeBuildingAnnouncement(language: Language, message: string) {
+  if (language !== "zh-HK") {
+    return message;
+  }
+
+  return message === SEEDED_BUILDING_ANNOUNCEMENT_EN ? SEEDED_BUILDING_ANNOUNCEMENT_ZH : message;
+}
+
 export function localizeFeedItems(language: Language, items: FeedItem[]) {
   return applyOverrides(language, items, zhPostOverrides);
 }

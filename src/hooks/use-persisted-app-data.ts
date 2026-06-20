@@ -25,6 +25,7 @@ import { useToLink } from "@/lib/app-state";
 import { getFirebaseServices } from "@/lib/firebase";
 import {
   localizeAdminMessage,
+  localizeBuildingAnnouncement,
   localizeAiConversations,
   localizeAvailableSlots,
   localizeBookings,
@@ -63,6 +64,7 @@ import { useSeededFirestoreDocument, useSeededUserDocument } from "@/hooks/use-s
 
 interface SharedContentDocument {
   adminMessage: string;
+  buildingAnnouncement: string;
   advertisementsByLanguage: Record<Language, Advertisement[]>;
   communityEvents: CommunityItem[];
   documents: DocumentItem[];
@@ -190,6 +192,8 @@ export const DEFAULT_AVAILABLE_SLOTS = [
 
 const SHARED_CONTENT_SEED: SharedContentDocument = {
   adminMessage,
+  buildingAnnouncement:
+    "FORM_NOTICE::{\"title\":\"Fire drill notice\",\"timeLabel\":\"24 Jun 2026 · 10:00\",\"description\":\"Building-wide fire drill on 24 Jun 2026 at 10:00. Please use staircases and gather at the podium assembly point.\"}",
   advertisementsByLanguage: {
     en: getAdvertisements("en"),
     "zh-HK": getAdvertisements("zh-HK"),
@@ -322,6 +326,7 @@ export function usePersistedSharedContent() {
     () => ({
       ...state.data,
       adminMessage: localizeAdminMessage(language, state.data.adminMessage),
+      buildingAnnouncement: localizeBuildingAnnouncement(language, state.data.buildingAnnouncement),
       communityEvents: localizeCommunityItems(language, state.data.communityEvents),
       documents: localizeDocuments(language, state.data.documents),
       facilities: localizeFacilities(language, state.data.facilities),
@@ -333,6 +338,7 @@ export function usePersistedSharedContent() {
     ...state,
     data: localizedData,
     adminMessage: localizedData.adminMessage,
+    buildingAnnouncement: localizedData.buildingAnnouncement,
     advertisementsByLanguage: state.data.advertisementsByLanguage,
     communityEvents: localizedData.communityEvents,
     documents: localizedData.documents,
@@ -751,6 +757,33 @@ export async function savePersistedAdminAnnouncement(announcement: string) {
   await setDoc(sharedContentRef, {
     ...currentData,
     adminMessage: announcement,
+  }, { merge: true });
+
+  return true;
+}
+
+export async function savePersistedBuildingAnnouncement(announcement: string) {
+  const services = getFirebaseServices();
+  const firestore = services?.db;
+  const currentEmail = services?.auth.currentUser?.email?.toLowerCase();
+  const isHardcodedAdminSession =
+    typeof window !== "undefined" && window.localStorage.getItem(ADMIN_SESSION_STORAGE_KEY) === "1";
+
+  if (!firestore) {
+    throw new Error("Firebase services not available");
+  }
+
+  if (!isHardcodedAdminSession && currentEmail !== "admin@admin.com") {
+    throw new Error("Only admin@admin.com can edit the building announcement.");
+  }
+
+  const sharedContentRef = doc(firestore, "appData", "sharedContent");
+  const current = await getDoc(sharedContentRef);
+  const currentData = current.data() ?? {};
+
+  await setDoc(sharedContentRef, {
+    ...currentData,
+    buildingAnnouncement: announcement,
   }, { merge: true });
 
   return true;
@@ -2226,6 +2259,10 @@ function normalizeSharedContentDocument(value: unknown): SharedContentDocument {
 
   return {
     adminMessage: typeof record.adminMessage === "string" ? record.adminMessage : SHARED_CONTENT_SEED.adminMessage,
+    buildingAnnouncement:
+      typeof record.buildingAnnouncement === "string"
+        ? record.buildingAnnouncement
+        : SHARED_CONTENT_SEED.buildingAnnouncement,
     advertisementsByLanguage: normalizeLocalizedArrayCollection(
       record.advertisementsByLanguage,
       SHARED_CONTENT_SEED.advertisementsByLanguage,

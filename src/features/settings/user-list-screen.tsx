@@ -6,6 +6,7 @@ import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
+import { AvatarBadge } from "@/components/ui/avatar-badge";
 import { useAdminUsersList } from "@/hooks/use-admin-users-list";
 import { usePersistedCurrentUserProfile } from "@/hooks/use-persisted-app-data";
 import { t } from "@/lib/translations";
@@ -78,6 +79,7 @@ export function UserListScreen() {
           : "View all registered users and monitor their online status"
       }
       title={language === "zh-HK" ? "用戶列表" : "User List"}
+      contentClassName="min-h-0"
       toolbar={
         <label className="app-input flex items-center gap-3 rounded-full px-4 py-3 text-sm w-full">
           <Search className="h-4 w-4 text-muted" />
@@ -101,7 +103,8 @@ export function UserListScreen() {
           </div>
         </div>
       ) : (
-        <div className="space-y-3 overflow-y-auto">
+        <div className="flex h-full min-h-0 flex-col">
+          <div className="flex-1 min-h-0 space-y-3 overflow-y-auto pr-1">
           {filteredUsers.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center text-muted">
@@ -109,28 +112,9 @@ export function UserListScreen() {
                   {language === "zh-HK" ? "沒有找到用戶" : "No users found"}
                 </p>
               </div>
-            </div>
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-1">
-              {filteredUsers.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex items-start gap-4 rounded-[24px] border border-border bg-panel-strong p-4"
-                >
-                  <div className="relative flex-shrink-0">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">
-                      {user.avatar}
-                    </div>
-                    <div
-                      className={cn(
-                        "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-panel-strong",
-                        getStatusColor(user.status),
-                      )}
-                    />
-                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-foreground truncate">
+                      <h3 className="truncate font-semibold text-foreground">
                         {user.name}
                       </h3>
                       <span
@@ -164,21 +148,15 @@ export function UserListScreen() {
                       </span>
                     </div>
                     <div className="mt-2 flex gap-3 text-xs text-muted">
-                      {user.phone && (
-                        <span title="Phone">{user.phone}</span>
-                      )}
-                      {user.country && (
-                        <span title="Country">{user.country}</span>
-                      )}
-                      {user.jobTitle && (
-                        <span title="Job Title">{user.jobTitle}</span>
-                      )}
+                      {user.phone ? <span title="Phone">{user.phone}</span> : null}
+                      {user.country ? <span title="Country">{user.country}</span> : null}
+                      {user.jobTitle ? <span title="Job Title">{user.jobTitle}</span> : null}
                     </div>
-                    {user.bio && (
-                      <p className="mt-2 text-sm text-muted line-clamp-2">
+                    {user.bio ? (
+                      <p className="mt-2 line-clamp-2 text-sm text-muted">
                         {user.bio}
                       </p>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               ))}
