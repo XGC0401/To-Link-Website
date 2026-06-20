@@ -69,6 +69,7 @@ export function FriendsScreen() {
     if (profile.role === "admin") {
       // Show all non-friend users for admin
       return [...new Map(combined.map((friend) => [friend.id, friend])).values()]
+        .filter((friend) => !deletedUserIds.has(friend.id))
         .filter((friend) => !friendIds.has(friend.id))
         .filter((friend) => (currentUserId ? friend.id !== currentUserId : true)) // Exclude current user when known
         .filter((friend) => {
@@ -84,6 +85,7 @@ export function FriendsScreen() {
       combined = [...combined, ...adminFriends];
       
       return [...new Map(combined.map((friend) => [friend.id, friend])).values()]
+        .filter((friend) => !deletedUserIds.has(friend.id))
         .filter((friend) => !friendIds.has(friend.id))
         .filter((friend) => (currentUserId ? friend.id !== currentUserId : true)) // Exclude current user when known
         .filter((friend) => {
@@ -94,7 +96,7 @@ export function FriendsScreen() {
           return `${friend.name} ${friend.username}`.toLowerCase().includes(searchTerm);
         });
     }
-  }, [connections.friendSuggestions, friendIds, query, realAccounts, currentUserId, profile.role, adminIds, users]);
+  }, [connections.friendSuggestions, deletedUserIds, friendIds, query, realAccounts, currentUserId, profile.role, adminIds]);
 
   async function handleOpenChat(friend: FriendCard) {
     const roomId = await openPersistedDirectChat({

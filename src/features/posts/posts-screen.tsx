@@ -1125,7 +1125,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
           </div>
         }
       >
-        <div className="grid h-full items-start grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 overflow-y-auto pr-1 xl:grid-cols-[repeat(auto-fit,minmax(320px,1fr))]">
+        <div className="grid h-full items-start grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6 overflow-y-auto pr-1 pb-2 xl:grid-cols-[repeat(auto-fit,minmax(320px,1fr))] xl:gap-7">
           {filteredItems.map((item) => {
             const author = getPostAuthor(item);
             const likedByCurrentUser = Boolean(item.likedByUserIds?.includes(profile.id));
