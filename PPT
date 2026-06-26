@@ -1,0 +1,58 @@
+I want you to use a file called "PPT", the content inside the file must based on all the files in this current To-Link project. I want you to make a business version power point, you need to follow the "PPT" file's format to keep adding new pages. You need to show the technical things used for some main functions, make the technical explanation as detail as possible, for example, "I use firebase to store data", this is wrong, here is the correct version "I use cloud database firebase with rules to store data", this version shows more technical things. Finally, make this power point a 10 - 15 minute long. And for each page, do not use a very long sentence, try make it short without cutting the important parts. Do not make the whole power point the same style, for example, do not use bullet point/list for the whole power point, use some short sentence to explain things to make the power point pattern looks not boring, but if some page are talking the same thing, do not change its style, keep the style untill that section is finish.
+
+
+
+
+MUST use the following points to build the power point pages.
+1. This is a smart community app.
+2. Why make this app/What are the aims of this app.
+3. Is this app have market? is this app have any adventage compare to other apps?
+4. Feature plan/implement functions
+5. Implemented techonoglogy and implemented technology for main functions.
+
+The below are the future add functions.
+1. Notify users when regulation updates.
+2. Add go to other app/website buttons, like in Nearby pages and more.
+3. User can notify other user that their construct date/time.
+
+
+
+Pg.1===================================================
+
+Title: To-Link
+Sub-title: A smart community app
+Description: Designed to strengthen the relationships between residents living in the same building or neighbourhood.
+
+Pg.2===================================================
+
+Title: Menu
+1. first section
+2. second section
+3. third section
+4. fourth section
+and so on...
+
+Pg.3===================================================
+
+Title: first section
+Content: 
+
+Pg.4===================================================
+
+Title: 
+
+Pg.5===================================================
+
+Title: 
+
+Pg.6===================================================
+
+Title: 
+
+Pg.7===================================================
+
+Title: 
+
+Pg.8===================================================
+
+and so on...

@@ -1125,7 +1125,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
           </div>
         }
       >
-        <div className="h-full columns-1 gap-6 overflow-y-auto pr-1 pb-2 md:columns-2 xl:columns-3 xl:gap-7">
+        <div className="h-full overflow-y-auto pr-1 pb-2 space-y-6 xl:space-y-7">
           {filteredItems.map((item) => {
             const author = getPostAuthor(item);
             const likedByCurrentUser = Boolean(item.likedByUserIds?.includes(profile.id));
@@ -1154,7 +1154,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
             return (
               <article
                 key={item.id}
-                className="relative mb-6 break-inside-avoid flex min-h-0 flex-col rounded-[28px] border border-border bg-panel-strong p-5 xl:mb-7"
+                className="relative flex min-h-0 flex-col rounded-[28px] border border-border bg-panel-strong p-5"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
