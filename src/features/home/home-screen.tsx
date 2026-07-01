@@ -26,7 +26,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { Modal } from "@/components/ui/modal";
-import { openPersistedDirectChat, usePersistedCurrentUserProfile, usePersistedPosts, usePersistedSharedContent, savePersistedAdvertisements, savePersistedAdminAnnouncement, savePersistedBuildingAnnouncement } from "@/hooks/use-persisted-app-data";
+import { openPersistedDirectChat, usePersistedCurrentUserProfile, usePersistedPosts, usePersistedSharedContent, savePersistedAdvertisements, savePersistedAdminAnnouncements, savePersistedBuildingAnnouncements } from "@/hooks/use-persisted-app-data";
 import { formatAppDateTime, formatAppDayLabel } from "@/lib/date";
 import { uploadFilesToCloudinary, validateMediaSelection } from "@/lib/media-upload";
 import { parseBuildingAnnouncement, serializeFormBuildingAnnouncement, serializeImageBuildingAnnouncement, type BuildingAnnouncementMode } from "@/lib/building-announcement";
@@ -109,25 +109,32 @@ export function HomeScreen() {
   const posts = usePersistedPosts();
   const { profile } = usePersistedCurrentUserProfile();
   const [activeAd, setActiveAd] = useState(0);
+  const [activeAdminMsg, setActiveAdminMsg] = useState(0);
+  const [activeBuildingAnn, setActiveBuildingAnn] = useState(0);
   const [currentTimeLabel, setCurrentTimeLabel] = useState("");
   const [editAnnouncementOpen, setEditAnnouncementOpen] = useState(false);
-  const [editBuildingAnnouncementMode, setEditBuildingAnnouncementMode] = useState<BuildingAnnouncementMode>("form");
-  const [editBuildingAnnouncementTitle, setEditBuildingAnnouncementTitle] = useState("");
-  const [editBuildingAnnouncementTimeLabel, setEditBuildingAnnouncementTimeLabel] = useState("");
-  const [editBuildingAnnouncementDescription, setEditBuildingAnnouncementDescription] = useState("");
-  const [editBuildingAnnouncementImageFile, setEditBuildingAnnouncementImageFile] = useState<File | null>(null);
-  const [editBuildingAnnouncementImagePreview, setEditBuildingAnnouncementImagePreview] = useState("");
   const [savingAnnouncement, setSavingAnnouncement] = useState(false);
   const [editAdsOpen, setEditAdsOpen] = useState(false);
   const [adsDraft, setAdsDraft] = useState<Advertisement[]>([]);
   const [savingAds, setSavingAds] = useState(false);
   const [editAdminMessageOpen, setEditAdminMessageOpen] = useState(false);
-  const [adminMessageDraft, setAdminMessageDraft] = useState("");
+  const [adminMessagesDraft, setAdminMessagesDraft] = useState<string[]>([]);
   const [savingAdminMessage, setSavingAdminMessage] = useState(false);
+  type BuildingAnnDraftItem = {
+    mode: BuildingAnnouncementMode;
+    title: string;
+    timeLabel: string;
+    description: string;
+    imageFile: File | null;
+    imagePreview: string;
+  };
+  const [buildingAnnsDraft, setBuildingAnnsDraft] = useState<BuildingAnnDraftItem[]>([]);
   const advertisements = sharedContent.advertisementsByLanguage[language] ?? [];
+  const adminMessages = sharedContent.adminMessages ?? [sharedContent.adminMessage ?? ""];
+  const buildingAnnouncements = sharedContent.buildingAnnouncements ?? [sharedContent.buildingAnnouncement ?? ""];
   const parsedBuildingAnnouncement = useMemo(
-    () => parseBuildingAnnouncement(sharedContent.buildingAnnouncement || ""),
-    [sharedContent.buildingAnnouncement],
+    () => parseBuildingAnnouncement(buildingAnnouncements[activeBuildingAnn] ?? buildingAnnouncements[0] ?? ""),
+    [buildingAnnouncements, activeBuildingAnn],
   );
   const activeAdvertisement = advertisements[activeAd] ?? advertisements[0];
   const isAdmin = profile.role === "admin";
@@ -199,98 +206,66 @@ export function HomeScreen() {
         return;
       }
 
-      let payload = "";
-
-      if (editBuildingAnnouncementMode === "form") {
-        if (!editBuildingAnnouncementTitle.trim() || !editBuildingAnnouncementTimeLabel.trim() || !editBuildingAnnouncementDescription.trim()) {
-          toast.error(
-            language === "zh-HK"
-              ? "請填寫完整的大廈通告標題、時間及內容。"
-              : "Please complete title, time label, and description.",
-          );
-          return;
+      const serialized: string[] = [];
+      for (const item of buildingAnnsDraft) {
+        if (item.mode === "form") {
+          if (!item.title.trim() || !item.timeLabel.trim() || !item.description.trim()) {
+            toast.error(language === "zh-HK" ? "請填寫完整的通告標題、時間及內容。" : "Please complete title, time label, and description for every page.");
+            return;
+          }
+          serialized.push(serializeFormBuildingAnnouncement({ title: item.title.trim(), timeLabel: item.timeLabel.trim(), description: item.description.trim() }));
+        } else {
+          let imageUrl = item.imagePreview.trim();
+          if (item.imageFile) {
+            const [upload] = await uploadFilesToCloudinary([item.imageFile]);
+            imageUrl = upload?.secureUrl ?? "";
+          }
+          if (!imageUrl) {
+            toast.error(language === "zh-HK" ? "請先上載大廈通告圖片。" : "Please upload a building announcement image first.");
+            return;
+          }
+          serialized.push(serializeImageBuildingAnnouncement(imageUrl));
         }
-
-        payload = serializeFormBuildingAnnouncement({
-          description: editBuildingAnnouncementDescription.trim(),
-          timeLabel: editBuildingAnnouncementTimeLabel.trim(),
-          title: editBuildingAnnouncementTitle.trim(),
-        });
-      } else {
-        let imageUrl = editBuildingAnnouncementImagePreview.trim();
-
-        if (editBuildingAnnouncementImageFile) {
-          const [upload] = await uploadFilesToCloudinary([editBuildingAnnouncementImageFile]);
-          imageUrl = upload?.secureUrl ?? "";
-        }
-
-        if (!imageUrl) {
-          toast.error(language === "zh-HK" ? "請先上載大廈通告圖片。" : "Please upload a building announcement image first.");
-          return;
-        }
-
-        payload = serializeImageBuildingAnnouncement(imageUrl);
       }
 
-      await savePersistedBuildingAnnouncement(payload);
+      await savePersistedBuildingAnnouncements(serialized);
       setEditAnnouncementOpen(false);
+      setActiveBuildingAnn(0);
       toast.success(language === "zh-HK" ? "大廈通告已更新" : "Building announcement updated");
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : language === "zh-HK"
-            ? "無法保存大廈通告"
-            : "Unable to save the building announcement",
-      );
+      toast.error(error instanceof Error ? error.message : language === "zh-HK" ? "無法保存大廈通告" : "Unable to save the building announcement");
     } finally {
       setSavingAnnouncement(false);
     }
   }
 
-  function openEditAnnouncement() {
-    const parsed = parsedBuildingAnnouncement;
-
+  function parseToDraftItem(serialized: string): { mode: BuildingAnnouncementMode; title: string; timeLabel: string; description: string; imageFile: File | null; imagePreview: string } {
+    const parsed = parseBuildingAnnouncement(serialized);
     if (parsed.mode === "image") {
-      setEditBuildingAnnouncementMode("image");
-      setEditBuildingAnnouncementImagePreview(parsed.imageUrl);
-      setEditBuildingAnnouncementImageFile(null);
-      setEditBuildingAnnouncementTitle("");
-      setEditBuildingAnnouncementTimeLabel("");
-      setEditBuildingAnnouncementDescription("");
-    } else {
-      setEditBuildingAnnouncementMode("form");
-      setEditBuildingAnnouncementTitle(parsed.title);
-      setEditBuildingAnnouncementTimeLabel(parsed.timeLabel);
-      setEditBuildingAnnouncementDescription(parsed.description);
-      setEditBuildingAnnouncementImagePreview("");
-      setEditBuildingAnnouncementImageFile(null);
+      return { mode: "image", title: "", timeLabel: "", description: "", imageFile: null, imagePreview: parsed.imageUrl };
     }
+    return { mode: "form", title: parsed.title, timeLabel: parsed.timeLabel, description: parsed.description, imageFile: null, imagePreview: "" };
+  }
 
+  function openEditAnnouncement() {
+    setBuildingAnnsDraft(buildingAnnouncements.map(parseToDraftItem));
     setEditAnnouncementOpen(true);
   }
 
-  function handleNoticeImageSelection(fileList: FileList | null) {
-    if (!fileList?.length) {
-      return;
-    }
-
+  function handleNoticeImageSelection(idx: number, fileList: FileList | null) {
+    if (!fileList?.length) return;
     const validation = validateMediaSelection(fileList);
-
     if (!validation.valid) {
       toast.error(validation.errors[0] ?? (language === "zh-HK" ? "無效圖片檔案。" : "Invalid image file."));
       return;
     }
-
     const imageFile = validation.images[0];
-
     if (!imageFile) {
       toast.error(language === "zh-HK" ? "請選擇圖片檔案。" : "Please select an image file.");
       return;
     }
-
-    setEditBuildingAnnouncementImageFile(imageFile);
-    setEditBuildingAnnouncementImagePreview(URL.createObjectURL(imageFile));
+    const preview = URL.createObjectURL(imageFile);
+    setBuildingAnnsDraft((draft) => draft.map((item, i) => i === idx ? { ...item, imageFile, imagePreview: preview } : item));
   }
 
   return (
@@ -440,7 +415,7 @@ export function HomeScreen() {
             action={canEditBuildingNotice ? (
               <button
                 className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-panel-strong px-3 py-2 text-foreground transition hover:border-accent/40 hover:text-accent"
-                onClick={() => { setAdminMessageDraft(sharedContent.adminMessage ?? ""); setEditAdminMessageOpen(true); }}
+                onClick={() => { setAdminMessagesDraft([...adminMessages]); setEditAdminMessageOpen(true); }}
                 type="button"
                 title={language === "zh-HK" ? "編輯管理處訊息" : "Edit admin message"}
               >
@@ -449,8 +424,38 @@ export function HomeScreen() {
             ) : undefined}
           />
           <div className="mt-4 flex-1 overflow-y-auto pr-2 text-sm leading-7 text-muted">
-            <p>{sharedContent.adminMessage}</p>
+            <p>{adminMessages[activeAdminMsg] ?? ""}</p>
           </div>
+          {adminMessages.length > 1 ? (
+            <div className="mt-3 flex items-center justify-between">
+              <div className="flex gap-2">
+                {adminMessages.map((_, index) => (
+                  <button
+                    key={index}
+                    className={index === activeAdminMsg ? "h-2 w-6 rounded-full bg-accent" : "h-2 w-2 rounded-full bg-accent/30"}
+                    onClick={() => setActiveAdminMsg(index)}
+                    type="button"
+                  />
+                ))}
+              </div>
+              <div className="flex gap-1">
+                <button
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-panel-strong"
+                  onClick={() => setActiveAdminMsg((i) => i === 0 ? adminMessages.length - 1 : i - 1)}
+                  type="button"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-panel-strong"
+                  onClick={() => setActiveAdminMsg((i) => (i + 1) % adminMessages.length)}
+                  type="button"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ) : null}
         </Panel>
 
         <Panel className="flex min-h-[15.5rem] min-w-0 flex-col overflow-hidden">
@@ -472,7 +477,7 @@ export function HomeScreen() {
             {parsedBuildingAnnouncement.mode === "image" ? (
               <img
                 alt={language === "zh-HK" ? "大廈通告圖片" : "Building announcement image"}
-                className="max-h-72 w-full rounded-2xl object-cover"
+                className="max-h-60 w-full rounded-2xl object-cover"
                 src={parsedBuildingAnnouncement.imageUrl}
               />
             ) : (
@@ -485,6 +490,36 @@ export function HomeScreen() {
               </div>
             )}
           </div>
+          {buildingAnnouncements.length > 1 ? (
+            <div className="mt-3 flex items-center justify-between">
+              <div className="flex gap-2">
+                {buildingAnnouncements.map((_, index) => (
+                  <button
+                    key={index}
+                    className={index === activeBuildingAnn ? "h-2 w-6 rounded-full bg-accent" : "h-2 w-2 rounded-full bg-accent/30"}
+                    onClick={() => setActiveBuildingAnn(index)}
+                    type="button"
+                  />
+                ))}
+              </div>
+              <div className="flex gap-1">
+                <button
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-panel-strong"
+                  onClick={() => setActiveBuildingAnn((i) => i === 0 ? buildingAnnouncements.length - 1 : i - 1)}
+                  type="button"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-panel-strong"
+                  onClick={() => setActiveBuildingAnn((i) => (i + 1) % buildingAnnouncements.length)}
+                  type="button"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ) : null}
         </Panel>
 
         {/* Best of the Month card removed — now accessible via Trophy button in top bar */}
@@ -512,95 +547,92 @@ export function HomeScreen() {
       <Modal
         open={editAnnouncementOpen}
         onClose={() => setEditAnnouncementOpen(false)}
-        title={language === "zh-HK" ? "編輯大廈通告" : "Edit Building Announcement"}
+        title={language === "zh-HK" ? "編輯大廈通告" : "Edit Building Announcements"}
       >
         <div className="space-y-4">
-          <div className="flex gap-2">
-            <button
-              className={editBuildingAnnouncementMode === "form" ? "flex-1 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white" : "flex-1 rounded-full border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground"}
-              onClick={() => setEditBuildingAnnouncementMode("form")}
-              type="button"
-            >
-              {language === "zh-HK" ? "表單通告" : "Form Notice"}
-            </button>
-            <button
-              className={editBuildingAnnouncementMode === "image" ? "flex-1 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white" : "flex-1 rounded-full border border-border bg-panel px-4 py-2 text-sm font-semibold text-foreground"}
-              onClick={() => setEditBuildingAnnouncementMode("image")}
-              type="button"
-            >
-              {language === "zh-HK" ? "圖片通告" : "Image Notice"}
-            </button>
-          </div>
-
-          {editBuildingAnnouncementMode === "form" ? (
-            <div className="space-y-3">
-              <input
-                className="app-input w-full rounded-lg px-4 py-3 text-sm"
-                onChange={(e) => setEditBuildingAnnouncementTitle(e.target.value)}
-                placeholder={language === "zh-HK" ? "通告標題" : "Announcement title"}
-                value={editBuildingAnnouncementTitle}
-              />
-              <input
-                className="app-input w-full rounded-lg px-4 py-3 text-sm"
-                onChange={(e) => setEditBuildingAnnouncementTimeLabel(e.target.value)}
-                placeholder={language === "zh-HK" ? "日期 / 時間" : "Date / Time"}
-                value={editBuildingAnnouncementTimeLabel}
-              />
-              <textarea
-                className="app-input min-h-[160px] w-full rounded-lg px-4 py-3 text-sm"
-                onChange={(e) => setEditBuildingAnnouncementDescription(e.target.value)}
-                placeholder={language === "zh-HK" ? "通告內容" : "Announcement description"}
-                value={editBuildingAnnouncementDescription}
-              />
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <input
-                accept="image/*"
-                className="app-input w-full rounded-lg px-4 py-3 text-sm"
-                onChange={(event) => handleNoticeImageSelection(event.target.files)}
-                type="file"
-              />
-              {editBuildingAnnouncementImagePreview ? (
-                <img
-                  alt={language === "zh-HK" ? "通告預覽" : "Announcement preview"}
-                  className="max-h-72 w-full rounded-2xl object-cover"
-                  src={editBuildingAnnouncementImagePreview}
-                />
+          {buildingAnnsDraft.map((item, idx) => (
+            <div key={idx} className="space-y-2 rounded-2xl border border-border p-3">
+              <p className="text-xs font-semibold text-muted">{language === "zh-HK" ? `第 ${idx + 1} 頁` : `Page ${idx + 1}`}</p>
+              <div className="flex gap-2">
+                <button
+                  className={item.mode === "form" ? "flex-1 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-white" : "flex-1 rounded-full border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-foreground"}
+                  onClick={() => setBuildingAnnsDraft((d) => d.map((x, i) => i === idx ? { ...x, mode: "form" } : x))}
+                  type="button"
+                >
+                  {language === "zh-HK" ? "表單通告" : "Form Notice"}
+                </button>
+                <button
+                  className={item.mode === "image" ? "flex-1 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-white" : "flex-1 rounded-full border border-border bg-panel px-3 py-1.5 text-xs font-semibold text-foreground"}
+                  onClick={() => setBuildingAnnsDraft((d) => d.map((x, i) => i === idx ? { ...x, mode: "image" } : x))}
+                  type="button"
+                >
+                  {language === "zh-HK" ? "圖片通告" : "Image Notice"}
+                </button>
+              </div>
+              {item.mode === "form" ? (
+                <div className="space-y-2">
+                  <input
+                    className="app-input w-full rounded-lg px-3 py-2 text-sm"
+                    onChange={(e) => setBuildingAnnsDraft((d) => d.map((x, i) => i === idx ? { ...x, title: e.target.value } : x))}
+                    placeholder={language === "zh-HK" ? "通告標題" : "Announcement title"}
+                    value={item.title}
+                  />
+                  <input
+                    className="app-input w-full rounded-lg px-3 py-2 text-sm"
+                    onChange={(e) => setBuildingAnnsDraft((d) => d.map((x, i) => i === idx ? { ...x, timeLabel: e.target.value } : x))}
+                    placeholder={language === "zh-HK" ? "日期 / 時間" : "Date / Time"}
+                    value={item.timeLabel}
+                  />
+                  <textarea
+                    className="app-input min-h-[100px] w-full rounded-lg px-3 py-2 text-sm"
+                    onChange={(e) => setBuildingAnnsDraft((d) => d.map((x, i) => i === idx ? { ...x, description: e.target.value } : x))}
+                    placeholder={language === "zh-HK" ? "通告內容" : "Announcement description"}
+                    value={item.description}
+                  />
+                </div>
               ) : (
-                <p className="text-sm text-muted">
-                  {language === "zh-HK" ? "請上載通告圖片。" : "Upload an announcement image."}
-                </p>
+                <div className="space-y-2">
+                  <input
+                    accept="image/*"
+                    className="app-input w-full rounded-lg px-3 py-2 text-sm"
+                    onChange={(e) => handleNoticeImageSelection(idx, e.target.files)}
+                    type="file"
+                  />
+                  {item.imagePreview ? (
+                    <img alt={language === "zh-HK" ? "通告預覽" : "Preview"} className="max-h-40 w-full rounded-2xl object-cover" src={item.imagePreview} />
+                  ) : (
+                    <p className="text-xs text-muted">{language === "zh-HK" ? "請上載通告圖片。" : "Upload an announcement image."}</p>
+                  )}
+                </div>
               )}
+              <button
+                className="rounded-full bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600"
+                onClick={() => setBuildingAnnsDraft((d) => d.filter((_, i) => i !== idx))}
+                type="button"
+              >
+                {language === "zh-HK" ? "刪除此頁" : "Delete page"}
+              </button>
             </div>
-          )}
-
-          <p className="text-xs text-muted">
-              {language === "zh-HK"
-              ? "大廈通告只支援「表單通告」或「圖片通告」。"
-              : "Building announcement content supports only Form Notice or Image Notice."}
-          </p>
-
+          ))}
           <div className="flex gap-3">
             <button
-              className="flex-1 rounded-full bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:opacity-50"
+              className="flex-1 rounded-full border border-border bg-panel-strong px-4 py-3 text-sm font-semibold text-foreground"
+              onClick={() => setBuildingAnnsDraft((d) => [...d, { mode: "form", title: "", timeLabel: "", description: "", imageFile: null, imagePreview: "" }])}
+              type="button"
+            >
+              {language === "zh-HK" ? "新增頁面" : "Add page"}
+            </button>
+            <button
+              className="flex-1 rounded-full bg-accent px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
               disabled={savingAnnouncement}
               onClick={handleSaveAnnouncement}
               type="button"
             >
               {savingAnnouncement ? (language === "zh-HK" ? "保存中..." : "Saving...") : (language === "zh-HK" ? "保存" : "Save")}
             </button>
-            <button
-              className="flex-1 rounded-full border border-border bg-panel-strong px-4 py-3 text-sm font-semibold text-foreground transition hover:border-accent/40"
-              onClick={() => setEditAnnouncementOpen(false)}
-              type="button"
-            >
-              {language === "zh-HK" ? "取消" : "Cancel"}
-            </button>
           </div>
         </div>
       </Modal>
-
       <Modal
         open={editAdsOpen}
         onClose={() => setEditAdsOpen(false)}
@@ -697,24 +729,33 @@ export function HomeScreen() {
         </div>
       </Modal>
 
-      <Modal open={editAdminMessageOpen} onClose={() => setEditAdminMessageOpen(false)} title={language === "zh-HK" ? "編輯管理處訊息" : "Edit Admin Message"}>
+      <Modal open={editAdminMessageOpen} onClose={() => setEditAdminMessageOpen(false)} title={language === "zh-HK" ? "編輯管理處訊息" : "Edit Admin Messages"}>
         <div className="flex flex-col gap-4">
-          <h2 className="font-display text-xl font-semibold text-foreground">
-            {language === "zh-HK" ? "編輯管理處訊息" : "Edit Admin Message"}
-          </h2>
-          <textarea
-            className="app-input min-h-[10rem] w-full rounded-[12px] px-4 py-3 text-sm"
-            value={adminMessageDraft}
-            onChange={(e) => setAdminMessageDraft(e.target.value)}
-            placeholder={language === "zh-HK" ? "管理處訊息..." : "Admin message..."}
-          />
+          {adminMessagesDraft.map((msg, idx) => (
+            <div key={idx} className="space-y-2 rounded-2xl border border-border p-3">
+              <p className="text-xs font-semibold text-muted">{language === "zh-HK" ? `第 ${idx + 1} 頁` : `Page ${idx + 1}`}</p>
+              <textarea
+                className="app-input min-h-[8rem] w-full rounded-[12px] px-4 py-3 text-sm"
+                value={msg}
+                onChange={(e) => setAdminMessagesDraft((d) => d.map((m, i) => i === idx ? e.target.value : m))}
+                placeholder={language === "zh-HK" ? "管理處訊息..." : "Admin message..."}
+              />
+              <button
+                className="rounded-full bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600"
+                onClick={() => setAdminMessagesDraft((d) => d.filter((_, i) => i !== idx))}
+                type="button"
+              >
+                {language === "zh-HK" ? "刪除此頁" : "Delete page"}
+              </button>
+            </div>
+          ))}
           <div className="flex gap-3">
             <button
               className="flex-1 rounded-full border border-border bg-panel-strong px-4 py-3 text-sm font-semibold text-foreground"
-              onClick={() => setEditAdminMessageOpen(false)}
+              onClick={() => setAdminMessagesDraft((d) => [...d, ""])}
               type="button"
             >
-              {language === "zh-HK" ? "取消" : "Cancel"}
+              {language === "zh-HK" ? "新增頁面" : "Add page"}
             </button>
             <button
               className="flex-1 rounded-full bg-accent px-4 py-3 text-sm font-semibold text-white"
@@ -722,11 +763,12 @@ export function HomeScreen() {
               onClick={async () => {
                 setSavingAdminMessage(true);
                 try {
-                  await savePersistedAdminAnnouncement(adminMessageDraft);
+                  await savePersistedAdminAnnouncements(adminMessagesDraft);
                   setEditAdminMessageOpen(false);
-                  toast.success(language === "zh-HK" ? "訊息已更新" : "Message updated");
+                  setActiveAdminMsg(0);
+                  toast.success(language === "zh-HK" ? "訊息已更新" : "Messages updated");
                 } catch (error) {
-                  toast.error(language === "zh-HK" ? "無法保存訊息" : "Unable to save message");
+                  toast.error(language === "zh-HK" ? "無法保存訊息" : "Unable to save messages");
                 } finally {
                   setSavingAdminMessage(false);
                 }

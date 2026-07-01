@@ -64,7 +64,9 @@ import { useSeededFirestoreDocument, useSeededUserDocument } from "@/hooks/use-s
 
 interface SharedContentDocument {
   adminMessage: string;
+  adminMessages: string[];
   buildingAnnouncement: string;
+  buildingAnnouncements: string[];
   advertisementsByLanguage: Record<Language, Advertisement[]>;
   communityEvents: CommunityItem[];
   documents: DocumentItem[];
@@ -192,8 +194,12 @@ export const DEFAULT_AVAILABLE_SLOTS = [
 
 const SHARED_CONTENT_SEED: SharedContentDocument = {
   adminMessage,
+  adminMessages: [adminMessage],
   buildingAnnouncement:
     "FORM_NOTICE::{\"title\":\"Fire drill notice\",\"timeLabel\":\"24 Jun 2026 · 10:00\",\"description\":\"Building-wide fire drill on 24 Jun 2026 at 10:00. Please use staircases and gather at the podium assembly point.\"}",
+  buildingAnnouncements: [
+    "FORM_NOTICE::{\"title\":\"Fire drill notice\",\"timeLabel\":\"24 Jun 2026 · 10:00\",\"description\":\"Building-wide fire drill on 24 Jun 2026 at 10:00. Please use staircases and gather at the podium assembly point.\"}",
+  ],
   advertisementsByLanguage: {
     en: getAdvertisements("en"),
     "zh-HK": getAdvertisements("zh-HK"),
@@ -331,7 +337,9 @@ export function usePersistedSharedContent() {
     () => ({
       ...state.data,
       adminMessage: localizeAdminMessage(language, state.data.adminMessage),
+      adminMessages: state.data.adminMessages.map((m) => localizeAdminMessage(language, m)),
       buildingAnnouncement: localizeBuildingAnnouncement(language, state.data.buildingAnnouncement),
+      buildingAnnouncements: state.data.buildingAnnouncements.map((a) => localizeBuildingAnnouncement(language, a)),
       communityEvents: localizeCommunityItems(language, state.data.communityEvents),
       documents: localizeDocuments(language, state.data.documents),
       facilities: localizeFacilities(language, state.data.facilities),
@@ -343,7 +351,9 @@ export function usePersistedSharedContent() {
     ...state,
     data: localizedData,
     adminMessage: localizedData.adminMessage,
+    adminMessages: localizedData.adminMessages,
     buildingAnnouncement: localizedData.buildingAnnouncement,
+    buildingAnnouncements: localizedData.buildingAnnouncements,
     advertisementsByLanguage: state.data.advertisementsByLanguage,
     communityEvents: localizedData.communityEvents,
     documents: localizedData.documents,
@@ -924,6 +934,57 @@ export async function savePersistedBuildingAnnouncement(announcement: string) {
   await setDoc(sharedContentRef, {
     ...currentData,
     buildingAnnouncement: announcement,
+  }, { merge: true });
+
+  return true;
+}
+
+export async function savePersistedAdminAnnouncements(messages: string[]) {
+  const services = getFirebaseServices();
+  const firestore = services?.db;
+  const currentEmail = services?.auth.currentUser?.email?.toLowerCase();
+  const isHardcodedAdminSession =
+    typeof window !== "undefined" && window.localStorage.getItem(ADMIN_SESSION_STORAGE_KEY) === "1";
+
+  if (!firestore) throw new Error("Firebase services not available");
+  if (!isHardcodedAdminSession && currentEmail !== "admin@admin.com") {
+    throw new Error("Only admin@admin.com can edit admin messages.");
+  }
+
+  const sharedContentRef = doc(firestore, "appData", "sharedContent");
+  const current = await getDoc(sharedContentRef);
+  const currentData = current.data() ?? {};
+
+  await setDoc(sharedContentRef, {
+    ...currentData,
+    // Keep the legacy single-string field in sync for backward compat
+    adminMessage: messages[0] ?? "",
+    adminMessages: messages,
+  }, { merge: true });
+
+  return true;
+}
+
+export async function savePersistedBuildingAnnouncements(announcements: string[]) {
+  const services = getFirebaseServices();
+  const firestore = services?.db;
+  const currentEmail = services?.auth.currentUser?.email?.toLowerCase();
+  const isHardcodedAdminSession =
+    typeof window !== "undefined" && window.localStorage.getItem(ADMIN_SESSION_STORAGE_KEY) === "1";
+
+  if (!firestore) throw new Error("Firebase services not available");
+  if (!isHardcodedAdminSession && currentEmail !== "admin@admin.com") {
+    throw new Error("Only admin@admin.com can edit building announcements.");
+  }
+
+  const sharedContentRef = doc(firestore, "appData", "sharedContent");
+  const current = await getDoc(sharedContentRef);
+  const currentData = current.data() ?? {};
+
+  await setDoc(sharedContentRef, {
+    ...currentData,
+    buildingAnnouncement: announcements[0] ?? "",
+    buildingAnnouncements: announcements,
   }, { merge: true });
 
   return true;
@@ -2401,12 +2462,25 @@ async function persistSharedChatRoomWithFallback(
 function normalizeSharedContentDocument(value: unknown): SharedContentDocument {
   const record = asRecord(value);
 
+  const adminMessage = typeof record.adminMessage === "string" ? record.adminMessage : SHARED_CONTENT_SEED.adminMessage;
+  const buildingAnnouncement =
+    typeof record.buildingAnnouncement === "string"
+      ? record.buildingAnnouncement
+      : SHARED_CONTENT_SEED.buildingAnnouncement;
+
+  // Support multi-page arrays; fall back to the legacy single-string field
+  const adminMessages: string[] = Array.isArray(record.adminMessages)
+    ? (record.adminMessages as unknown[]).filter((s): s is string => typeof s === "string")
+    : [adminMessage];
+  const buildingAnnouncements: string[] = Array.isArray(record.buildingAnnouncements)
+    ? (record.buildingAnnouncements as unknown[]).filter((s): s is string => typeof s === "string")
+    : [buildingAnnouncement];
+
   return {
-    adminMessage: typeof record.adminMessage === "string" ? record.adminMessage : SHARED_CONTENT_SEED.adminMessage,
-    buildingAnnouncement:
-      typeof record.buildingAnnouncement === "string"
-        ? record.buildingAnnouncement
-        : SHARED_CONTENT_SEED.buildingAnnouncement,
+    adminMessage,
+    adminMessages: adminMessages.length > 0 ? adminMessages : [adminMessage],
+    buildingAnnouncement,
+    buildingAnnouncements: buildingAnnouncements.length > 0 ? buildingAnnouncements : [buildingAnnouncement],
     advertisementsByLanguage: normalizeLocalizedArrayCollection(
       record.advertisementsByLanguage,
       SHARED_CONTENT_SEED.advertisementsByLanguage,
