@@ -709,6 +709,141 @@ export async function deletePersistedCurrentUserAccountData({
   return true;
 }
 
+export async function adminDeletePersistedUser(user: {
+  id: string;
+  email: string;
+  username: string;
+  phone: string;
+}) {
+  const services = getFirebaseServices();
+
+  if (!services) {
+    return false;
+  }
+
+  const isHardcodedAdminSession =
+    typeof window !== "undefined" && window.localStorage.getItem(ADMIN_SESSION_STORAGE_KEY) === "1";
+  const currentEmail = services.auth.currentUser?.email?.toLowerCase();
+
+  if (!isHardcodedAdminSession && currentEmail !== "admin@admin.com") {
+    throw new Error("Only admin@admin.com can delete user accounts.");
+  }
+
+  const { id: uid, email, username, phone } = user;
+
+  // Add to deletedUsers registry
+  const deletedUsersRef = doc(services.db, "appData", "deletedUsers");
+  const deletedUsersSnap = await getDoc(deletedUsersRef);
+  const deletedUsersDoc = normalizeDeletedUsersDocument(
+    deletedUsersSnap.exists() ? deletedUsersSnap.data() : DELETED_USERS_SEED,
+  );
+  const normalizedEmail = email?.trim().toLowerCase();
+  const nextUidSet = new Set(deletedUsersDoc.uids);
+  const nextEmailSet = new Set(deletedUsersDoc.emails.map((value) => value.trim().toLowerCase()));
+  nextUidSet.add(uid);
+
+  if (normalizedEmail) {
+    nextEmailSet.add(normalizedEmail);
+  }
+
+  const nextEntriesByUid = new Map(deletedUsersDoc.entries.map((entry) => [entry.uid, entry]));
+  const existingEntry = nextEntriesByUid.get(uid);
+
+  nextEntriesByUid.set(uid, {
+    deletedAt: existingEntry?.deletedAt ?? new Date().toISOString(),
+    email: normalizedEmail ?? existingEntry?.email,
+    uid,
+    username: username || existingEntry?.username,
+  });
+
+  await setDoc(
+    deletedUsersRef,
+    {
+      emails: [...nextEmailSet],
+      entries: [...nextEntriesByUid.values()],
+      uids: [...nextUidSet],
+    } satisfies DeletedUsersDocument,
+    { merge: true },
+  );
+
+  // Redact deleted user's messages in shared chat rooms
+  const currentChatRooms = await loadSharedChatRoomsDocument();
+
+  if (currentChatRooms) {
+    const roomsWithUser = currentChatRooms.rooms.filter((room) => room.memberIds.includes(uid));
+
+    if (roomsWithUser.length > 0) {
+      const updatedRooms = currentChatRooms.rooms.map((room) => {
+        if (!room.memberIds.includes(uid)) {
+          return room;
+        }
+
+        return {
+          ...room,
+          memberIds: room.memberIds.filter((id) => id !== uid),
+          memberProfiles: room.memberProfiles.filter((member) => member.id !== uid),
+          messages: room.messages.map((message) =>
+            message.senderId === uid
+              ? { ...message, senderName: "Deleted User", senderAvatar: "D" }
+              : message,
+          ),
+        };
+      });
+
+      await saveSharedChatRoomsDocument({ rooms: updatedRooms });
+    }
+  }
+
+  // Delete Firestore profile and sub-collection documents in a batch
+  const batch = writeBatch(services.db);
+  const references = [
+    doc(services.db, "userProfiles", uid),
+    doc(services.db, "userProfiles", uid, "appData", "aiConversations"),
+    doc(services.db, "userProfiles", uid, "appData", "blockedUsers"),
+    doc(services.db, "userProfiles", uid, "appData", "bookings"),
+    doc(services.db, "userProfiles", uid, "appData", "chatRoomOverrides"),
+    doc(services.db, "userProfiles", uid, "appData", "connections"),
+    doc(services.db, "userProfiles", uid, "appData", "dashboard"),
+    doc(services.db, "userProfiles", uid, "appData", "postOverrides"),
+  ];
+
+  for (const reference of references) {
+    batch.delete(reference);
+  }
+
+  const handleKeys = [normalizeUserHandleLookup(username), normalizeUserHandleLookup(phone)].filter(Boolean);
+
+  for (const handleKey of handleKeys) {
+    batch.delete(doc(services.db, "userHandles", handleKey));
+  }
+
+  await batch.commit();
+
+  // Delete calendar events in batches
+  const calendarEventsRef = collection(services.db, "userProfiles", uid, "calendarEvents");
+  const BATCH_SIZE = 100;
+  let hasMore = true;
+
+  while (hasMore) {
+    const calendarEventsSnapshot = await getDocs(query(calendarEventsRef, limit(BATCH_SIZE)));
+
+    if (calendarEventsSnapshot.empty) {
+      hasMore = false;
+      break;
+    }
+
+    const deleteBatch = writeBatch(services.db);
+
+    for (const calendarEvent of calendarEventsSnapshot.docs) {
+      deleteBatch.delete(calendarEvent.ref);
+    }
+
+    await deleteBatch.commit();
+  }
+
+  return true;
+}
+
 export async function appendPersistedProfileHistory(entry: ProfileHistoryItem) {
   const currentDashboard = await loadCurrentUserDocument(["appData", "dashboard"], DASHBOARD_SEED, normalizeDashboardDocument);
 
@@ -882,6 +1017,10 @@ function preparePersistedPostItem(item: FeedItem): FeedItem {
 
   if (typeof item.foundResolvedByName === "string" && item.foundResolvedByName.trim()) {
     nextItem.foundResolvedByName = item.foundResolvedByName.trim();
+  }
+
+  if (Array.isArray(item.mediaUrls) && item.mediaUrls.length > 0) {
+    nextItem.mediaUrls = item.mediaUrls.filter((url) => typeof url === "string" && url.trim());
   }
 
   return nextItem;

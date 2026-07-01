@@ -93,6 +93,7 @@ export interface FeedItem {
   questApplications?: QuestApplication[];
   lostFoundLeads?: LostFoundLead[];
   owner: boolean;
+  mediaUrls?: string[];
   price?: number;
   reward?: number;
   expiresAt?: string;

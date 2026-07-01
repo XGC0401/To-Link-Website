@@ -118,6 +118,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
   const justClosedItemIdRef = useRef<string | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerFiles, setComposerFiles] = useState<File[]>([]);
+  const [composerPreviews, setComposerPreviews] = useState<Array<{ url: string; isImage: boolean; name: string }>>([]);
   const [composerTitle, setComposerTitle] = useState("");
   const [composerDescription, setComposerDescription] = useState("");
   const [composerTags, setComposerTags] = useState<string[]>([]);
@@ -220,7 +221,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
     return posts.items
       .filter((item) => (mode === "all" ? true : item.category === mode))
       .filter((item) => !blockedUserIds.has(getPostAuthor(item).id))
-      .filter((item) => (includeOwnPosts ? true : !item.owner))
+      .filter((item) => (includeOwnPosts ? true : item.authorId !== profile.id))
       .filter((item) => {
         const haystack = [item.title, item.description, item.tags.join(" "), item.createdAt]
           .join(" ")
@@ -228,7 +229,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
         return haystack.includes(query.toLowerCase());
       })
       .sort((left, right) => sortItems(left, right, sort));
-  }, [blockedUserIds, includeOwnPosts, mode, posts.items, query, sort]);
+  }, [blockedUserIds, includeOwnPosts, mode, posts.items, profile.id, query, sort]);
 
   const pageTitle = {
     all: t(language, "posts.pageTitle.all"),
@@ -255,6 +256,10 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
   }
 
   function closeComposer() {
+    for (const preview of composerPreviews) {
+      URL.revokeObjectURL(preview.url);
+    }
+    setComposerPreviews([]);
     setComposerFiles([]);
     setComposerTitle("");
     setComposerDescription("");
@@ -272,7 +277,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
     setEditDescription(getEditablePostText(item.description));
     setEditTags(item.tags);
     setEditTagInput("");
-    setEditTimeRange(item.expiresAt ?? "");
+    setEditTimeRange(isoToDatetimeLocal(item.expiresAt ?? ""));
     setEditPriceReward(getEditablePostAmount(item));
   }
 
@@ -365,6 +370,13 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
       return;
     }
 
+    const files = Array.from(fileList);
+
+    if (files.length > 5) {
+      toast.error(language === "zh-HK" ? "最多只可選擇 5 個媒體檔案。" : "You can select up to 5 media files.");
+      return;
+    }
+
     const validation = validateMediaSelection(fileList);
 
     if (!validation.valid) {
@@ -372,11 +384,18 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
       return;
     }
 
+    // Revoke old preview URLs before creating new ones
+    for (const preview of composerPreviews) {
+      URL.revokeObjectURL(preview.url);
+    }
+
     setComposerFiles(validation.files);
-    toast.success(
-      language === "zh-HK"
-        ? `已選擇 ${validation.files.length} 個媒體檔案。`
-        : `${validation.files.length} media file(s) selected.`,
+    setComposerPreviews(
+      validation.files.map((file) => ({
+        isImage: file.type.startsWith("image/"),
+        name: file.name,
+        url: URL.createObjectURL(file),
+      })),
     );
   }
 
@@ -444,7 +463,8 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
         likes: 0,
         comments: 0,
         owner: true,
-        expiresAt: composerTimeRange.trim() || undefined,
+        mediaUrls: uploads.length > 0 ? uploads.map((u) => u.secureUrl) : undefined,
+        expiresAt: composerTimeRange ? new Date(composerTimeRange).toISOString() : undefined,
         price:
           (category === "secondHand" || category === "lostFound") && Number.isFinite(parsedPriceReward)
             ? parsedPriceReward
@@ -496,7 +516,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
           translatedDescription.translatedText,
           translatedDescription.sourceLanguage,
         ),
-        expiresAt: editTimeRange.trim(),
+        expiresAt: editTimeRange ? new Date(editTimeRange).toISOString() : undefined,
         price:
           editCandidate.category === "secondHand" || editCandidate.category === "lostFound"
             ? parsedPriceReward
@@ -1175,7 +1195,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
                     </div>
                     <h3 className="mt-3 text-lg font-semibold text-foreground">{item.title}</h3>
                   </div>
-                  {!item.owner ? (
+                  {item.authorId !== profile.id ? (
                     <div className="relative">
                       <button
                         className="rounded-full p-2 text-muted transition hover:bg-panel hover:text-foreground"
@@ -1211,6 +1231,25 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
                 <button className="mt-3 text-left" onClick={() => openSelectedDialog(item)} type="button">
                   <p className="text-sm leading-7 text-muted">{truncate(item.description, 145)}</p>
                 </button>
+
+                {item.mediaUrls && item.mediaUrls.length > 0 ? (
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    {item.mediaUrls.map((url, index) => (
+                      <a
+                        key={index}
+                        href={url}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                      >
+                        <img
+                          alt=""
+                          className="h-24 w-full rounded-[14px] object-cover"
+                          src={url}
+                        />
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   {item.tags.map((tag) => (
@@ -1258,7 +1297,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
                     </button>
                   ) : null}
 
-                  {item.owner ? (
+                  {item.authorId === profile.id ? (
                     <div className="ml-auto flex flex-wrap gap-2">
                       <button
                         className="inline-flex items-center gap-2 rounded-full border border-border bg-panel px-3 py-2 text-xs font-semibold text-foreground"
@@ -1277,7 +1316,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
                     </div>
                   ) : null}
 
-                  {!item.owner && item.category === "quest" ? (
+                  {item.authorId !== profile.id && item.category === "quest" ? (
                     <button
                       className="ml-auto rounded-full bg-accent px-3 py-2 text-xs font-semibold text-white"
                       onClick={() => openSelectedDialog(item)}
@@ -1287,7 +1326,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
                     </button>
                   ) : null}
 
-                  {!item.owner && item.category === "secondHand" ? (
+                  {item.authorId !== profile.id && item.category === "secondHand" ? (
                     <button
                       className="ml-auto rounded-full bg-accent px-3 py-2 text-xs font-semibold text-white"
                       onClick={() => {
@@ -1299,7 +1338,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
                     </button>
                   ) : null}
 
-                  {!item.owner && item.category === "lostFound" ? (
+                  {item.authorId !== profile.id && item.category === "lostFound" ? (
                     <div className="ml-auto flex flex-wrap gap-2">
                       <button
                         className="rounded-full border border-border bg-panel px-3 py-2 text-xs font-semibold text-foreground"
@@ -1367,8 +1406,8 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
             <span className="text-sm font-medium text-foreground">{t(language, "posts.timeRange")}</span>
             <input
               className="app-input w-full rounded-[20px] px-4 py-3"
+              type="datetime-local"
               onChange={(event) => setComposerTimeRange(event.target.value)}
-              placeholder={t(language, "posts.timeRangePlaceholder")}
               value={composerTimeRange}
             />
           </label>
@@ -1392,10 +1431,23 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
               type="file"
             />
           </label>
-          {composerFiles.length ? (
-            <p className="md:col-span-2 text-xs text-muted">
-              {t(language, "posts.selectedFiles").replace("{n}", String(composerFiles.length))}
-            </p>
+          {composerPreviews.length > 0 ? (
+            <div className="md:col-span-2 grid grid-cols-5 gap-2">
+              {composerPreviews.map((preview, index) => (
+                <div
+                  key={index}
+                  className="relative aspect-square overflow-hidden rounded-[14px] border border-border bg-panel"
+                >
+                  {preview.isImage ? (
+                    <img alt={preview.name} className="h-full w-full object-cover" src={preview.url} />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center p-1">
+                      <span className="break-all text-center text-[10px] text-muted">{preview.name}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           ) : null}
           <div className="md:col-span-2 flex justify-end gap-3">
             <button
@@ -1454,8 +1506,8 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
             <span className="text-sm font-medium text-foreground">{t(language, "posts.timeRange")}</span>
             <input
               className="app-input w-full rounded-[20px] px-4 py-3"
+              type="datetime-local"
               onChange={(event) => setEditTimeRange(event.target.value)}
-              placeholder={t(language, "posts.timeRangePlaceholder")}
               value={editTimeRange}
             />
           </label>
@@ -1493,6 +1545,15 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
         {selected ? (
           <div className="space-y-4 text-sm leading-7 text-muted">
             <p>{selected.description}</p>
+            {selected.mediaUrls && selected.mediaUrls.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2">
+                {selected.mediaUrls.map((url, index) => (
+                  <a key={index} href={url} rel="noopener noreferrer" target="_blank">
+                    <img alt="" className="h-32 w-full rounded-[14px] object-cover" src={url} />
+                  </a>
+                ))}
+              </div>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               {selected.tags.map((tag) => (
                 <span key={tag} className="rounded-full bg-accent-soft px-3 py-1 text-xs text-accent-strong">
@@ -2220,6 +2281,18 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
       </Modal>
     </div>
   );
+}
+
+function isoToDatetimeLocal(isoString: string): string {
+  if (!isoString) return "";
+  try {
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  } catch {
+    return "";
+  }
 }
 
 function sortItems(left: FeedItem, right: FeedItem, sort: string) {

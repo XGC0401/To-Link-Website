@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useToLink } from "@/lib/app-state";
 import { FeatureShell } from "@/components/ui/feature-shell";
+import { Modal } from "@/components/ui/modal";
 import { AvatarBadge } from "@/components/ui/avatar-badge";
 import { useAdminUsersList } from "@/hooks/use-admin-users-list";
-import { usePersistedCurrentUserProfile } from "@/hooks/use-persisted-app-data";
+import { adminDeletePersistedUser, usePersistedCurrentUserProfile } from "@/hooks/use-persisted-app-data";
 import { cn } from "@/lib/utils";
 import type { UserProfile } from "@/lib/types";
 
@@ -17,6 +19,8 @@ export function UserListScreen() {
   const { profile, ready } = usePersistedCurrentUserProfile();
   const { users, loading } = useAdminUsersList();
   const [query, setQuery] = useState("");
+  const [deleteCandidate, setDeleteCandidate] = useState<UserProfile | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   useEffect(() => {
     if (ready && profile.role !== "admin") {
@@ -66,7 +70,33 @@ export function UserListScreen() {
     }
   };
 
+  async function handleDeleteUser() {
+    if (!deleteCandidate) return;
+
+    setDeleteSubmitting(true);
+
+    try {
+      await adminDeletePersistedUser({
+        id: deleteCandidate.id,
+        email: deleteCandidate.email,
+        username: deleteCandidate.username,
+        phone: deleteCandidate.phone,
+      });
+      toast.success(
+        language === "zh-HK"
+          ? `${deleteCandidate.name} 的帳號已被刪除。`
+          : `${deleteCandidate.name}'s account has been permanently deleted.`,
+      );
+      setDeleteCandidate(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : (language === "zh-HK" ? "刪除失敗。" : "Deletion failed."));
+    } finally {
+      setDeleteSubmitting(false);
+    }
+  }
+
   return (
+    <>
     <FeatureShell
       contentClassName="min-h-0"
       description={
@@ -159,6 +189,19 @@ export function UserListScreen() {
                       </div>
 
                       {user.bio ? <p className="mt-2 line-clamp-2 text-sm text-muted">{user.bio}</p> : null}
+
+                      {user.id !== profile.id && user.role !== "admin" ? (
+                        <div className="mt-3">
+                          <button
+                            className="inline-flex items-center gap-2 rounded-full border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-100"
+                            onClick={() => setDeleteCandidate(user)}
+                            type="button"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            {language === "zh-HK" ? "永久刪除帳號" : "Delete Account"}
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -174,5 +217,42 @@ export function UserListScreen() {
         </div>
       )}
     </FeatureShell>
+
+    <Modal
+      onClose={() => setDeleteCandidate(null)}
+      open={Boolean(deleteCandidate)}
+      title={language === "zh-HK" ? "永久刪除帳號" : "Delete Account Permanently"}
+    >
+      {deleteCandidate ? (
+        <div className="space-y-4">
+          <p className="text-sm leading-7 text-muted">
+            {language === "zh-HK"
+              ? `你確定要永久刪除 ${deleteCandidate.name} (@${deleteCandidate.username}) 的帳號嗎？此操作無法復原，該用戶的所有資料將被移除。`
+              : `Are you sure you want to permanently delete ${deleteCandidate.name} (@${deleteCandidate.username})'s account? This action cannot be undone and all their data will be removed.`}
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              className="rounded-full border border-border bg-panel px-4 py-3 text-sm font-semibold text-foreground"
+              disabled={deleteSubmitting}
+              onClick={() => setDeleteCandidate(null)}
+              type="button"
+            >
+              {language === "zh-HK" ? "取消" : "Cancel"}
+            </button>
+            <button
+              className="rounded-full bg-rose-600 px-5 py-3 text-sm font-semibold text-white"
+              disabled={deleteSubmitting}
+              onClick={() => { void handleDeleteUser(); }}
+              type="button"
+            >
+              {deleteSubmitting
+                ? (language === "zh-HK" ? "刪除中..." : "Deleting...")
+                : (language === "zh-HK" ? "確認刪除" : "Confirm Delete")}
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </Modal>
+    </>
   );
 }

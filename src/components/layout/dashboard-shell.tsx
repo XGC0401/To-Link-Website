@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { ImageUp, Upload, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
@@ -34,6 +34,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
   const [buildingNoticeOpen, setBuildingNoticeOpen] = useState(false);
   const [snoozeNoticesForToday, setSnoozeNoticesForToday] = useState(false);
+  const announcementShownRef = useRef(false);
   const notifications = dashboardData.notificationsByLanguage[language] ?? [];
   const faqItems = sharedContent.faqItemsByLanguage[language] ?? [];
   const parsedBuildingAnnouncement = useMemo(
@@ -49,6 +50,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     if (!sharedContent.buildingAnnouncement || typeof window === "undefined") {
       return;
     }
+
+    // Prevent re-showing on language switch or poll refresh within the same mount
+    if (announcementShownRef.current) {
+      return;
+    }
+
+    announcementShownRef.current = true;
 
     const rawDismissUntil = window.localStorage.getItem(noticeDismissKey);
     const dismissUntil = rawDismissUntil ? Number(rawDismissUntil) : Number.NaN;
