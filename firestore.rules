@@ -70,11 +70,13 @@ service cloud.firestore {
       allow delete: if signedIn();
 
       match /appData/{docId} {
-        allow read, write: if ownsUser(userId);
+        allow read, create, update: if ownsUser(userId);
+        allow delete: if signedIn();
       }
 
       match /calendarEvents/{eventId} {
-        allow read, write: if ownsUser(userId);
+        allow read, create, update: if ownsUser(userId);
+        allow delete: if signedIn();
       }
     }
   }
