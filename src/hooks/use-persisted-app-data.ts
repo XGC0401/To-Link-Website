@@ -280,7 +280,12 @@ export function usePersistedCurrentUserProfile() {
     parse: normalizeUserProfile,
     seedData: seedProfile,
   });
-  const profile = localizeSeededUserProfile(language, state.data);
+  // For the hardcoded admin session, always return the seeded admin profile
+  // regardless of what Firestore contains. This prevents a partial-document
+  // race (e.g. from the online-status tracker) from reverting the display
+  // name back to the Bobby demo fallback.
+  const rawProfile = isHardcodedAdminSession ? seedProfile : state.data;
+  const profile = localizeSeededUserProfile(language, rawProfile);
 
   return {
     ...state,

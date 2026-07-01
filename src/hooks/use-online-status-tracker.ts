@@ -5,8 +5,16 @@ import { onAuthStateChanged } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { getFirebaseServices } from "@/lib/firebase";
 
+const ADMIN_SESSION_STORAGE_KEY = "to-link-hardcoded-admin-session";
+
 export function useOnlineStatusTracker() {
   useEffect(() => {
+    // Admin uses a hardcoded session — skip writing to Firestore so the
+    // partial-document race condition doesn't overwrite the profile seed.
+    if (typeof window !== "undefined" && window.localStorage.getItem(ADMIN_SESSION_STORAGE_KEY) === "1") {
+      return;
+    }
+
     const services = getFirebaseServices();
 
     if (!services) {
