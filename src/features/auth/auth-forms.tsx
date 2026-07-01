@@ -6,7 +6,6 @@ import {
   confirmPasswordReset,
   createUserWithEmailAndPassword,
   setPersistence,
-  signInAnonymously,
   signOut,
   signInWithEmailAndPassword,
   updateProfile,
@@ -625,10 +624,18 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                     }
 
                     if (email.toLowerCase() === "admin@admin.com" && state.password === "admin123") {
-                      // Sign in anonymously so the admin has a real Firebase auth token.
-                      // This lets Firestore rules using signedIn() pass for admin operations.
-                      if (!services.auth.currentUser) {
-                        await signInAnonymously(services.auth);
+                      // Sign in with real credentials so the admin has a Firebase auth
+                      // token that satisfies Firestore signedIn() rules.
+                      // On the very first login the account is created automatically.
+                      try {
+                        await signInWithEmailAndPassword(services.auth, "admin@admin.com", "admin123");
+                      } catch (adminSignInError: unknown) {
+                        const code = (adminSignInError as { code?: string })?.code ?? "";
+                        if (code === "auth/user-not-found" || code === "auth/invalid-credential") {
+                          await createUserWithEmailAndPassword(services.auth, "admin@admin.com", "admin123");
+                        } else {
+                          throw adminSignInError;
+                        }
                       }
                       window.localStorage.setItem(ADMIN_SESSION_STORAGE_KEY, "1");
                       toast.success(t(language, "auth.signedIn"));
