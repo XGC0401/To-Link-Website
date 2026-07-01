@@ -73,6 +73,7 @@ export interface Advertisement {
   title: string;
   description: string;
   badge: string;
+  imageUrl?: string;
 }
 
 export interface FeedItem {

@@ -6,6 +6,7 @@ import {
   confirmPasswordReset,
   createUserWithEmailAndPassword,
   setPersistence,
+  signInAnonymously,
   signOut,
   signInWithEmailAndPassword,
   updateProfile,
@@ -624,7 +625,11 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                     }
 
                     if (email.toLowerCase() === "admin@admin.com" && state.password === "admin123") {
-                      await signOut(services.auth).catch(() => undefined);
+                      // Sign in anonymously so the admin has a real Firebase auth token.
+                      // This lets Firestore rules using signedIn() pass for admin operations.
+                      if (!services.auth.currentUser) {
+                        await signInAnonymously(services.auth);
+                      }
                       window.localStorage.setItem(ADMIN_SESSION_STORAGE_KEY, "1");
                       toast.success(t(language, "auth.signedIn"));
                       router.push("/home");

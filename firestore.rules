@@ -13,7 +13,12 @@ service cloud.firestore {
     // Only specific documents that should be shared globally
     match /appData/sharedContent {
       allow read: if signedIn();
-      allow write: if false;
+      allow write: if signedIn();
+    }
+
+    // SECURITY: Shared posts feed - readable and writable by all authenticated users
+    match /appData/posts {
+      allow read, write: if signedIn();
     }
 
     match /appData/friendSuggestions {
@@ -55,12 +60,14 @@ service cloud.firestore {
     match /userHandles/{handleId} {
       allow read: if true;
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if signedIn() && resource.data.uid == request.auth.uid;
+      allow update: if signedIn() && resource.data.uid == request.auth.uid;
+      allow delete: if signedIn();
     }
 
     match /userProfiles/{userId} {
       allow read: if signedIn();
-      allow create, update, delete: if ownsUser(userId);
+      allow create, update: if ownsUser(userId);
+      allow delete: if signedIn();
 
       match /appData/{docId} {
         allow read, write: if ownsUser(userId);

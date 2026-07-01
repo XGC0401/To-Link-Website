@@ -1425,6 +1425,7 @@ export function PostsScreen({ mode }: { mode: PostsMode }) {
           <label className="space-y-2 md:col-span-2">
             <span className="text-sm font-medium text-foreground">{t(language, "posts.media")}</span>
             <input
+              accept="image/*,video/mp4,video/quicktime,video/x-msvideo"
               className="app-input w-full rounded-[20px] px-4 py-3"
               multiple
               onChange={(event) => handleComposerFileSelection(event.target.files)}

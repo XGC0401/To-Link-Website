@@ -26,7 +26,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { Modal } from "@/components/ui/modal";
-import { openPersistedDirectChat, usePersistedCurrentUserProfile, usePersistedPosts, usePersistedSharedContent, savePersistedAdvertisements, savePersistedBuildingAnnouncement } from "@/hooks/use-persisted-app-data";
+import { openPersistedDirectChat, usePersistedCurrentUserProfile, usePersistedPosts, usePersistedSharedContent, savePersistedAdvertisements, savePersistedAdminAnnouncement, savePersistedBuildingAnnouncement } from "@/hooks/use-persisted-app-data";
 import { formatAppDateTime, formatAppDayLabel } from "@/lib/date";
 import { uploadFilesToCloudinary, validateMediaSelection } from "@/lib/media-upload";
 import { parseBuildingAnnouncement, serializeFormBuildingAnnouncement, serializeImageBuildingAnnouncement, type BuildingAnnouncementMode } from "@/lib/building-announcement";
@@ -121,6 +121,9 @@ export function HomeScreen() {
   const [editAdsOpen, setEditAdsOpen] = useState(false);
   const [adsDraft, setAdsDraft] = useState<Advertisement[]>([]);
   const [savingAds, setSavingAds] = useState(false);
+  const [editAdminMessageOpen, setEditAdminMessageOpen] = useState(false);
+  const [adminMessageDraft, setAdminMessageDraft] = useState("");
+  const [savingAdminMessage, setSavingAdminMessage] = useState(false);
   const advertisements = sharedContent.advertisementsByLanguage[language] ?? [];
   const parsedBuildingAnnouncement = useMemo(
     () => parseBuildingAnnouncement(sharedContent.buildingAnnouncement || ""),
@@ -372,6 +375,13 @@ export function HomeScreen() {
                 {activeAdvertisement?.description}
               </p>
             </div>
+            {activeAdvertisement?.imageUrl ? (
+              <img
+                alt={activeAdvertisement.title}
+                className="h-24 w-32 shrink-0 rounded-2xl object-cover shadow-sm"
+                src={activeAdvertisement.imageUrl}
+              />
+            ) : null}
             <div className="flex shrink-0 gap-2">
               <button
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-panel-strong"
@@ -427,6 +437,16 @@ export function HomeScreen() {
           <PanelHeader
             title={t(language, "page.adminMessage")}
             description={language === "zh-HK" ? "管理處訊息。" : "Management message."}
+            action={canEditBuildingNotice ? (
+              <button
+                className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-panel-strong px-3 py-2 text-foreground transition hover:border-accent/40 hover:text-accent"
+                onClick={() => { setAdminMessageDraft(sharedContent.adminMessage ?? ""); setEditAdminMessageOpen(true); }}
+                type="button"
+                title={language === "zh-HK" ? "編輯管理處訊息" : "Edit admin message"}
+              >
+                <Edit2 className="h-4 w-4" />
+              </button>
+            ) : undefined}
           />
           <div className="mt-4 flex-1 overflow-y-auto pr-2 text-sm leading-7 text-muted">
             <p>{sharedContent.adminMessage}</p>
@@ -613,6 +633,21 @@ export function HomeScreen() {
                 }
                 placeholder={language === "zh-HK" ? "描述" : "Description"}
               />
+              <input
+                className="app-input w-full rounded-[20px] px-4 py-2"
+                value={ad.imageUrl ?? ""}
+                onChange={(e) =>
+                  setAdsDraft((current) => current.map((item, i) => (i === idx ? { ...item, imageUrl: e.target.value } : item)))
+                }
+                placeholder={language === "zh-HK" ? "圖片連結（可選）" : "Image URL (optional)"}
+              />
+              {ad.imageUrl ? (
+                <img
+                  alt={ad.title}
+                  className="h-24 w-full rounded-[14px] object-cover"
+                  src={ad.imageUrl}
+                />
+              ) : null}
               <div className="flex gap-2">
                 <button
                   className="rounded-full bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600"
@@ -657,6 +692,48 @@ export function HomeScreen() {
               type="button"
             >
               {savingAds ? (language === "zh-HK" ? "保存中..." : "Saving...") : (language === "zh-HK" ? "保存" : "Save")}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={editAdminMessageOpen} onClose={() => setEditAdminMessageOpen(false)} title={language === "zh-HK" ? "編輯管理處訊息" : "Edit Admin Message"}>
+        <div className="flex flex-col gap-4">
+          <h2 className="font-display text-xl font-semibold text-foreground">
+            {language === "zh-HK" ? "編輯管理處訊息" : "Edit Admin Message"}
+          </h2>
+          <textarea
+            className="app-input min-h-[10rem] w-full rounded-[12px] px-4 py-3 text-sm"
+            value={adminMessageDraft}
+            onChange={(e) => setAdminMessageDraft(e.target.value)}
+            placeholder={language === "zh-HK" ? "管理處訊息..." : "Admin message..."}
+          />
+          <div className="flex gap-3">
+            <button
+              className="flex-1 rounded-full border border-border bg-panel-strong px-4 py-3 text-sm font-semibold text-foreground"
+              onClick={() => setEditAdminMessageOpen(false)}
+              type="button"
+            >
+              {language === "zh-HK" ? "取消" : "Cancel"}
+            </button>
+            <button
+              className="flex-1 rounded-full bg-accent px-4 py-3 text-sm font-semibold text-white"
+              disabled={savingAdminMessage}
+              onClick={async () => {
+                setSavingAdminMessage(true);
+                try {
+                  await savePersistedAdminAnnouncement(adminMessageDraft);
+                  setEditAdminMessageOpen(false);
+                  toast.success(language === "zh-HK" ? "訊息已更新" : "Message updated");
+                } catch (error) {
+                  toast.error(language === "zh-HK" ? "無法保存訊息" : "Unable to save message");
+                } finally {
+                  setSavingAdminMessage(false);
+                }
+              }}
+              type="button"
+            >
+              {savingAdminMessage ? (language === "zh-HK" ? "保存中..." : "Saving...") : (language === "zh-HK" ? "保存" : "Save")}
             </button>
           </div>
         </div>
