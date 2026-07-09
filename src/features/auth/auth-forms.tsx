@@ -3,17 +3,14 @@
 import {
   browserLocalPersistence,
   browserSessionPersistence,
-  confirmPasswordReset,
   createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
   setPersistence,
   signOut,
   signInWithEmailAndPassword,
   updateProfile,
-  verifyPasswordResetCode,
 } from "firebase/auth";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   ArrowRight,
@@ -237,7 +234,6 @@ interface CountryCodeOption {
 
 export function AuthForms({ mode }: { mode: AuthMode }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { language, theme, toggleLanguage, toggleTheme } = useToLink();
   const [state, setState] = useState<AuthFormState>({
     identifier: "",
@@ -661,49 +657,6 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                   return;
                 }
 
-                if (mode === "forgot") {
-                  if (!isFirebaseConfigured) {
-                    toast.error(firebaseSetupHint);
-                    return;
-                  }
-
-                  const email = state.email.trim().toLowerCase();
-
-                  if (!email) {
-                    toast.error(t(language, "auth.error.enterEmail"));
-                    return;
-                  }
-
-                  const services = getFirebaseServices();
-
-                  if (!services) {
-                    toast.error(firebaseSetupHint);
-                    return;
-                  }
-
-                  setLoading(true);
-
-                  try {
-                    await sendPasswordResetEmail(services.auth, email, {
-                      // Link goes back to this app with the oobCode so we can
-                      // complete the reset inside the app, not on Firebase's hosted page.
-                      url: `${window.location.origin}/reset-password`,
-                      handleCodeInApp: true,
-                    });
-                    toast.success(
-                      language === "zh-HK"
-                        ? "密碼重設電郵已發送，請查收。"
-                        : "Password reset email sent. Please check your inbox.",
-                    );
-                  } catch (error) {
-                    toast.error(getFriendlyAuthError(error));
-                  } finally {
-                    setLoading(false);
-                  }
-
-                  return;
-                }
-
                 if (mode === "register") {
                   if (!isFirebaseConfigured) {
                     toast.error(firebaseSetupHint);
@@ -844,16 +797,10 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                   return;
                 }
 
-                if (!isFirebaseConfigured) {
-                  toast.error(firebaseSetupHint);
-                  return;
-                }
+                const email = state.email.trim().toLowerCase();
 
-                // Reset mode: requires a valid Firebase password-reset link code
-                const code = searchParams.get("oobCode")?.trim();
-
-                if (!code) {
-                  toast.error(t(language, "auth.error.invalidLink"));
+                if (!email) {
+                  toast.error(t(language, "auth.error.enterEmail"));
                   return;
                 }
 
@@ -872,25 +819,28 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                   return;
                 }
 
-                const services = getFirebaseServices();
-
-                if (!services) {
-                  toast.error(firebaseSetupHint);
-                  return;
-                }
-
                 setLoading(true);
 
                 try {
-                  const emailFromCode = await verifyPasswordResetCode(services.auth, code);
-                  const enteredEmail = state.email.trim().toLowerCase();
+                  const response = await fetch("/api/auth/reset-password", {
+                    body: JSON.stringify({
+                      email,
+                      newPassword: state.newPassword,
+                    }),
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    method: "POST",
+                  });
+                  const payload = (await response.json().catch(() => null)) as { error?: string } | null;
 
-                  if (enteredEmail && enteredEmail !== emailFromCode.toLowerCase()) {
-                    toast.error(t(language, "auth.error.linkMismatch"));
-                    return;
+                  if (!response.ok) {
+                    throw new Error(
+                      payload?.error ??
+                        (language === "zh-HK" ? "無法重設密碼。" : "Unable to reset the password."),
+                    );
                   }
 
-                  await confirmPasswordReset(services.auth, code, state.newPassword);
                   toast.success(t(language, "auth.passwordUpdated"));
                   router.push("/");
                 } catch (error) {
