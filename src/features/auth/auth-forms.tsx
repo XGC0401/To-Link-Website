@@ -11,7 +11,7 @@ import {
 } from "firebase/auth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   Eye,
@@ -32,6 +32,7 @@ import { Modal } from "@/components/ui/modal";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
 const ADMIN_SESSION_STORAGE_KEY = "to-link-hardcoded-admin-session";
+const REMEMBERED_LOGIN_STORAGE_KEY = "to-link-remembered-login";
 
 const COUNTRY_CODES = [
   { code: "+93", label: "Afghanistan (+93)" },
@@ -232,6 +233,11 @@ interface CountryCodeOption {
   label: string;
 }
 
+interface RememberedLoginCredentials {
+  identifier: string;
+  password: string;
+}
+
 export function AuthForms({ mode }: { mode: AuthMode }) {
   const router = useRouter();
   const { language, theme, toggleLanguage, toggleTheme } = useToLink();
@@ -261,6 +267,38 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
   const [verifyingEmailCode, setVerifyingEmailCode] = useState(false);
   const [legalModal, setLegalModal] = useState<"privacy" | "terms" | null>(null);
 
+  useEffect(() => {
+    if (mode !== "login" || typeof window === "undefined") {
+      return;
+    }
+
+    const raw = window.localStorage.getItem(REMEMBERED_LOGIN_STORAGE_KEY);
+
+    if (!raw) {
+      return;
+    }
+
+    try {
+      const remembered = JSON.parse(raw) as Partial<RememberedLoginCredentials>;
+      const identifier = remembered.identifier;
+      const password = remembered.password;
+
+      if (typeof identifier !== "string" || typeof password !== "string") {
+        window.localStorage.removeItem(REMEMBERED_LOGIN_STORAGE_KEY);
+        return;
+      }
+
+      setState((current) => ({
+        ...current,
+        identifier,
+        password,
+        rememberMe: true,
+      }));
+    } catch {
+      window.localStorage.removeItem(REMEMBERED_LOGIN_STORAGE_KEY);
+    }
+  }, [mode]);
+
   const formModeTitle = {
     login: t(language, "auth.login"),
     register: t(language, "auth.register"),
@@ -276,6 +314,25 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
     }
 
     return trimmed.replace(/[\s()-]/g, "");
+  }
+
+  function persistRememberedLogin(identifier: string, password: string) {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(
+      REMEMBERED_LOGIN_STORAGE_KEY,
+      JSON.stringify({ identifier, password } satisfies RememberedLoginCredentials),
+    );
+  }
+
+  function clearRememberedLogin() {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.removeItem(REMEMBERED_LOGIN_STORAGE_KEY);
   }
 
   function createAvatarLabel(value: string) {
@@ -635,6 +692,13 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                         }
                       }
                       window.localStorage.setItem(ADMIN_SESSION_STORAGE_KEY, "1");
+
+                      if (state.rememberMe) {
+                        persistRememberedLogin("admin@admin.com", state.password);
+                      } else {
+                        clearRememberedLogin();
+                      }
+
                       toast.success(t(language, "auth.signedIn"));
                       router.push("/home");
                       return;
@@ -645,6 +709,12 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
                       state.rememberMe ? browserLocalPersistence : browserSessionPersistence,
                     );
                     await signInWithEmailAndPassword(services.auth, email, state.password);
+
+                    if (state.rememberMe) {
+                      persistRememberedLogin(email, state.password);
+                    } else {
+                      clearRememberedLogin();
+                    }
 
                     toast.success(t(language, "auth.signedIn"));
                     router.push("/home");
