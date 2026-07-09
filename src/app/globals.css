@@ -19,6 +19,14 @@
     radial-gradient(circle at 85% 18%, rgba(255, 190, 156, 0.88), transparent 20%),
     linear-gradient(180deg, #fff7ef 0%, #fff2e5 100%);
   --app-font-scale: 1;
+  --text-xs: calc(0.75rem * var(--app-font-scale));
+  --text-sm: calc(0.875rem * var(--app-font-scale));
+  --text-base: calc(1rem * var(--app-font-scale));
+  --text-lg: calc(1.125rem * var(--app-font-scale));
+  --text-xl: calc(1.25rem * var(--app-font-scale));
+  --text-2xl: calc(1.5rem * var(--app-font-scale));
+  --text-3xl: calc(1.875rem * var(--app-font-scale));
+  --text-5xl: calc(3rem * var(--app-font-scale));
 }
 
 @theme inline {
@@ -79,13 +87,14 @@ body {
 }
 
 html {
-  font-size: calc(16px * var(--app-font-scale));
+  font-size: 16px;
 }
 
 body {
   background: var(--page-gradient);
   color: var(--foreground);
   font-family: var(--font-manrope), sans-serif;
+  font-size: calc(16px * var(--app-font-scale));
   overflow: hidden;
 }
 
