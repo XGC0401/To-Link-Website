@@ -78,11 +78,14 @@ body {
   height: 100%;
 }
 
+html {
+  font-size: calc(16px * var(--app-font-scale));
+}
+
 body {
   background: var(--page-gradient);
   color: var(--foreground);
   font-family: var(--font-manrope), sans-serif;
-  font-size: calc(16px * var(--app-font-scale));
   overflow: hidden;
 }
 

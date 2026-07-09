@@ -1,0 +1,490 @@
+Before you edit the file, you must use the committed content to fill the rest of the items. If the committed name is something like "fix: 5 items", you can use it as "wild card", for example:
+Example. Date: May 20
+Suggestion: Fix "xxx" and add "yyy" and change "zzz" to "aaa". (Since the commit name is "fix: 10 items", it can be any cahnges)
+Solution: ...
+
+==========================================================================================================
+... Please continue to add ...
+==========================================================================================================
+Date: July 1, 2026
+1. [Fix] Suggestion: Fix 6 issues across posts, the user list, app startup, and admin tools.
+Reason: Several bugs were found including app startup failures, incomplete post interactions, and gaps in admin user management.
+Solution: Fixed posts-screen with additional interaction handling. Expanded user-list-screen with new admin actions. Improved persisted app data hook. Fixed the startup failure by adding missing package dependencies (fix: 6 items fix: start up fail).
+
+2. [Fix] Suggestion: Fix admin authentication, Firestore permissions, advertisement image support, admin message editing, and media multi-select.
+Reason: Admin login was failing due to Firestore rule mismatches. Advertisements had no image support, the admin message panel had no edit capability, and media upload only allowed single-file selection.
+Solution: Updated firestore.rules to allow signed-in writes on sharedContent and posts. Added an admin message edit modal to the home screen. Added imageUrl support to advertisements with a preview. Updated the posts media input to support multi-file selection. Updated types to include imageUrl on the Advertisement interface (fix: admin auth, permissions, ad images, admin message edit, media multi-select).
+
+3. [Fix] Suggestion: Fix admin login to use real email/password credentials instead of anonymous sign-in.
+Reason: Anonymous sign-in was previously used for admin login as a workaround, but this bypassed proper authentication checks and was not production-safe.
+Solution: Updated auth-forms.tsx so the admin login path uses real email/password Firebase authentication instead of anonymous sign-in (fix: use real email/password auth for admin instead of anonymous sign-in).
+
+4. [Fix] Suggestion: Fix admin profile loading falling back to a default placeholder user ("Bobby") after login.
+Reason: The online status tracker was writing a minimal record to Firestore before the full admin profile seed ran, causing the normalizeUserProfile function to fill in placeholder default values.
+Solution: Updated useOnlineStatusTracker to skip the Firestore write for admin sessions. Updated usePersistedCurrentUserProfile to pin its return value to the adminUser whenever the hardcoded admin session flag is present, regardless of Firestore contents (fix: prevent Bobby fallback for admin after login).
+
+5. [Add] Suggestion: Add a multi-page carousel for the admin message and building announcement panels on the home screen.
+Reason: The admin message and building announcement sections only supported a single page of content, limiting how much information admins could communicate to residents.
+Solution: Updated the Firestore data model to store adminMessages[] and buildingAnnouncements[] arrays alongside legacy single-string fields for backward compatibility. Updated the home screen to render both panels as carousels with dot indicators and left/right arrows, matching the style of the advertisements carousel. Added list-based edit modals so admins can add or delete pages. Updated hooks with savePersistedAdminAnnouncements and savePersistedBuildingAnnouncements (feat: multi-page carousel for admin message and building announcement).
+
+6. [Fix] Suggestion: Fix Firestore rules so admin can delete user profile sub-collection documents during user deletion.
+Reason: The 'allow write: if ownsUser' rule on userProfiles/{uid}/appData/* and calendarEvents/* was blocking admin (who has a different Firebase UID) from deleting another user's sub-documents during adminDeletePersistedUser.
+Solution: Split the Firestore rule into separate read/create/update (ownsUser) and delete (signedIn) clauses so admin can batch-delete sub-documents while users retain full ownership of their reads and writes (fix: allow signed-in users to delete userProfile sub-collection docs).
+==========================================================================================================
+Date: June 26, 2026
+1. [Fix] Suggestion: Fix the posts page causing unwanted horizontal side scrolling.
+Reason: The posts page layout was overflowing horizontally on certain screen sizes, producing an unwanted horizontal scrollbar and breaking the layout.
+Solution: Fixed the posts-screen layout to prevent horizontal overflow. Also added a PPT presentation file to the repository (fix: posts page side scrolling).
+==========================================================================================================
+Date: June 20, 2026
+1. [Fix] Suggestion: Fix 8 issues across the sidebar, messages screen, posts screen, and data layer.
+Reason: Multiple bugs were found including broken sidebar navigation, message display problems, stale posts feed data, and missing translation strings.
+Solution: Overhauled the sidebar component with improved navigation logic. Fixed messages screen display issues. Fixed posts screen feed rendering. Updated persisted app data handling and demo data. Added missing translation strings (fix: 8 items).
+
+2. [Fix] Suggestion: Fix posts stacking on top of each other and fix deleted friends still appearing in the friends list.
+Reason: Posts were visually stacking due to a layout bug. Deleted/unfriended users were still showing in the connections list after the relationship was removed.
+Solution: Fixed posts-screen to prevent post card stacking. Fixed friends-screen to correctly remove deleted friends from the displayed list immediately (fix: post stacking fix: deleted friends).
+
+3. [Fix] Suggestion: Fix several small problems across the dashboard, calendar, events, messages, and posts screens.
+Reason: A round of testing uncovered multiple small bugs across different parts of the app after the previous fixes.
+Solution: Updated dashboard-shell with improved layout handling. Fixed top-bar styling. Improved the calendar screen and calendar events hook with additional event support. Expanded the events screen. Fixed messages screen issues. Improved the persisted app data hook (fix: small problems).
+
+4. [Fix] Suggestion: Fix pop-up dialogs not appearing and disappearing unexpectedly.
+Reason: Pop-up modals on the home screen were either not showing at all or vanishing immediately after being triggered, making critical information inaccessible.
+Solution: Updated dashboard-shell and home screen with corrected modal visibility and lifecycle logic. Updated auth forms, persisted app data hook, and demo data to support the improved pop-up behaviour (fix: pop-up fix: pop-up dissapear).
+
+5. [Fix] Suggestion: Fix admin login and fix the building announcement pop-up not displaying correctly.
+Reason: Admin login had an edge case that prevented it from completing. The building announcement modal was not appearing when triggered from the home screen.
+Solution: Updated auth forms to handle the admin login edge case. Fixed dashboard-shell, sidebar, and top-bar. Corrected building announcement display logic in the home screen. Updated persisted app data hook and demo data to support the announcement modal (fix: admin login fix: pop-up building announcemnt).
+
+6. [Fix] Suggestion: Fix the admin user list screen and refactor the building announcement component.
+Reason: The admin user list was not displaying users correctly. The building announcement logic was scattered across components and needed to be extracted and consolidated.
+Solution: Overhauled dashboard-shell and home screen. Simplified user-list-screen. Updated the admin users list hook. Improved persisted app data hook. Extracted building announcement logic into a dedicated building-announcement.ts utility module. Added new seeded content localization entries (fix: admin's user list fix: building announcement).
+
+7. [Fix] Suggestion: Fix deployment failures after the admin and announcement changes.
+Reason: The user-list-screen changes introduced a build error that blocked deployment.
+Solution: Fixed the user-list-screen build error to restore successful deployment (fix: deploy fails).
+==========================================================================================================
+Date: June 17, 2026
+1. [Fix] Suggestion: Fix 5 issues across the top bar, best-of-month screen, friends screen, home screen, and Firestore hooks.
+Reason: Multiple bugs were spotted after the June 15 additions, including UI inconsistencies in the top bar, display problems on the best-of-month page, and incorrect friend data loading.
+Solution: Updated the top-bar component. Fixed best-of-month-screen display. Improved friends-screen data handling. Simplified home-screen. Updated the persisted app data hook, seeded Firestore document hook, and app state logic (fix: 5 items).
+
+2. [Fix] Suggestion: Fix 2 remaining issues in the top bar and profile settings screen.
+Reason: After the 5-item fix pass, 2 follow-up issues remained in the top bar layout and profile settings field bindings.
+Solution: Corrected the top-bar component styling. Fixed field binding issues in the profile settings screen (fix: 2 items).
+==========================================================================================================
+Date: June 15, 2026
+1. [Add] Suggestion: Add a new Data page and make small detail improvements across multiple screens.
+Reason: There was no dedicated page for users to view community or personal data summaries. Several minor details also needed improvement after previous additions.
+Solution: Added data-screen.tsx with a full info/data display page and wired it to a new route (app/(dashboard)/info/data/page.tsx). Updated the sidebar and navigation config to include the Data page link. Added extensive new translation strings for the new page. Applied small detail improvements to the best-of-month screen, home screen, profile settings, and auth forms (add: data page add: small details).
+==========================================================================================================
+Date: June 14, 2026
+1. [Add] Suggestion: Add a "Best of the Month" page, add colour theme improvements, and remove the standalone forgot password page.
+Reason: There was no way to showcase top contributors or highlights of the month. The standalone forgot password page was redundant given the inline reset flow.
+Solution: Added best-of-month-screen.tsx with a full best-of-month leaderboard display and wired it to a new route. Updated the sidebar and navigation config. Improved home-screen with colour additions. Updated auth forms and repurposed the forgot password page to redirect inline. Added new translation strings (add: best of the month page add: colors remove: forgot password page).
+
+2. [Remove] Suggestion: Remove multi-factor authentication (MFA) from the app.
+Reason: MFA required paid Firebase features and added unnecessary complexity at this stage of development, causing issues during testing.
+Solution: Removed all MFA-related logic from auth forms. Simplified the email code API route. Updated the forgot password and reset password pages to remove MFA references (remove: MFA).
+
+3. [Change] Suggestion: Simplify and improve the reset password page flow.
+Reason: The reset password page had unnecessary complexity left over from the MFA removal and needed to be streamlined into a cleaner flow.
+Solution: Simplified the forgot password and reset password pages. Cleaned up auth forms to remove leftover reset password complexity (change: reset password page).
+==========================================================================================================
+Date: June 13, 2026
+1. [Add] Suggestion: Add support for deleting users from the admin panel and add message editing and deletion.
+Reason: Admins had no way to remove user accounts from the system. Users also could not edit or delete their own messages after sending.
+Solution: Added message editing and deletion UI and logic to messages-screen.tsx. Updated the persisted app data hook with user deletion and message CRUD methods. Added Firestore rules for message write operations. Added new translation strings for message actions (add: deleted users add: message editing and deletion).
+
+2. [Fix] Suggestion: Fix excessive Firestore network requests causing performance issues visible in the browser's Network tab.
+Reason: The seeded Firestore document hook was making too many redundant reads, causing noticeable lag and excessive Firestore usage that was clearly visible in the browser developer tools.
+Solution: Rewrote use-seeded-firestore-document.ts to reduce redundant reads and optimise the Firestore query pattern (fix: web Network tab).
+
+3. [Fix] Suggestion: Fix the app freezing when loading data.
+Reason: The persisted app data hook had an infinite re-render loop that caused the browser tab to become unresponsive.
+Solution: Fixed the use-persisted-app-data hook to break the infinite loop and allow the page to load correctly (fix: website froze).
+
+4. [Fix] Suggestion: Fix the friend search not returning results and fix related posts and messages loading issues.
+Reason: The friend search was not returning results due to incorrect query logic. Related issues were also found in posts feed and message loading.
+Solution: Multiple rounds of fixes across friends-screen, messages-screen, posts-screen, and the admin users list and persisted app data hooks to correct search queries and data loading behaviour (fix: friend search — multiple commits).
+
+5. [Fix] Suggestion: Fix the frontend data hooks acting as the backend — refactor weather, calendar, posts, messages, and home screen data loading.
+Reason: Several data hooks were inefficient or broken, causing stale or missing data to appear across screens.
+Solution: Significantly improved home-screen data loading with more content sections. Updated use-seeded-firestore-document hook with better data normalisation. Fixed use-persisted-app-data hook. Fixed the weather hook. Updated the calendar events hook. Updated AI chat and messages screens (fix: backend).
+
+6. [Fix] Suggestion: Fix a series of small UI and data bugs across posts, messages, friends, and admin screens.
+Reason: After the major data layer and friend search fixes, several smaller issues remained across different screens including overflowing buttons, broken message display, friend list rendering, and admin visibility.
+Solution: Fixed a button overflowing its container in posts-screen. Fixed message display in messages-screen and persisted data hook. Fixed friend list rendering and data fetching in friends-screen. Fixed admin-visible features in friends, messages, home, and posts screens (fix: button out of box fix: message fix: friend list fix: friend page fix: posts page fix: admin).
+
+7. [Fix] Suggestion: Fix repeated deployment failures on June 13.
+Reason: The large volume of changes made on this day repeatedly broke the production build pipeline.
+Solution: Fixed multiple build errors caused by the day's changes to restore a passing deployment (fix: deploy fail — multiple commits).
+==========================================================================================================
+Date: June 12, 2026
+1. [Fix] Suggestion: Do a final round of fixes and improvements before deploying to Render.com.
+Reason: Before publishing the app publicly, the team needed a final polish pass covering auth, profile settings, home, posts, and the nearby places API.
+Solution: Updated auth forms with final registration and login improvements. Significantly improved the profile settings screen. Updated home screen and AI chat screen. Fixed the nearby places API route. Added render.yaml deployment config. Updated app config, translations, and nearby places hook (fix: final update before Render.com).
+
+2. [Fix] Suggestion: Fix the email verification code not being sent to users.
+Reason: The email code API route was not correctly sending emails, causing the verification step to silently fail during registration.
+Solution: Added proper email sending logic to the api/auth/email-code/route.ts API route. Updated render.yaml with the required environment variable configuration for the email service (fix: send email).
+
+3. [Remove] Suggestion: Remove the email verification code step from the registration flow.
+Reason: After testing, the email verification step was causing reliability issues and friction during sign-up. The team decided to simplify the registration process.
+Solution: Removed the email verification code input step from auth forms, streamlining the registration flow (remove: email verification).
+
+4. [Add] Suggestion: Add account synchronization, an admin user list screen, and an online status tracker.
+Reason: User accounts were not staying in sync across sessions. There was no way for admins to see all registered users, and online presence was not being tracked in real time.
+Solution: Added user-list-screen.tsx for admin user management. Added use-admin-users-list.ts and use-online-status-tracker.ts hooks. Updated Firestore rules for presence tracking. Updated messages-screen with online status indicators. Updated auth forms, providers, sidebar, dashboard layout, feature toolbar, and navigation. Added new types and translations (fix: account sync).
+
+5. [Fix] Suggestion: Fix the friend search and friend page displaying incorrect or missing data after the account sync changes.
+Reason: The account sync changes altered data structures, breaking the friend search queries and friend page data loading.
+Solution: Fixed friends-screen and messages-screen for correct rendering. Improved use-admin-users-list search logic. Fixed use-persisted-app-data and use-seeded-firestore-document hooks for correct friend data. Added dashboard-data-context.tsx for shared data state. Updated the nearby screen (fix: friend search fix: friend searchs fix: friend page — multiple commits fix: friend pages).
+
+6. [Fix] Suggestion: Fix deployment failure on June 12.
+Reason: Build errors introduced by the account sync and friend page changes broke the deployment pipeline.
+Solution: Fixed the build error to restore successful deployment (fix: deploy fail).
+==========================================================================================================
+Date: June 10, 2026
+1. [Change] Suggestion: Connect all major screens to live Firestore data and add a Google Places integration.
+Reason: The app was displaying static demo data with no real persistence, making it impossible to test real user flows or demonstrate the app with live data.
+Solution: Added a Places API route for Google Places integration. Added use-nearby-places, use-persisted-app-data, and use-seeded-firestore-document hooks for live Firestore data. Added use-calendar-events hook. Significantly expanded the nearby screen with real place data. Updated all major screens (calendar, events, AI chat, facilities, friends, messages, home, posts, profile settings) to read from and write to Firestore. Updated sidebar, top-bar, map components, and translations (change: put data to database).
+
+2. [Fix] Suggestion: Fix, change, and add a large number of details across almost every screen and component after connecting to live data.
+Reason: After connecting screens to live Firestore data, many details needed correction — layout issues, missing translation keys, incorrect data bindings, and missing features across the entire app.
+Solution: Massively expanded posts-screen with full post creation, display, sorting, liking, and interaction features. Expanded use-persisted-app-data with comprehensive Firestore read/write methods. Added seeded-content-localization.ts for locale-aware seeded content. Added avatar-badge UI component. Updated dashboard-shell and top-bar layout. Fixed Firestore rules and added firebase.json config. Updated all feature screens, navigation, types, and translations. Fixed the email code API route (fix/change/add: huge details fix).
+==========================================================================================================
+Date: June 6, 2026
+1. [Change] Suggestion: Improve the phone number field in the registration form with a proper country code selector.
+Reason: The registration form had a basic phone number input with no country code support, which was insufficient for an international neighbourhood app.
+Solution: Updated the auth forms to include a country code dropdown alongside the phone number input field, with improved layout and placeholder text for better user guidance (change: phone number field).
+
+2. [Add] Suggestion: Add a CAPTCHA verification step to the registration flow to prevent bot sign-ups.
+Reason: The registration form had no bot protection, leaving it vulnerable to automated account creation.
+Solution: Integrated Firebase's RecaptchaVerifier into the auth forms to add CAPTCHA verification as part of the registration flow (add: captcha).
+
+3. [Remove] Suggestion: Remove paid/non-free Firebase features and simplify the email verification flow.
+Reason: Several Firebase features being used required a paid Blaze plan which the team had not activated, causing runtime errors during testing.
+Solution: Removed the non-free phone sign-in functions from the auth forms and replaced the verification approach with an email-based verification code flow instead (remove: non free functions change: email verification code).
+
+4. [Fix] Suggestion: Fix login so users can stay signed in when accessing the app from different devices.
+Reason: Users logged in on one device were being signed out when they opened the app on another device due to incorrect Firebase persistence settings.
+Solution: Updated firebase.ts to set the correct auth persistence mode so sessions are maintained reliably across devices (fix: login in other devices).
+
+5. [Change] Suggestion: Add a full email verification code system to the registration flow.
+Reason: The registration process had no email verification step, meaning anyone could register with a fake or mistyped email address.
+Solution: Added a new API route (api/auth/email-code/route.ts) that generates and validates email verification codes. Updated the auth forms to show a code input step after the user submits their email, requiring them to verify ownership before the account is created (change: email verifiy).
+==========================================================================================================
+Date: June 5, 2026
+1. [Fix] Suggestion: Fix the login page layout and add full translation support across all screens.
+Reason: The login page had layout issues and most UI strings were not going through the translation system, making it impossible to switch the app language properly.
+Solution: Fixed the auth forms layout including adding show/hide password toggle, language switcher, and theme toggle buttons on the login screen. Added a server-side translation API route (api/translate/route.ts). Updated all major feature screens (booking-status, calendar, events, ai-chat, documents, facilities, friends, messages, home, nearby, posts, profile-settings, website-settings) to use the translation helper. Expanded the translations library with a large number of new string keys and added a dedicated translation utility module (fix: login page fix: translation).
+==========================================================================================================
+Date: June 3, 2026
+1. [Add] Suggestion: Initialize the new Next.js + Firebase recreation of the To-Link project with a complete frontend structure.
+Reason: The team decided to recreate the project using Next.js (App Router) and Firebase instead of the previous Nuxt.js + Spring Boot stack, requiring a full project scaffold from scratch.
+Solution: Created the initial Next.js project with all pages, components, features, hooks, and lib files. Set up the full dashboard layout with sidebar and top-bar, all feature screens (home, posts, connections, building, activities, nearby, settings), UI components (modal, panel, tab-strip, status-pill, avatar-badge, feature-shell, feature-toolbar), map components, Firebase integration, and all supporting utilities. Added demo data, translations, type definitions, navigation config, and hooks for location, weather, calendar events, persisted app data, and Firestore (First commit).
+==========================================================================================================
+Date: May 21, 2026
+1. [Add] Suggestion: Add a sort function for posts, so posts will show from latest to oldest.
+Reason: Let users easier to find the latest post.
+Solution: Add a sort button at the top of the posts section, base on this idea, we decided to add the sorting buttons to appear in all 5 posts pages "All", "Quests", "Sharing", "2nd Hand", "Lost&Find".
+    "All" sorting includes: "Latest", "Oldest".
+    "Quests" sorting includes: "Highest Reward", "Time Limited", "Latest", "Least Reward", "Oldest".
+    "Sharing" sorting includes: "Time Limited", "Latest", "Oldest".
+    "2nd Hand" sorting includes: "Cheapest", "Time Limited", "Latest", "Most Expensive", "Oldest".
+    "Lost&Find" sorting includes: "Highest Reward", "Time Limited", "Latest", "Least Reward", "Oldest".
+
+2. [Add] Suggestion: Add the full Quest apply/approve system to the backend so users can apply for quests and quest owners can approve or reject applicants.
+Reason: The Quest feature existed on the frontend but the backend had no API for applying to or managing quest applicants.
+Solution: Added QuestController with apply, approve, and reject endpoints. Added QuestEntity, QuestApplicationEntity, and all related DTOs (QuestApplyRequestDTO, QuestApproveRequestDTO, QuestCreateRequestDTO, QuestResponseDTO, QuestApplicantResponseDTO, QuestUpdateRequestDTO). Fixed sync issues between the frontend quest flow and the new backend endpoints (fix: sync problem).
+
+3. [Add] Suggestion: Add backend unit tests to ensure quest and exception handling logic is reliable.
+Reason: The backend lacked test coverage for critical features, making it hard to detect regressions.
+Solution: Added unit tests for QuestController, QuestService, and GlobalExceptionHandler. Tests cover normal and error cases for quest acceptance and rejection flows (huge fix).
+
+4. [Change] Suggestion: Rewrite the backend to include a dedicated PublicDataService and fix WebSocket and user service issues.
+Reason: Public data retrieval was scattered across services and the WebSocket config had issues with CORS and endpoint mapping.
+Solution: Added PublicDataService and PublicDataController for serving public profile and post data. Expanded UserService with additional profile methods. Fixed WebSocket CORS config and endpoint registration (rewrite backend).
+
+5. [Fix] Suggestion: Fix the F12 developer tools overlay issue and fix pop-up windows not closing correctly.
+Reason: Opening browser DevTools (F12) was causing layout shifts. Some pop-up dialogs were not dismissing properly.
+Solution: Fixed the CSS that conflicted with DevTools overlay. Fixed the pop-up window close handler in PostDetailDialog and PostCard. Also patched QuestService and the weather API endpoint as part of the same fix pass (fix: F12 fix: pop up window, fix: pop up window).
+
+6. [Fix] Suggestion: Fix the weather card on the home page showing stale or incorrect data.
+Reason: The weather card was displaying outdated weather due to a broken API call in the server-side weather endpoint.
+Solution: Rewrote the weather.get.ts server API to correctly fetch and return current weather data. Updated home.vue to handle the new response format (fix: weather card).
+
+7. [Fix] Suggestion: Fix minor CSS and dialog inconsistencies noticed during final testing.
+Reason: Small visual gaps were spotted in global.css and the EditPostDialog / PostDetailDialog had minor layout misalignments.
+Solution: Adjusted global.css spacing rules. Corrected minor alignment in EditPostDialog.vue and PostDetailDialog.vue (staged change).
+==========================================================================================================
+Date: May 20, 2026
+1. [Add] Suggestion: Add a Calendar feature so users can view, create, and join community events.
+Reason: There was no way for users to track upcoming events or join events organized by their neighbours.
+Solution: Added a new calendar.vue page with full event creation, display, and management. Added a calendar.ts utility for date/event logic. Added i18n translations for all calendar-related strings in en.json and zh.json. Updated the layout navigation to include a Calendar link (add: Calendar function add: Join event (Nearby Community) fix: Friends unfriended fix: Word color).
+
+2. [Add] Suggestion: Add a "Join Event" button in the Nearby Community page so users can RSVP to local events.
+Reason: Users discovered events in the Nearby Community section but had no way to express interest or join.
+Solution: Updated nearbyCommunity.vue with a Join Event button and RSVP logic. Fixed the Friends page unfriend action that was not updating the UI. Fixed word/text color contrast issues across multiple pages (add: Calendar function add: Join event (Nearby Community) fix: Friends unfriended fix: Word color).
+
+3. [Fix] Suggestion: Fix authentication and token handling to prevent users from being unexpectedly logged out.
+Reason: Users reported being randomly signed out or getting errors when interacting with protected routes after a period of inactivity.
+Solution: Fixed auth.ts token refresh logic and updated SecurityConfig. Updated LoginController to handle token renewal. Fixed loginBox.vue to correctly store and read the refreshed token (fix: login problem).
+
+4. [Fix] Suggestion: Fix 10 miscellaneous issues discovered during testing of profile, calendar, home, chat, and posts.
+Reason: Multiple minor bugs were found across different pages during a full regression test pass.
+Solution: Updated PostCard, PostDetailDialog, layout, calendar, chat, friends, home, posts, profile, and websocket utility. Fixed user profile update and post update API calls. Added new common type definitions (fix: 10 items).
+
+5. [Fix] Suggestion: Fix the auth/token flow so that API requests include the correct authorization headers.
+Reason: Some API calls were being made without a valid token, causing 401 errors on protected endpoints.
+Solution: Updated auth.ts to consistently attach the Bearer token to all API requests. Updated the backend SecurityConfig to correctly permit or protect the relevant routes (fix: auth/token).
+
+6. [Fix] Suggestion: Fix small visual and functional details on the Calendar, Friends, Profile, and Settings pages.
+Reason: After the major calendar and auth changes, small regressions and UX gaps were noticed in several pages.
+Solution: Fixed calendar.vue event display edge cases. Fixed friends.vue list refresh. Fixed profile.vue data binding. Updated settings.vue with missing i18n labels (fix: small details).
+==========================================================================================================
+Date: May 15, 2026
+1. [Fix] Suggestion: Fix real-time synchronization issues for chat messages and user online/offline status.
+Reason: Chat messages were not syncing reliably between users, and presence status (online/offline) was not updating in real time.
+Solution: Added ChatController, PresenceController, ChatService, and PresenceService to the backend with full WebSocket-based real-time messaging. Added ChatConversation, ChatMessage, and UserPresence entities, and corresponding repositories. Created chat.ts API client in the frontend. Fixed the friends page to show live online status (fix: huge fix on syncing messages, status and post like).
+
+2. [Add] Suggestion: Expand post and layout features across the frontend and fix the post entity in the backend.
+Reason: Several post-related features (post acceptance, photo handling) were not fully wired between frontend and backend.
+Solution: Updated PostController and PostEntity with accept-post and photo handling. Updated User entity. Fixed PostService. Updated PostCard, QuestDetailDialog, chat, friends, and home pages. Added nuxt.config.ts SSE/polling settings (add/fix/change: over 12 items — first commit).
+
+3. [Fix] Suggestion: Fix EditPostDialog, the default layout, and settings/friends page interactions.
+Reason: EditPostDialog had broken fields after the backend refactor. The layout had a navigation item pointing to the wrong route. Friends and settings pages had state management issues.
+Solution: Updated EditPostDialog.vue with corrected field bindings. Fixed default.vue navigation. Updated friends.vue and home.vue interaction flows. Fixed SupabaseStorageService and post.ts API client. Added global CSS fixes (add/fix/change: over 12 items — second commit).
+
+4. [Add] Suggestion: Add "Enter key = next field / submit" behavior in forms for a smoother user experience.
+Reason: Users expected pressing Enter to move to the next input field or submit the form, but it had no effect.
+Solution: Added useFormEnter.ts composable and applied it across login, register, and other form pages so Enter navigates between fields and submits when on the last field (fix: forgot add: enter = next field/submit).
+
+5. [Fix] Suggestion: Fix 7 miscellaneous issues across chat, friends, home, and PostDetailDialog.
+Reason: A round of testing revealed 7 separate bugs including incorrect i18n keys, missing event handlers, and wrong data bindings.
+Solution: Fixed PostDetailDialog content display. Expanded chat.vue with corrected message handling. Fixed friends.vue list update. Fixed home.vue data refresh. Added 4 new i18n keys to en.json and zh.json (fix: 7 things).
+
+6. [Fix] Suggestion: Fix 3 issues found in chat, friends, and home page interactions.
+Reason: After deploying the chat sync fix, 3 follow-up bugs appeared in message rendering, friend status display, and home feed ordering.
+Solution: Fixed chat.vue message rendering order. Fixed friends page presence indicator update. Fixed home page post feed sorting. Added minor i18n additions (fix: 3 things).
+
+7. [Fix] Suggestion: Fix the chat room layout, message timestamp format, and chat/profile data binding issues.
+Reason: Chat messages were showing timestamps in an unreadable format and the chat room layout was breaking on certain window sizes. Profile data was not loading correctly in the chat user info panel.
+Solution: Fixed message time formatting in chat.vue. Fixed the chat room container CSS. Fixed chat/profile data binding so the correct user info appears in conversations (fix: chat room, fix: chat, fix: chat/profile, fix: message time).
+
+8. [Fix] Suggestion: Fix the white screen issue that appeared when navigating to certain pages after login.
+Reason: Some pages were showing a blank white screen due to a component registration issue in the Nuxt build.
+Solution: Fixed the Nuxt component auto-import configuration. Resolved the missing component type declarations that caused the white screen (fix: white screen).
+
+9. [Fix] Suggestion: Fix sync, file sync, and repeated deployment failures.
+Reason: The deployment was failing due to a stale build artifact and there were file sync mismatches between local and deployed versions.
+Solution: Fixed the sync file problem by cleaning the build cache. Resolved deployment config issues in the Nuxt output. Fixed a ChatWebSocketController and ChatSendMessageRequestDTO mismatch that was causing a runtime error (fix: sync, fix: sync file problem, fix: deploy fail, fix: deploy failed, fix: deply fail).
+==========================================================================================================
+Date: May 14, 2026
+1. [Add] Suggestion: Add a dedicated "Create Quest" page and improve the BackpackDialog with quest rewards.
+Reason: Quest creation was only accessible via a dialog, which was limiting for complex quests. The backpack also had no information about rewards earned from quests.
+Solution: Added create-quest.vue as a standalone page with full form support. Updated BackpackDialog.vue to show quest reward items. Improved CreateQuestDialog and EditQuestDialog with additional fields (add/fix/change: over 24 items).
+
+2. [Change] Suggestion: Improve the Friends page, Profile page, and PostDetailDialog with richer features.
+Reason: The friends list had limited actions and the profile page lacked edit/avatar upload capabilities. PostDetailDialog showed minimal content.
+Solution: Added a fully expanded friends.vue with friend request, accept, reject, block, and unfriend flows. Enhanced profile.vue with edit profile, avatar upload, and change password. Updated PostDetailDialog with full post content and action buttons (add/fix/change: over 24 items).
+
+3. [Add] Suggestion: Add project-wide documentation and add change password functionality to the backend.
+Reason: New contributors had no reference material. The change password feature was also missing from the backend API.
+Solution: Added ChangePasswordRequestDTO and updated UserService and AdminController with change password logic. Added 6 documentation files: COMPLETION_REPORT.md, DEVELOPER_QUICK_REFERENCE.md, DOCUMENTATION_INDEX.md, FEATURE_CHECKLIST.md, IMPLEMENTATION_SUMMARY.md, and TESTING_CHECKLIST.md (add/fix/change over 21 items).
+
+4. [Change] Suggestion: Improve chat, home, posts, and login pages with multiple enhancements and fixes.
+Reason: After the large feature additions, several pages needed follow-up fixes for data loading, i18n coverage, and layout.
+Solution: Updated chat.vue, home.vue, posts.vue, and loginBox.vue. Added i18n keys to en.json and zh.json. Updated BackpackDialog, EditPostDialog, PostCard, and create-post.vue. Fixed auth.ts API client for the new endpoints (add/fix/change over 21 items).
+
+5. [Change] Suggestion: Update backend Supabase storage settings and fix tab label alignment.
+Reason: Image uploads were failing because the Supabase storage configuration was missing from the backend. Tab labels in the posts section were not centered.
+Solution: Updated SupabaseStorageService with correct bucket and URL config. Updated application.properties with Supabase credentials. Fixed tab word centering in the posts and home pages. Updated launch.json database config for local development (change: backend settings, fix: tabs words not centerd, fix: tab words, Update database configuration in launch.json).
+==========================================================================================================
+Date: May 13, 2026
+1. [Add] Suggestion: Add responsive design for phone and tablet screen sizes across all pages.
+Reason: The app was only designed for desktop. Mobile and tablet users experienced broken layouts and unusable UI.
+Solution: Added extensive responsive CSS media queries to global.css and all major page files: home, posts, chat, friends, profile, settings, create-post, ai-chat, nearbyCommunity, and nearbyShops. Added responsive styles to the default layout component (add: phone/tablets version fix: topbar).
+
+2. [Fix] Suggestion: Fix the dark theme across all pages so colors, borders, and backgrounds are fully consistent.
+Reason: The dark theme was partially implemented; many components still showed hard-coded light colors when dark mode was active, making the UI look broken in dark mode.
+Solution: Updated theme-tokens.css with correct dark mode CSS variables. Fixed dark theme styling in PostCard, QuestDetailDialog, chat, friends, and home pages. Replaced all hard-coded color values (e.g. #eceef3, #e5e7eb) with CSS variable references like var(--tl-border) (fix: dark theme — 7 commits).
+
+3. [Fix] Suggestion: Fix the top navigation bar layout and login time display.
+Reason: The top bar had height, padding, and icon alignment inconsistencies across pages. The login timestamp was also displaying in the wrong format.
+Solution: Fixed top bar CSS across all pages for consistent height and icon placement. Fixed the login time formatting logic so it shows a readable relative or absolute timestamp. Also fixed the top bar for the login page specifically (fix: top bar — 5 commits, fix: top bar fix: login time).
+
+4. [Fix] Suggestion: Fix style inconsistencies across multiple components and pages.
+Reason: After adding responsive CSS and dark theme fixes, several components had visual regressions such as broken borders, wrong font sizes, and misaligned cards.
+Solution: Fixed styling in PostCard, PostDetailDialog, chat, friends, and other components. Corrected border-radius, box-shadow, box-sizing, and font styling. Multiple style-only fix passes were done to refine the appearance (fix: style, fix: styles, fix: stylesss — 6 commits).
+
+5. [Fix] Suggestion: Fix repeated deployment failures that were blocking the team from testing on the live environment.
+Reason: The deployment was failing multiple times due to build errors introduced by the large responsive CSS and dark theme changes.
+Solution: Fixed the Nuxt build configuration and resolved the CSS import errors that were causing deployment failures. Verified the build passes cleanly before merging (fix: deploy failed, fix: deploy fails again).
+==========================================================================================================
+Date: May 12, 2026
+1. [Add] Suggestion: Add a user blocking / blacklist feature so users can prevent unwanted contact.
+Reason: Users had no way to block others from sending messages or seeing their posts, leading to harassment concerns.
+Solution: Added BlockUserRequestDTO to the backend. Updated User entity and UserService with block/unblock logic. Added AdminController endpoints for admin-level user management. Created a blacklist.ts utility on the frontend (add: a lot).
+
+2. [Change] Suggestion: Improve the chat page with a conversation list, online indicator, and unread message count.
+Reason: The chat page only showed a single conversation. Users needed to see all their conversations and know who is online.
+Solution: Significantly expanded chat.vue with a full conversation list sidebar, online/offline status badges, unread message counts, and improved message bubble styling. Added the new chat API methods to auth.ts (add: a lot).
+
+3. [Change] Suggestion: Improve the posts page with additional filtering and interaction features.
+Reason: The posts page lacked the ability to filter by category and users could not interact with posts beyond reading them.
+Solution: Expanded posts.vue with category filter tabs, like button, and more post detail options. Added QuestCard and PostCard interaction fixes. Fixed logic problems in post fetch and auth state (fix: logic problems).
+
+4. [Fix] Suggestion: Fix the top navigation bar and add improvement notes for future iterations.
+Reason: After the large chat and posts changes, the top bar had a few broken interactions and badge positioning issues.
+Solution: Refined the top bar in default.vue for correct badge placement and avatar display. Documented improvement ideas in test notes. Multiple top bar fix commits were made to stabilize the component (fix: top bar add: improvements testing, fix: top bar — 3 commits).
+==========================================================================================================
+Date: May 2, 2026
+1. [Fix] Suggestion: Fix the emergency message sending feature so urgent messages are reliably delivered.
+Reason: Users reported that emergency messages in the chat were sometimes silently failing to send, which is critical for a community safety feature.
+Solution: Fixed the emergency message send handler in chat.vue to correctly call the backend endpoint and show a confirmation feedback toast to the user. Also updated default.vue layout to correctly route the emergency message action (fix: emergency message sent).
+==========================================================================================================
+Date: April 28, 2026
+1. [Fix] Suggestion: Fix post deletion so the deleted post is immediately removed from the feed.
+Reason: After deleting a post, it was still visible in the feed until the page was manually refreshed. In some cases the delete action failed silently.
+Solution: Fixed the delete post API call in post.ts. Updated PostCard.vue to emit and handle the delete event so the post is removed from the local list immediately. Multiple rounds of fixes were needed to cover all edge cases (fix: delete post — 4 commits, fix:delete).
+
+2. [Add] Suggestion: Add a manual refresh button to the posts feed so users can reload without navigating away.
+Reason: Users on slow connections needed a way to pull the latest posts without doing a full page reload.
+Solution: Added a refresh button to the posts page header. Wired it to re-fetch posts from the backend and update the list (add: refresh button).
+
+3. [Fix] Suggestion: Fix posts not displaying after creation and posts showing incorrect content.
+Reason: After creating a post, users were being redirected to the feed but the new post was not appearing in the list.
+Solution: Fixed the post creation API response handling so the new post is immediately appended to the feed. Fixed the post display logic so the correct post content and author info are shown (fix: post shown, fix: post show).
+
+4. [Fix] Suggestion: Fix the deployment pipeline failure.
+Reason: The deployment was failing due to a build configuration issue introduced with the delete post fixes.
+Solution: Fixed the Nuxt build config and resolved the dependency issue causing the deploy failure (fix: deploy problem).
+
+5. [Fix] Suggestion: Fix data sync issues between the frontend and backend after multiple edits.
+Reason: After several rapid commits, the local and deployed versions were out of sync, causing stale data to appear.
+Solution: Fixed sync mismatches by ensuring the latest build artifacts were correctly pushed. Resolved state management issues in the frontend (fix: sync — 3 commits).
+
+6. [Fix] Suggestion: Fix the user registration flow failing on submit.
+Reason: The register form was not submitting correctly due to a validation error that was being swallowed.
+Solution: Fixed the register form submission handler and corrected the API call in the register flow (fix: register).
+
+7. [Fix] Suggestion: Fix the app not loading on Chrome browser.
+Reason: The app was working on Firefox and Safari but failing to load on Chrome due to a missing browser compatibility polyfill.
+Solution: Added the required polyfill to the Nuxt build config and tested the fix across browsers (fix: chrome not work).
+==========================================================================================================
+Date: April 27, 2026
+1. [Add] Suggestion: Add an admin permission to delete any post with a reason, and notify the post owner.
+Reason: There was no content moderation tool. Admins could not remove inappropriate posts, and users had no visibility into why their posts disappeared.
+Solution: Added AdminDeletePostDialog.vue with a confirmation dialog and reason input. Updated AdminController and default.vue layout to enable admin delete from the UI. When an admin deletes a post, the post owner receives an in-app notification with the deletion reason (add: admin have permission to delete any post, and users will receive a notification if their post is deleted by admin).
+
+2. [Change] Suggestion: Separate the admin delete post setup from the notification logic as a distinct change.
+Reason: The admin delete feature needed to be staged incrementally to make review easier.
+Solution: Added the basic admin can delete posts wiring (button visibility, route guard) as a separate commit before adding the notification logic (change: admin can delete posts).
+
+3. [Fix] Suggestion: Fix the admin permission check so only actual admin accounts can see and use the delete button.
+Reason: After adding the admin delete feature, the permission check was too broad — some non-admin users could also see the delete button.
+Solution: Fixed the admin role check in the frontend layout and PostCard so the delete option is only shown when the logged-in user has the admin role (fix: admin permmision).
+
+4. [Fix] Suggestion: Fix duplicate posts appearing in the feed after the admin changes.
+Reason: The post list was re-fetching and appending posts without deduplication, causing the same post to appear multiple times.
+Solution: Fixed the deduplication logic in the posts and home pages so the same post ID cannot appear more than once in the list (fix: duplicate posts).
+==========================================================================================================
+Date: April 26, 2026
+1. [Add] Suggestion: Add full quest creation and editing dialogs with all required fields.
+Reason: The quest system only had basic display cards with no way to create or edit quests from the UI.
+Solution: Significantly expanded CreateQuestDialog.vue and EditQuestDialog.vue with reward, deadline, description, category, and location fields. Added i18n strings for all new quest labels. Updated QuestCard and QuestDetailDialog to display the new fields (Huge change: 10).
+
+2. [Change] Suggestion: Improve the layout navigation and settings page for a better overall UX.
+Reason: The sidebar navigation was missing several links and the settings page had incomplete preference options.
+Solution: Expanded default.vue layout with all page navigation items and active-state highlighting. Updated settings.vue with language, theme, and notification toggles. Improved the create-post.vue form with image upload and category selection. Updated home.vue with improved post feed presentation (Huge change: 10).
+
+3. [Fix] Suggestion: Fix login problems causing users to get stuck or see a blank page after login.
+Reason: An edge case in the login flow was causing a blank page to appear when the token was not saved correctly on first login.
+Solution: Fixed the login state handling in loginBox.vue so the token is always persisted before redirecting. Added error boundary handling for the blank page case (fix: login problem).
+
+4. [Fix] Suggestion: Fix login time not displaying correctly in the UI.
+Reason: The last login timestamp shown on the profile and home page was using the wrong date format.
+Solution: Fixed the login time formatting logic to correctly parse and display the timestamp in the user's locale (fix: login time).
+
+5. [Fix] Suggestion: Fix edit/delete options in Recent Posts and fix duplicate entries in the Recent Posts list.
+Reason: The Recent Posts section on the home page was showing edit/delete buttons to users who did not own those posts, and some posts appeared twice.
+Solution: Fixed the ownership check in the Recent Posts component so only the post owner sees edit/delete. Fixed deduplication logic so the same post does not appear twice (fix: edit/delete in recent posts, fix: duplicate recent posts).
+==========================================================================================================
+Date: April 25, 2026
+1. [Add] Suggestion: Add a full user registration flow.
+Reason: There was no way to create a new account. The app only had a login page.
+Solution: Added a Register page with name, email, and password fields. Wired the form to the backend register endpoint. Added basic validation and redirect to login on success (add: Register function).
+
+2. [Add] Suggestion: Add a phone number field with country code picker to the registration form.
+Reason: Phone number is required for user identity and emergency contact features. Users needed a country code selector.
+Solution: Added a phone number input and a country code dropdown to the register form. Added input hints and placeholder text. Wired phone data to the backend register API (fix: register hints add: phone field in registration form).
+
+3. [Fix] Suggestion: Fix the phone country code picker and validate phone number format.
+Reason: The country code dropdown was showing incorrect codes, the suggested auto-complete was not working, and the styling was inconsistent.
+Solution: Fixed the country code list and selection logic. Fixed the phone number auto-suggestion feature. Fixed the phone code input CSS styling. Verified registration data is correctly sent to the database (fix: phone country code — 3 commits, fix: phone suggested code, fix: phone code style test: register data to database).
+
+4. [Fix] Suggestion: Fix translation support and update how the selected country code is displayed.
+Reason: Some UI strings were not being picked up by the i18n plugin, and the selected country code was not being shown in the input field after selection.
+Solution: Fixed the i18n locale plugin to load all keys. Updated the country code display so the selected code appears correctly next to the phone number input (fix: translate change: country code show).
+
+5. [Add] Suggestion: Add an error code reference system to make API error messages user-friendly.
+Reason: API errors were being shown as raw backend error codes (e.g. ERR_001) which were meaningless to users and developers.
+Solution: Added an ERROR_CODE_REFERENCE.md document mapping all error codes to descriptions. Updated i18n locale files (en.json and zh.json) to include all error message strings. Fixed the translation plugin to cover all registration and auth strings (add: error code fix: translate not fully supported).
+
+6. [Add] Suggestion: Add login success and failure toast notifications.
+Reason: After submitting the login form, there was no feedback — users did not know if login succeeded or failed.
+Solution: Added an el-message success toast on login success and an error toast on failure. Applied the same pattern to the register form (add: login ok and fail message).
+
+7. [Change] Suggestion: Improve the posts page, profile page, AI chat page, and add a weather API.
+Reason: The posts page lacked category filtering, the profile page had no user data, and the ai-chat page needed a better prompt layout.
+Solution: Expanded posts.vue with category tabs and post type filtering. Improved profile.vue to show user info and recent activity. Updated ai-chat.vue with a cleaner input/response layout. Added server/api/weather.get.ts to serve weather data. Updated home.vue and nearbyCommunity.vue (Large change).
+
+8. [Fix] Suggestion: Refine the login box, home page, and posts layout after the large change.
+Reason: Several small regressions appeared after the large change: the login box had a layout break, the home page had a data loading issue, and the posts page had a filter state bug.
+Solution: Fixed loginBox.vue layout. Fixed home.vue data loading on mount. Fixed posts.vue filter state reset issue. Fixed ai-chat.vue prompt alignment (mid change).
+==========================================================================================================
+Date: April 24, 2026
+1. [Fix] Suggestion: Update the API endpoint configuration so the frontend correctly connects to the deployed backend.
+Reason: After the backend was deployed to the cloud, all API base URLs in the frontend were still pointing to localhost, causing all requests to fail in production.
+Solution: Updated all API call files to use the correct deployed backend base URL. Multiple rounds of fixes were needed to cover all endpoints (fix: update api endpoints and add api plugin — 3 commits).
+
+2. [Add] Suggestion: Add a global API plugin so the base URL is configured in one place.
+Reason: Repeating the backend URL in every API file was error-prone and hard to maintain.
+Solution: Added an API plugin in the Nuxt plugins folder that injects the base URL globally. Updated the API files to use the injected base URL instead of hardcoding it (fix: update api endpoints and add api plugin 19:34).
+
+3. [Change] Suggestion: Update the backend application.properties for the cloud deployment.
+Reason: The properties file still had local database settings that would not work in the deployed environment.
+Solution: Updated application.properties with the correct datasource URL, credentials, and JPA settings for the cloud database (change: Update application.properties).
+
+4. [Change] Suggestion: Update the README with project overview and setup instructions.
+Reason: New contributors had no documentation for how to set up and run the project locally or understand the project structure.
+Solution: Updated README.md with project overview, tech stack, environment setup steps, and instructions for running the frontend and backend locally (Update README.md).
+==========================================================================================================
+Date: April 22-23, 2026
+1. [Add] Suggestion: Connect the backend to a Neon cloud PostgreSQL database for persistent storage.
+Reason: The project was using a local database which could not be used in production or shared between team members.
+Solution: Updated application.properties with the Neon DB connection string, datasource settings, JPA dialect, and DDL auto configuration for PostgreSQL (Basic setting for connecting to neon db).
+
+2. [Remove] Suggestion: Remove the render.yaml deployment file as the team decided to change hosting strategy.
+Reason: The project was initially configured for Render.com deployment but the team decided to use a different hosting approach, making render.yaml unnecessary.
+Solution: Deleted render.yaml from the repository to avoid confusion. Deployment configuration was moved to other methods (deleted: render.yaml).
+==========================================================================================================
+Date: April 12, 2026
+1. [Add] Suggestion: Initialize the project repository with a Nuxt.js frontend and Spring Boot backend.
+Reason: The team agreed on a full-stack architecture using Nuxt 3 for the frontend and Java Spring Boot for the backend to build a neighbourhood community platform.
+Solution: Created the initial commit with the project structure. Added the neighbourHood-frontend (Nuxt 3) base setup and neighbourHood-backend (Spring Boot) base setup. Set up the Git repository (Initial commit).
+
+2. [Add] Suggestion: Upload all initial project files and set up the base Nuxt configuration.
+Reason: The initial commit only had the skeleton structure. The actual frontend pages, components, and configuration needed to be uploaded.
+Solution: Uploaded all initial frontend files including pages, components, layouts, and the Nuxt config. Set up tsconfig, nuxt.config.ts, and initial i18n locale files. Added the base README (Add files via upload).
+
+3. [Add] Suggestion: Set up the initial backend application.properties and README documentation.
+Reason: The backend needed correct datasource and server configuration before it could be run, and the README needed project information.
+Solution: Configured application.properties with server port, datasource, JPA, and logging settings. Updated README.md with the initial project description and tech stack overview (12/4/26 commit).
+
+4. [Add] Suggestion: Add Docker support for the backend so it can be containerized and deployed.
+Reason: Containerizing the backend ensures consistent behavior across development and production environments and simplifies deployment.
+Solution: Added a Dockerfile to the backend with the correct JDK base image, Maven build steps, and entry point command. Iterated on the Dockerfile configuration to fix build issues (modified: neighbourHood-backend/Dockerfile, modified: render.yaml — multiple commits).
