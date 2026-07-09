@@ -5,6 +5,7 @@ import {
   browserSessionPersistence,
   confirmPasswordReset,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   setPersistence,
   signOut,
   signInWithEmailAndPassword,
@@ -651,6 +652,49 @@ export function AuthForms({ mode }: { mode: AuthMode }) {
 
                     toast.success(t(language, "auth.signedIn"));
                     router.push("/home");
+                  } catch (error) {
+                    toast.error(getFriendlyAuthError(error));
+                  } finally {
+                    setLoading(false);
+                  }
+
+                  return;
+                }
+
+                if (mode === "forgot") {
+                  if (!isFirebaseConfigured) {
+                    toast.error(firebaseSetupHint);
+                    return;
+                  }
+
+                  const email = state.email.trim().toLowerCase();
+
+                  if (!email) {
+                    toast.error(t(language, "auth.error.enterEmail"));
+                    return;
+                  }
+
+                  const services = getFirebaseServices();
+
+                  if (!services) {
+                    toast.error(firebaseSetupHint);
+                    return;
+                  }
+
+                  setLoading(true);
+
+                  try {
+                    await sendPasswordResetEmail(services.auth, email, {
+                      // Link goes back to this app with the oobCode so we can
+                      // complete the reset inside the app, not on Firebase's hosted page.
+                      url: `${window.location.origin}/reset-password`,
+                      handleCodeInApp: true,
+                    });
+                    toast.success(
+                      language === "zh-HK"
+                        ? "密碼重設電郵已發送，請查收。"
+                        : "Password reset email sent. Please check your inbox.",
+                    );
                   } catch (error) {
                     toast.error(getFriendlyAuthError(error));
                   } finally {
